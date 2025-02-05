@@ -1,0 +1,65 @@
+.dashboardPost {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    background-color: var(--bg);
+    padding: 0.7rem 1.3rem;
+    border-radius: 15px;
+  }
+  
+  .dashboardPostInfo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .dashboardPostImage {
+    overflow: hidden;
+    border-radius: 5px;
+  }
+  
+  .title {
+    color: var(--text);
+    font-size: 1rem;
+  }
+  
+  .dateCreated {
+    font-size: 0.8rem;
+    color: gray;
+  }
+  
+  .dashboardPostAction {
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  .edit {
+    padding: 7px;
+    background-color: #f7cb7375;
+    color: var(--text);
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.8rem;
+  }
+  
+  .view {
+    background-color: #afd6ee75;
+    padding: 7px;
+    color: var(--text);
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.8rem;
+  }
+  
+  .delete {
+    background-color: #f7737375;
+    padding: 7px;
+    color: var(--text);
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.8rem;
+  }
