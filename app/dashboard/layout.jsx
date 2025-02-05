@@ -1,6 +1,6 @@
-import styles from '../ui/styling/dashboard/dashboard.module.css';
-import Navbar from '../ui/components/dashboard/navbar';
-import Sidebar from '../ui/components/dashboard/sidebar';
+import styles from '@/ui/styling/dashboard/dashboard.module.css';
+import Navbar from '@/ui/components/dashboard/navbar';
+import Sidebar from '@/ui/components/dashboard/sidebar';
 
 function Layout({ children }) {
   return (

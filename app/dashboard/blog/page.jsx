@@ -7,9 +7,9 @@ import { redirect } from 'next/navigation';
 import axios from 'axios';
 import { MdAdd } from 'react-icons/md';
 
-import styles from '../../ui/styling/dashboard/blog/blog.module.css';
-import Search from '../../ui/components/dashboard/search';
-import PostCard from '../../ui/components/dashboard/PostCard';
+import styles from '@/ui/styling/dashboard/blog/blog.module.css';
+import Search from '@/ui/components/dashboard/search
+import PostCard from '@/ui/components/dashboard/PostCard
 
 function Blog() {
   const [posts, setPosts] = useState('');
