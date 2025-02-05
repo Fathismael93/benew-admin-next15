@@ -1,6 +1,6 @@
 'use client';
 
-import styles from '.@/ui/styling/dashboard/dashboard.module.css';
+import styles from '@/ui/styling/dashboard/dashboard.module.css';
 import Card from '@/ui/components/dashboard/card';
 import Chart from '@/ui/components/dashboard/chart';
 import Rightbar from '@/ui/components/dashboard/rightbar';
