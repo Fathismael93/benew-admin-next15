@@ -1,0 +1,45 @@
+.createPostContainer {
+    background-color: var(--bgSoft);
+    padding: 20px;
+    border-radius: 7px;
+    margin-top: 20px;
+    width: 85%;
+  }
+  
+  .createPostTitle h2 {
+    margin-bottom: 2rem;
+    text-align: center;
+  }
+  
+  .createPostForm {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+  
+  .errorMessage {
+    background-color: #f7737375;
+    color: var(--text);
+    font-size: 0.8rem;
+    padding: 0.8rem 1.1rem;
+    display: block;
+    margin-bottom: 1.1rem;
+    border-radius: 7px;
+  }
+  
+  .createPostForm input {
+    width: 100%;
+    padding: 0.7rem 1.1rem;
+    resize: none;
+    border-radius: 10px;
+  }
+  
+  .addButton {
+    padding: 10px;
+    background-color: #5d57c9;
+    color: var(--text);
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+  }
