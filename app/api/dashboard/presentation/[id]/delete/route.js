@@ -9,6 +9,7 @@ export async function DELETE({ params }) {
     const { id } = params;
 
     try {
+      console.log('We are in the beginning of the tryCatch block');
       await deletePresentationSchema.validate({ id });
 
       const query = {
@@ -17,6 +18,8 @@ export async function DELETE({ params }) {
         text: 'DELETE FROM presentations WHERE presentation_id=$1',
         values: [id],
       };
+
+      console.log('We have set the query');
 
       client.connect(function (err) {
         if (err) {
@@ -27,7 +30,12 @@ export async function DELETE({ params }) {
         console.log('Connected To Aiven, Postgresql Database');
       });
 
-      await client.query(query);
+      console.log('We are starting to delete from db');
+
+      client
+        .query(query)
+        .then(() => console.log('Presentation deleted with success'))
+        .catch((e) => console.log(e));
 
       client.end(function (err) {
         if (err) {
