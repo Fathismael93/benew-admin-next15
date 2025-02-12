@@ -4,7 +4,7 @@ import { deletePresentationSchema } from '@/utils/schemas';
 
 export const dynamic = 'force-dynamic';
 
-export async function DELETE(req, { params }) {
+export async function DELETE({ params }) {
   console.log('We are in the DELETE METHOD');
   try {
     console.log('We are in the beginning of the first tryCatch block');
@@ -24,15 +24,6 @@ export async function DELETE(req, { params }) {
       };
 
       console.log('We have set the query');
-
-      client.connect(function (err) {
-        if (err) {
-          console.log(err);
-          throw err;
-        }
-
-        console.log('Connected To Aiven, Postgresql Database');
-      });
 
       console.log('We are starting to delete from db');
 

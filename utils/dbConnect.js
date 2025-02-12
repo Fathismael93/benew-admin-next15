@@ -40,4 +40,13 @@ vw==
   idleTimeoutMillis: process.env.CLIENT_EXISTENCE, // How long a client is allowed to remain idle before being closed
 });
 
+client.connect(function (err) {
+  if (err) {
+    console.log(err);
+    throw err;
+  }
+
+  console.log('Connected To Aiven, Postgresql Database');
+});
+
 export default client;

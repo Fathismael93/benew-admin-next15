@@ -3,7 +3,7 @@ import client from '@/utils/dbConnect';
 
 export const dynamic = 'force-dynamic';
 
-export async function DELETE(req, params) {
+export async function DELETE(params) {
   const { id } = params;
 
   if (!Number.isInteger(parseInt(id, 10))) {
@@ -14,15 +14,6 @@ export async function DELETE(req, params) {
   }
 
   try {
-    client.connect(function (err) {
-      if (err) {
-        console.log(err);
-        throw err;
-      }
-
-      console.log('Connected To Aiven, Postgresql Database');
-    });
-
     const result = await client.query(
       'DELETE FROM articles WHERE article_id=$1',
       [id],

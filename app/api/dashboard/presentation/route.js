@@ -11,15 +11,6 @@ export async function GET() {
       text: 'SELECT presentation_id, presentation_name, presentation_title, presentation_text FROM presentations',
     };
 
-    client.connect(function (err) {
-      if (err) {
-        console.log(err);
-        throw err;
-      }
-
-      console.log('Connected To Aiven, Postgresql Database');
-    });
-
     const getResult = await client.query(query);
 
     if (getResult) {
