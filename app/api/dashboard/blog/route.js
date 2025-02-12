@@ -3,6 +3,15 @@ import client from '@/utils/dbConnect';
 
 export default async function GET() {
   try {
+    client.connect(function (err) {
+      if (err) {
+        console.log(err);
+        throw err;
+      }
+
+      console.log('Connected To Aiven, Postgresql Database');
+    });
+
     const query = {
       // give the query a unique name
       name: 'get-article',

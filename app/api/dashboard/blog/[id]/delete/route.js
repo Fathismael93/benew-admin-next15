@@ -14,6 +14,15 @@ export async function DELETE(req, params) {
   }
 
   try {
+    client.connect(function (err) {
+      if (err) {
+        console.log(err);
+        throw err;
+      }
+
+      console.log('Connected To Aiven, Postgresql Database');
+    });
+
     const result = await client.query(
       'DELETE FROM articles WHERE article_id=$1',
       [id],

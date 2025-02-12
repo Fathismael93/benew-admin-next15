@@ -27,6 +27,15 @@ export async function POST(req) {
         values: [title, text, imageUrl],
       };
 
+      client.connect(function (err) {
+        if (err) {
+          console.log(err);
+          throw err;
+        }
+
+        console.log('Connected To Aiven, Postgresql Database');
+      });
+
       const addingResult = await client.query(query);
 
       client.end(function (err) {

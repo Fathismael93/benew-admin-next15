@@ -58,6 +58,15 @@ export async function POST(req) {
       });
     }
 
+    client.connect(function (err) {
+      if (err) {
+        console.log(err);
+        throw err;
+      }
+
+      console.log('Connected To Aiven, Postgresql Database');
+    });
+
     const addPresentation = await client.query(
       'INSERT INTO products ' +
         '(product_name, product_link, product_description, product_category, product_fee, product_rent, product_images) ' +
