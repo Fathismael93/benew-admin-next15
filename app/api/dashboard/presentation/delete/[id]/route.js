@@ -4,7 +4,7 @@ import { deletePresentationSchema } from '@/utils/schemas';
 
 export const dynamic = 'force-dynamic';
 
-export async function DELETE({ params }) {
+export async function DELETE(params) {
   console.log(params);
   try {
     const { id } = params;
