@@ -8,7 +8,7 @@ export async function DELETE({ params }) {
   console.log('We are in the DELETE METHOD');
   try {
     console.log('We are in the beginning of the first tryCatch block');
-    const { id } = params;
+    const id = params.id;
     console.log('params: ');
     console.log(params);
 
