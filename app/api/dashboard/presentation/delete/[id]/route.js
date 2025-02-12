@@ -19,28 +19,10 @@ export async function DELETE(params) {
         values: [id],
       };
 
-      client.connect(function (err) {
-        if (err) {
-          console.log(err);
-          throw err;
-        }
-
-        console.log('Connected To Aiven, Postgresql Database');
-      });
-
       client
         .query(query)
         .then(() => console.log('Presentation deleted with success'))
         .catch((e) => console.log(e));
-
-      client.end(function (err) {
-        if (err) {
-          console.log(err);
-          throw err;
-        }
-
-        console.log('Client Connected To Aiven Postgresql Database is stopped');
-      });
 
       return NextResponse.json(
         {
