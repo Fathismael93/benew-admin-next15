@@ -34,7 +34,7 @@ function Presentation() {
 
       await axios
         // eslint-disable-next-line camelcase
-        .delete(`/api/dashboard/presentation/${presentation_id}/delete`)
+        .delete(`/api/dashboard/presentation/delete/${presentation_id}`)
         .then((response) => {
           setIsSuccess(response.data.success);
         })
