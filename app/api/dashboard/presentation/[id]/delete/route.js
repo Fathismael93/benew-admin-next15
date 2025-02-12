@@ -5,6 +5,7 @@ import { deletePresentationSchema } from '@/utils/schemas';
 export const dynamic = 'force-dynamic';
 
 export async function DELETE({ params }) {
+  console.log(params);
   console.log('We are in the DELETE METHOD');
   try {
     console.log('We are in the beginning of the first tryCatch block');
