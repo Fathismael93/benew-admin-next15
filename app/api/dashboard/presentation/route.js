@@ -29,7 +29,7 @@ export async function GET() {
           throw err;
         }
 
-        console.log('Client Connected To Aiven Postgresql Database is stopped');
+        console.log('Client Database is stopped');
       });
     }
 

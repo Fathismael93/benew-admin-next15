@@ -4,12 +4,16 @@ import { deletePresentationSchema } from '@/utils/schemas';
 
 export const dynamic = 'force-dynamic';
 
-export async function DELETE({ params }) {
+export async function DELETE(req, { params }) {
+  console.log('We are in the DELETE METHOD');
   try {
+    console.log('We are in the beginning of the first tryCatch block');
     const { id } = params;
+    console.log('params: ');
+    console.log(params);
 
     try {
-      console.log('We are in the beginning of the tryCatch block');
+      console.log('We are in the beginning of the second tryCatch block');
       await deletePresentationSchema.validate({ id });
 
       const query = {
@@ -43,7 +47,7 @@ export async function DELETE({ params }) {
           throw err;
         }
 
-        console.log('Client Connected To Aiven Postgresql Database is stopped');
+        console.log('Client Database is stopped');
       });
 
       return NextResponse.json(
