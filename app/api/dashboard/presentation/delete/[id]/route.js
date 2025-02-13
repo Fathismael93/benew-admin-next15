@@ -4,11 +4,11 @@ import { deletePresentationSchema } from '@/utils/schemas';
 
 export const dynamic = 'force-dynamic';
 
-export async function DELETE({ params }) {
-  console.log(await params);
+export async function DELETE(req) {
+  console.log(req.query);
   try {
-    const { id } = await params;
-    console.log(id);
+    // const { id } = await params;
+    // console.log(id);
 
     try {
       await deletePresentationSchema.validate({ id });
