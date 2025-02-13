@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { redirect } from 'next/navigation';
-import Quill from 'quill';
+// import Quill from 'quill';
 import { useQuill } from 'react-quilljs';
 import 'quill/dist/quill.bubble.css'; // Add css for bubble theme
 import { CldUploadWidget, CldImage } from 'next-cloudinary';
@@ -17,16 +17,16 @@ import styles from '@/ui/styling/dashboard/blog/add/add.module.css';
 import { addArticleSchema } from '@/utils/schemas.js';
 
 const CreatePost = () => {
-  useEffect(() => {
-    const editor = new Quill('#editor', { theme: 'snow' });
-  }, []);
+  //   useEffect(() => {
+  //     const editor = new Quill('#editor', { theme: 'snow' });
+  //   }, []);
 
-  //   const { quill, quillRef } = useQuill({
-  //     modules,
-  //     theme,
-  //     formats,
-  //     placeholder,
-  //   });
+  const { quill, quillRef } = useQuill({
+    modules,
+    theme,
+    formats,
+    placeholder,
+  });
 
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
