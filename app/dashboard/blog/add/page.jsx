@@ -3,16 +3,18 @@
 import React, { useEffect, useState } from 'react';
 import { redirect } from 'next/navigation';
 // import Quill from 'quill';
-import { useQuill } from 'react-quilljs';
-import 'quill/dist/quill.bubble.css'; // Add css for bubble theme
+// import { useQuill } from 'react-quilljs';
+// import 'quill/dist/quill.bubble.css'; // Add css for bubble theme
 import { CldUploadWidget, CldImage } from 'next-cloudinary';
 import axios from 'axios';
-import {
-  modules,
-  formats,
-  theme,
-  placeholder,
-} from '@/utils/reactquillConfig.js';
+import { useCurrentEditor, EditorProvider } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+// import {
+//   modules,
+//   formats,
+//   theme,
+//   placeholder,
+// } from '@/utils/reactquillConfig.js';
 import styles from '@/ui/styling/dashboard/blog/add/add.module.css';
 import { addArticleSchema } from '@/utils/schemas.js';
 
@@ -21,14 +23,14 @@ const CreatePost = () => {
   //     const editor = new Quill('#editor', { theme: 'snow' });
   //   }, []);
 
-  const { quill, quillRef } = useQuill({
-    modules: {
-      toolbar: '#toolbar',
-    },
-    theme,
-    formats,
-    placeholder,
-  });
+  //   const { quill, quillRef } = useQuill({
+  //     modules: {
+  //       toolbar: '#toolbar',
+  //     },
+  //     theme,
+  //     formats,
+  //     placeholder,
+  //   });
 
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
@@ -36,17 +38,19 @@ const CreatePost = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
 
-  useEffect(() => {
-    if (quill) {
-      quill.on('text-change', (delta, oldDelta, source) => {
-        console.log('Text change!');
-        console.log(quill.getText()); // Get text only
-        console.log(quill.getContents()); // Get delta contents
-        console.log(quill.root.innerHTML); // Get innerHTML using quill
-        console.log(quillRef.current.firstChild.innerHTML); // Get innerHTML using quillRef
-      });
-    }
-  }, [quill]);
+  //   useEffect(() => {
+  //     if (quill) {
+  //       quill.on('text-change', (delta, oldDelta, source) => {
+  //         console.log('Text change!');
+  //         console.log(quill.getText()); // Get text only
+  //         console.log(quill.getContents()); // Get delta contents
+  //         console.log(quill.root.innerHTML); // Get innerHTML using quill
+  //         console.log(quillRef.current.firstChild.innerHTML); // Get innerHTML using quillRef
+  //       });
+  //     }
+  //   }, [quill]);
+
+  const extensions = [StarterKit];
 
   const handleEditorChange = (newContent) => {
     setText(newContent);
@@ -113,7 +117,7 @@ const CreatePost = () => {
         /> */}
 
         <div className={styles.editor}>
-          <div ref={quillRef} />
+          {/* <div ref={quillRef} />
 
           <div id="toolbar">
             <select className="ql-size">
@@ -126,7 +130,11 @@ const CreatePost = () => {
             <button className="ql-script" value="sub" />
             <button className="ql-script" value="super" />
           </div>
-          <div id="editor" />
+          <div id="editor" /> */}
+          <EditorProvider
+            content={'Hello World! 🌎️'}
+            extensions={extensions}
+          />
         </div>
 
         <CldUploadWidget
