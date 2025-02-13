@@ -1,20 +1,41 @@
-import { v2 as cloudinary } from 'cloudinary';
+import cloudinary from '@/lib/cloudinary';
 import { NextResponse } from 'next/server';
+import { limitRequest } from '@/lib/rateLimiter';
 
-export default async function POST(req) {
-  const body = await req.json();
-  const { paramsToSign } = body;
+export const POST = async (req) => {
+  try {
+    // Get IP Address for rate limiting (works in Vercel & Next.js)
+    const ip = req.headers.get('x-forwarded-for') || 'local';
 
-  cloudinary.config({
-    cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-  });
+    if (!limitRequest(ip)) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    }
 
-  const signature = cloudinary.utils.api_sign_request(
-    paramsToSign,
-    process.env.CLOUDINARY_API_SECRET,
-  );
+    const body = await req.json();
+    const { paramsToSign } = body;
 
-  return NextResponse.json({ signature });
-}
+    if (!paramsToSign) {
+      return NextResponse.json(
+        { error: 'Missing paramsToSign' },
+        { status: 400 },
+      );
+    }
+
+    const signature = cloudinary.utils.api_sign_request(
+      paramsToSign,
+      process.env.CLOUDINARY_API_SECRET,
+    );
+
+    return NextResponse.json({ signature });
+  } catch (error) {
+    console.error('Cloudinary Signature Error:', error);
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 },
+    );
+  }
+};
+
+export const config = {
+  matcher: '/api/signature', // Ensures it runs only on this route
+};
