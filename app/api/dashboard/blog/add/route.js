@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import pool from '@/utils/dbConnect';
 import { addArticleSchema } from '@/utils/schemas';
-import jwt from 'jsonwebtoken'; // If you're using JWT tokens
-import { rateLimit } from '@/utils/rateLimit'; // Simple rate limiting utility
 
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute window
 const MAX_REQUESTS = 5; // Max 5 requests per minute
@@ -41,26 +39,6 @@ export async function POST(req) {
       } else {
         requestCounts[ip].count++;
       }
-    }
-
-    // Authentication - assuming JWT token
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { success: false, message: 'Authorization token required.' },
-        { status: 401 },
-      );
-    }
-
-    const token = authHeader.split(' ')[1];
-    try {
-      // Validate the JWT token (replace with your actual secret)
-      jwt.verify(token, process.env.JWT_SECRET);
-    } catch (error) {
-      return NextResponse.json(
-        { success: false, message: 'Invalid or expired token.' },
-        { status: 401 },
-      );
     }
 
     const formData = await req.json();
