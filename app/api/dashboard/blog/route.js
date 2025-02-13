@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import { getClient } from '@/utils/dbConnect';
 
 export async function GET() {
+  let client;
+
   try {
     // Acquire a client from the pool
-    const client = await getClient();
+    client = await getClient();
 
     const query = `
       SELECT 
