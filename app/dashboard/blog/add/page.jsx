@@ -22,7 +22,9 @@ const CreatePost = () => {
   //   }, []);
 
   const { quill, quillRef } = useQuill({
-    modules,
+    modules: {
+      toolbar: '#toolbar',
+    },
     theme,
     formats,
     placeholder,
