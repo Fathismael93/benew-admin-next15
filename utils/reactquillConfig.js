@@ -26,3 +26,7 @@ export const formats = [
   'link',
   'image',
 ];
+
+export const theme = 'bubble';
+
+export const placeholder = 'Write an article...';
