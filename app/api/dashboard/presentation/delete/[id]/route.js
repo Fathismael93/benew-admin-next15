@@ -5,10 +5,8 @@ import { deletePresentationSchema } from '@/utils/schemas';
 export const dynamic = 'force-dynamic';
 
 export async function DELETE(req, { params }) {
-  console.log(await params);
   try {
     const { id } = await params;
-    console.log(id);
 
     try {
       await deletePresentationSchema.validate({ id });
@@ -20,10 +18,7 @@ export async function DELETE(req, { params }) {
         values: [id],
       };
 
-      client
-        .query(query)
-        .then(() => console.log('Presentation deleted with success'))
-        .catch((e) => console.log(e));
+      await client.query(query);
 
       return NextResponse.json(
         {

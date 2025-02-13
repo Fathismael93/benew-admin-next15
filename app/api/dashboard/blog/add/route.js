@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server';
 import client from '@/utils/dbConnect';
 import { addArticleSchema } from '@/utils/schemas';
 
-export const dynamic = 'force-dynamic';
-
 export async function POST(req) {
   try {
     const formData = await req.json();
@@ -28,15 +26,6 @@ export async function POST(req) {
       };
 
       const addingResult = await client.query(query);
-
-      client.end(function (err) {
-        if (err) {
-          console.log(err);
-          throw err;
-        }
-
-        console.log('Client Connected To Aiven Postgresql Database is stopped');
-      });
 
       return NextResponse.json(
         {

@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import client from '../../../../../utils/dbConnect';
 
-export const dynamic = 'force-dynamic';
-
 export async function POST(req) {
   try {
     const formData = await req.json();
@@ -58,30 +56,12 @@ export async function POST(req) {
       });
     }
 
-    client.connect(function (err) {
-      if (err) {
-        console.log(err);
-        throw err;
-      }
-
-      console.log('Connected To Aiven, Postgresql Database');
-    });
-
     const addPresentation = await client.query(
       'INSERT INTO products ' +
         '(product_name, product_link, product_description, product_category, product_fee, product_rent, product_images) ' +
         'VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
       [name, link, description, category, fee, rent, imageUrl],
     );
-
-    client.end(function (err) {
-      if (err) {
-        console.log(err);
-        throw err;
-      }
-
-      console.log('Client Connected To Aiven Postgresql Database is stopped');
-    });
 
     if (addPresentation.rows[0]) {
       console.log(addPresentation.rows[0]);

@@ -11,15 +11,6 @@ export default async function GET() {
 
     const getResult = await client.query(query);
 
-    client.end(function (err) {
-      if (err) {
-        console.log(err);
-        throw err;
-      }
-
-      console.log('Client Connected To Aiven Postgresql Database is stopped');
-    });
-
     return NextResponse.json(
       {
         success: true,

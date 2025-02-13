@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import client from '@/utils/dbConnect';
 
-export const dynamic = 'force-dynamic';
-
 export async function GET() {
   try {
     const query = {

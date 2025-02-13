@@ -4,9 +4,9 @@ import { articleIDSchema } from '@/utils/schemas';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET({ params }) {
+export async function GET(req, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     try {
       await articleIDSchema.validate({ id });
@@ -19,15 +19,6 @@ export async function GET({ params }) {
       };
 
       const result = await client.query(query);
-
-      client.end(function (err) {
-        if (err) {
-          console.log(err);
-          throw err;
-        }
-
-        console.log('Client Connected To Aiven Postgresql Database is stopped');
-      });
 
       return NextResponse.json(
         {
