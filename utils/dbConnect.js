@@ -171,8 +171,8 @@ export const getClient = async () => {
   } catch (err) {
     console.error(
       `[${getTimestamp()}] ❌ Initial database connection failed. Attempting to reconnect...`,
-      err.message,
     );
+    console.error(err);
     reconnectPool();
   }
 })();
