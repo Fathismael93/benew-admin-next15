@@ -43,6 +43,7 @@
   }
   
   .addImage {
+    cursor: pointer;
     margin-top: 10px;
     background: none;
     color: var(--text);

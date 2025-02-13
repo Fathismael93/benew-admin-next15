@@ -17,8 +17,10 @@ import { addArticleSchema } from '@/utils/schemas.js';
 
 const CreatePost = () => {
   const { quill, quillRef } = useQuill({
+    modules: {
+      toolbar: '#toolbar',
+    },
     theme,
-    modules,
     formats,
     placeholder,
   });
@@ -105,8 +107,21 @@ const CreatePost = () => {
           onChange={handleEditorChange}
         /> */}
 
-        <div className={styles.editor} value={text}>
+        <div className={styles.editor}>
           <div ref={quillRef} />
+
+          <div id="toolbar">
+            <select className="ql-size">
+              <option value="small" />
+              <option selected />
+              <option value="large" />
+              <option value="huge" />
+            </select>
+            <button className="ql-bold" />
+            <button className="ql-script" value="sub" />
+            <button className="ql-script" value="super" />
+          </div>
+          <div id="editor" />
         </div>
 
         <CldUploadWidget
