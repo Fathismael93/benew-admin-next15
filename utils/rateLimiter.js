@@ -1,4 +1,4 @@
-import LRU from 'lru-cache';
+import { LRU } from 'lru-cache';
 
 const rateLimitOptions = {
   max: 10, // Allow 10 requests
