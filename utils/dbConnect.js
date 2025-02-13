@@ -69,6 +69,9 @@ requiredEnvVars.forEach((envVar) => {
       `[${getTimestamp()}] ⚠️ Warning: Missing environment variable: ${envVar}`,
     );
   }
+  if (process.env.DB_CA) {
+    console.log(process.env.DB_CA);
+  }
 });
 
 let pool;
