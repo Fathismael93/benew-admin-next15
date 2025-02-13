@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import client from '@/utils/dbConnect';
+import pool from '@/utils/dbConnect';
 import { deletePresentationSchema } from '@/utils/schemas';
 
 export const dynamic = 'force-dynamic';
@@ -18,7 +18,7 @@ export async function DELETE(req, { params }) {
         values: [id],
       };
 
-      await client.query(query);
+      await pool.query(query);
 
       return NextResponse.json(
         {

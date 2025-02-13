@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import client from '../../../../../utils/dbConnect';
+import pool from '../../../../../utils/dbConnect';
 import { presentationSchema } from '../../../../../utils/schemas';
 
 export async function POST(req) {
@@ -25,7 +25,7 @@ export async function POST(req) {
         values: [name, title, text],
       };
 
-      const addingResult = await client.query(query);
+      const addingResult = await pool.query(query);
 
       return NextResponse.json(
         {

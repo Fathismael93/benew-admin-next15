@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import client from '@/utils/dbConnect';
+import pool from '@/utils/dbConnect';
 
 export async function GET() {
   try {
@@ -9,7 +9,7 @@ export async function GET() {
       text: 'SELECT presentation_id, presentation_name, presentation_title, presentation_text FROM presentations',
     };
 
-    const getResult = await client.query(query);
+    const getResult = await pool.query(query);
 
     return NextResponse.json(
       {

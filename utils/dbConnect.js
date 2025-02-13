@@ -1,11 +1,12 @@
-import { Client } from 'pg';
+import { Pool } from 'pg';
 
-const client = new Client({
+const pool = new Pool({
   user: process.env.USER_NAME,
   host: process.env.HOST_NAME,
   database: process.env.DB_NAME,
   password: process.env.DB_PASSWORD,
   port: process.env.PORT_NUMBER,
+  connectionTimeoutMillis: process.env.CONNECTION_TIMEOUT,
   ssl: {
     require: true,
     rejectUnauthorized: false,
@@ -40,13 +41,4 @@ vw==
   idleTimeoutMillis: process.env.CLIENT_EXISTENCE, // How long a client is allowed to remain idle before being closed
 });
 
-client.connect(function (err) {
-  if (err) {
-    console.log(err);
-    throw err;
-  }
-
-  console.log('Connected To Aiven, Postgresql Database');
-});
-
-export default client;
+export default pool;
