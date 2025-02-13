@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { redirect } from 'next/navigation';
+import Quill from 'quill';
 import { useQuill } from 'react-quilljs';
 import 'quill/dist/quill.bubble.css'; // Add css for bubble theme
 import { CldUploadWidget, CldImage } from 'next-cloudinary';
@@ -16,14 +17,16 @@ import styles from '@/ui/styling/dashboard/blog/add/add.module.css';
 import { addArticleSchema } from '@/utils/schemas.js';
 
 const CreatePost = () => {
-  const { quill, quillRef } = useQuill({
-    modules: {
-      toolbar: '#toolbar',
-    },
-    theme,
-    formats,
-    placeholder,
-  });
+  useEffect(() => {
+    const editor = new Quill('#editor', { theme: 'snow' });
+  }, []);
+
+  //   const { quill, quillRef } = useQuill({
+  //     modules,
+  //     theme,
+  //     formats,
+  //     placeholder,
+  //   });
 
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
@@ -107,7 +110,7 @@ const CreatePost = () => {
           onChange={handleEditorChange}
         /> */}
 
-        <div style={{ width: 500, height: 300 }}>
+        <div className={styles.editor}>
           <div ref={quillRef} />
 
           <div id="toolbar">
