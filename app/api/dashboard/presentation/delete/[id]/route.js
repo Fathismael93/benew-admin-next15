@@ -5,9 +5,10 @@ import { deletePresentationSchema } from '@/utils/schemas';
 export const dynamic = 'force-dynamic';
 
 export async function DELETE(params) {
-  console.log(params);
+  console.log(await params);
   try {
-    const { id } = params;
+    const { id } = await params;
+    console.log(id);
 
     try {
       await deletePresentationSchema.validate({ id });
