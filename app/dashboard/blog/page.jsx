@@ -21,7 +21,7 @@ function Blog() {
     async function getPosts() {
       await axios
         .get('/api/dashboard/blog')
-        .then((response) => console.log(response))
+        .then((response) => setPosts(response.data.articles))
         .catch((error) => setErrorMessage(error));
     }
 
