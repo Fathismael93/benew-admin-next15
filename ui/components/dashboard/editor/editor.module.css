@@ -46,3 +46,15 @@
     max-width: 100%;
     height: auto;
   }
+
+  .ProseMirror h1 {
+    color: black; /* Ensure headings are black */
+  }
+
+  .ProseMirror p {
+    color: black; /* Ensure headings are black */
+  }
+  
+  .ProseMirror a {
+    color: blue; /* Style links if needed */
+  }
