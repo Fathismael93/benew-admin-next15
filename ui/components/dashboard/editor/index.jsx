@@ -1,15 +1,21 @@
 'use client';
 
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import TextStyle from '@tiptap/extension-text-style';
+import Color from '@tiptap/extension-color';
 import Image from '@tiptap/extension-image';
 import styles from './editor.module.css';
 
 const TiptapEditor = ({ text, handleEditorChange }) => {
+  const [selectedColor, setSelectedColor] = useState('#000000'); // Default color is black
+
   const editor = useEditor({
     extensions: [
       StarterKit,
+      TextStyle, // Enable text styling
+      Color.configure({ types: ['textStyle'] }), // Enable color extension
       Image.configure({
         inline: true,
         allowBase64: true,
@@ -34,6 +40,11 @@ const TiptapEditor = ({ text, handleEditorChange }) => {
       }
     }
   }, [editor]);
+
+  const handleColorChange = (color) => {
+    setSelectedColor(color); // Update the selected color state
+    editor?.chain().focus().setColor(color).run(); // Apply the color to the selected text
+  };
 
   if (!editor) {
     return <div>Loading editor...</div>;
@@ -81,6 +92,13 @@ const TiptapEditor = ({ text, handleEditorChange }) => {
         <button onClick={addImage} aria-label="Add Image">
           Add Image
         </button>
+        {/* Color Picker */}
+        <input
+          type="color"
+          value={selectedColor}
+          onChange={(e) => handleColorChange(e.target.value)}
+          aria-label="Text Color"
+        />
       </div>
       <EditorContent editor={editor} />
     </div>
