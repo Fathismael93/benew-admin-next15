@@ -1,0 +1,42 @@
+.editor {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+  }
+  
+  .menu {
+    margin-bottom: 10px;
+  }
+  
+  .menu button {
+    margin-right: 8px;
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #f9f9f9;
+    cursor: pointer;
+  }
+  
+  .menu button.is-active {
+    background: #ddd;
+  }
+  
+  .ProseMirror {
+    min-height: 300px;
+    padding: 10px;
+    border: 1px solid #eee;
+    border-radius: 4px;
+  }
+  
+  .ProseMirror:focus {
+    outline: none;
+    border-color: #0070f3;
+  }
+  
+  .ProseMirror img {
+    max-width: 100%;
+    height: auto;
+  }
