@@ -80,6 +80,9 @@ const CreatePost = () => {
           onSuccess={(result) => {
             setImageUrl(result?.info.public_id);
           }}
+          options={{
+            folder: 'blog_pictures', // Specify the folder here
+          }}
         >
           {({ open }) => {
             function handleOnClick(e) {

@@ -21,6 +21,9 @@ export const POST = async (req) => {
       );
     }
 
+    // Add the folder parameter to paramsToSign
+    paramsToSign.folder = 'blog_pictures';
+
     const signature = cloudinary.utils.api_sign_request(
       paramsToSign,
       process.env.CLOUDINARY_API_SECRET,
