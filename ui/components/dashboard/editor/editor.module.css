@@ -39,6 +39,7 @@
   .ProseMirror:focus {
     outline: none;
     border-color: #0070f3;
+    color: black; /* Set text color to black */
   }
   
   .ProseMirror img {
