@@ -17,15 +17,15 @@ function Blog() {
   // eslint-disable-next-line no-unused-vars
   const [errorMessage, setErrorMessage] = useState('');
 
-  useEffect(() => {
+  useEffect(async () => {
     async function getPosts() {
       await axios
         .get('/api/dashboard/blog')
-        .then((response) => setPosts(response.data.data.rows))
+        .then((response) => console.log(response))
         .catch((error) => setErrorMessage(error));
     }
 
-    getPosts();
+    await getPosts();
   }, []);
 
   // eslint-disable-next-line camelcase
