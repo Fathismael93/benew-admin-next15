@@ -10,7 +10,9 @@ import TiptapEditor from '@/ui/components/dashboard/editor';
 
 const CreatePost = () => {
   const [title, setTitle] = useState('');
-  const [text, setText] = useState('');
+  const [text, setText] = useState(
+    '<p>Start writing your blog post here...</p>',
+  ); // State to store editor content
   const [imageUrl, setImageUrl] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
@@ -71,7 +73,7 @@ const CreatePost = () => {
           onChange={(e) => setTitle(e.target.value)}
         />
 
-        <TiptapEditor />
+        <TiptapEditor text={text} handleEditorChange={handleEditorChange} />
 
         <CldUploadWidget
           signatureEndpoint="/api/dashboard/blog/add/sign-image"
