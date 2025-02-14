@@ -33,6 +33,7 @@
     border-radius: 4px;
     overflow-y: auto; /* Add scrollbar if content exceeds height */
     box-sizing: border-box; /* Ensure padding and border are included in the height */
+    color: black; /* Set text color to black */
   }
   
   .ProseMirror:focus {
