@@ -61,7 +61,5 @@ export async function GET() {
       },
       { status: 500 },
     );
-  } finally {
-    if (client) client.release(); // Ensuring the client is released back to the pool
   }
 }
