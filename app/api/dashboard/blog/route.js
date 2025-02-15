@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getClient } from '@/utils/dbConnect';
+import pool from '@/utils/dbConnect';
 
 export async function GET() {
   let client;
@@ -8,7 +8,7 @@ export async function GET() {
 
   try {
     // Acquire a client from the pool
-    client = await getClient();
+    // client = await getClient();
 
     const query = `
       SELECT
@@ -24,7 +24,7 @@ export async function GET() {
 
     console.log('We prepared the query');
 
-    const result = await client.query(query);
+    const result = await pool.query(query);
 
     console.log('result in the await client.query: : ');
     console.log(result);
