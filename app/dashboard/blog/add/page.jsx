@@ -8,7 +8,7 @@ import styles from '@/ui/styling/dashboard/blog/add/add.module.css';
 import { addArticleSchema } from '@/utils/schemas.js';
 import TiptapEditor from '@/ui/components/dashboard/editor';
 
-const CreatePost = () => {
+const CreatePostPage = () => {
   const [title, setTitle] = useState('');
   const [text, setText] = useState(
     '<p>Start writing your blog post here...</p>',
@@ -119,4 +119,4 @@ const CreatePost = () => {
   );
 };
 
-export default CreatePost;
+export default CreatePostPage;

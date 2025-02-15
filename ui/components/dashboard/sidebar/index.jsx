@@ -39,49 +39,9 @@ const menuItems = [
         icon: <MdShoppingBag />,
       },
       {
-        title: 'Présentation',
-        path: '/dashboard/presentation',
-        icon: <MdAttachMoney />,
-      },
-      {
         title: 'Users',
         path: '/dashboard/users',
         icon: <MdSupervisedUserCircle />,
-      },
-    ],
-  },
-  {
-    title: 'Analytics',
-    list: [
-      {
-        title: 'Revenue',
-        path: '/dashboard/revenue',
-        icon: <MdWork />,
-      },
-      {
-        title: 'Reports',
-        path: '/dashboard/reports',
-        icon: <MdAnalytics />,
-      },
-      {
-        title: 'Teams',
-        path: '/dashboard/teams',
-        icon: <MdPeople />,
-      },
-    ],
-  },
-  {
-    title: 'User',
-    list: [
-      {
-        title: 'Settings',
-        path: '/dashboard/settings',
-        icon: <MdOutlineSettings />,
-      },
-      {
-        title: 'Help',
-        path: '/dashboard/help',
-        icon: <MdHelpCenter />,
       },
     ],
   },
