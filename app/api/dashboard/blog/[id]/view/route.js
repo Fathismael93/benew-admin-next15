@@ -98,12 +98,12 @@ export async function GET(req, { params }) {
         }
 
         // 4. Sanitize the output
-        const sanitizedData = sanitizeOutput
-          ? sanitizeOutput(rows[0])
-          : rows[0];
+        // const sanitizedData = sanitizeOutput
+        //   ? sanitizeOutput(rows[0])
+        //   : rows[0];
 
         // 4. Sanitize the output
-        // const sanitizedData = rows[0];
+        const sanitizedData = rows[0];
 
         // 5. Return successful response with proper caching headers
         return NextResponse.json(
