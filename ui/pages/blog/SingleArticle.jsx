@@ -51,7 +51,7 @@ const SingleArticle = ({ data }) => {
             </div>
           </div>
           <h1>{data && data.article_title}</h1>
-          <div className={styles.postDetailImage}>
+          {/* <div className={styles.postDetailImage}>
             <CldImage
               priority
               src={data.article_image}
@@ -63,7 +63,7 @@ const SingleArticle = ({ data }) => {
           </div>
           <div className={styles.postDetailPara}>
             {data && data.article_text}
-          </div>
+          </div> */}
         </div>
       ) : (
         <h2 className="error-center">{errorMessage}</h2>
