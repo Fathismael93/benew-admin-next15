@@ -1,6 +1,7 @@
 .editor {
     width: 85% !important; /* Set width to 85% */
     height: 30rem; /* Set height to 30rem with !important */
+    overflow-y: auto; /* Add scrollbar if content exceeds height */
     margin: 0 auto; /* Center the editor horizontally */
     padding: 20px;
     border: 1px solid #ddd;
