@@ -10,7 +10,6 @@ import styles from '@/ui/styling/dashboard/blog/view-article/view.module.css';
 import { articleIDSchema } from '@/utils/schemas';
 
 async function View({ params }) {
-  console.log(await params);
   const { id } = await params;
   const [article, setArticle] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
