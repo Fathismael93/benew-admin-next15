@@ -8,10 +8,13 @@ import parse from 'html-react-parser';
 import styles from '@/ui/styling/dashboard/blog/view-article/view.module.css';
 import { articleIDSchema } from '@/utils/schemas';
 
-const SingleArticle = () => {
-  const [article, setArticle] = useState('');
+const SingleArticle = ({ data }) => {
+  const [article, setArticle] = useState(data);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  console.log('article state value');
+  console.log(article);
 
   // eslint-disable-next-line camelcase
   const deleteArticle = async (article_id) => {

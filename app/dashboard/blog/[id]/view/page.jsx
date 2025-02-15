@@ -1,8 +1,9 @@
 import axios from 'axios';
 import { articleIDSchema } from '@/utils/schemas';
-// import SingleArticle from '@/ui/pages/blog/SingleArticle';
+import SingleArticle from '@/ui/pages/blog/SingleArticle';
 
 async function getSinglePost(id) {
+  let data;
   try {
     await articleIDSchema.validate({ id });
 
@@ -13,12 +14,15 @@ async function getSinglePost(id) {
       .then((response) => {
         console.log('response');
         console.log(response);
+        data = response.data.data;
       })
       .catch((e) => {
         console.log('Axios catch');
         console.log('Article inexistant !');
         console.log(e);
       });
+
+    return data;
   } catch (error) {
     console.log('try catch');
     console.log('Article inexistant !');
@@ -31,7 +35,7 @@ async function ViewArticle({ params }) {
 
   await getSinglePost(id);
 
-  return <p>Test Réussi</p>;
+  return <SingleArticle />;
 }
 
 export default ViewArticle;
