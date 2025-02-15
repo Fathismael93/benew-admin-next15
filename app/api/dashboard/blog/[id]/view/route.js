@@ -83,6 +83,9 @@ export async function GET(req, { params }) {
 
         const { rows } = await client.query(query);
 
+        console.log('rows: ');
+        console.log(rows);
+
         if (rows.length === 0) {
           console.info('Article not found', { id });
           return NextResponse.json(

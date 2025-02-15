@@ -13,7 +13,7 @@ async function getPosts() {
     })
     .catch((error) => console.log(error));
 
-  return articles;
+  return [];
 }
 
 const BlogPage = async () => {
