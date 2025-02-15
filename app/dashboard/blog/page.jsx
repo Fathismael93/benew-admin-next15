@@ -16,10 +16,10 @@ async function getPosts() {
   return articles;
 }
 
-async function BlogPage() {
+const BlogPage = async () => {
   const articles = await getPosts();
 
   return <ListArticles articles={articles} />;
-}
+};
 
 export default BlogPage;
