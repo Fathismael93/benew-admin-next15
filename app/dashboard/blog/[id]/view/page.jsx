@@ -7,7 +7,9 @@ async function getSinglePost(id) {
     await articleIDSchema.validate({ id });
 
     await axios
-      .get(`/api/dashboard/blog/${id}/view`)
+      .get(
+        `https://benew-admin-next15.vercel.app/api/dashboard/blog/${id}/view`,
+      )
       .then((response) => {
         console.log('response');
         console.log(response);
