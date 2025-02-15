@@ -2,7 +2,7 @@
 
 import { React, useState } from 'react';
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { CldImage } from 'next-cloudinary';
 import parse from 'html-react-parser';
 import styles from '@/ui/styling/dashboard/blog/view-article/view.module.css';
@@ -10,9 +10,9 @@ import styles from '@/ui/styling/dashboard/blog/view-article/view.module.css';
 const SingleArticle = ({ data }) => {
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const router = useRouter();
 
   // eslint-disable-next-line camelcase
-
   const deleteArticle = async (article_id) => {
     await axios
       // eslint-disable-next-line camelcase
@@ -22,7 +22,7 @@ const SingleArticle = ({ data }) => {
   };
 
   if (isSuccess) {
-    redirect('/dashboard/blog/');
+    router.push('/dashboard/blog/');
   }
 
   return (
@@ -34,7 +34,7 @@ const SingleArticle = ({ data }) => {
               {data && <span>{`Publié le ${data.created}`}</span>}
             </p>
             <div className={styles.postDetailButtons}>
-              <Link href={`/dashboard/blog/${data.article_id}/edit`}>
+              <Link href={`blog/${data.article_id}/edit`}>
                 <button
                   type="button"
                   className={`${styles.addButton} ${styles.edit}`}
@@ -45,7 +45,7 @@ const SingleArticle = ({ data }) => {
               <button
                 type="button"
                 className={`${styles.addButton} ${styles.delete}`}
-                // onClick={() => deleteArticle(data.article_id)}
+                onClick={() => deleteArticle(data.article_id)}
               >
                 Delete
               </button>
@@ -63,7 +63,7 @@ const SingleArticle = ({ data }) => {
             />
           </div>
           <div className={styles.postDetailPara}>
-            {data && data.article_text}
+            {data && parse(data.article_text)}
           </div>
         </div>
       ) : (
