@@ -19,6 +19,9 @@ async function getPosts() {
 const BlogPage = async () => {
   const articles = await getPosts();
 
+  console.log('articles in BlogPage:');
+  console.log(articles);
+
   return <ListArticles articles={articles} />;
 };
 

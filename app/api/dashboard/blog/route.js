@@ -24,6 +24,7 @@ export async function GET() {
 
     const { rows } = await client.query(query);
 
+    console.log('rows: ');
     console.log(rows);
 
     return NextResponse.json(
