@@ -23,8 +23,6 @@ export async function GET() {
     // const query = `SELECT * FROM articles`;
 
     console.log('We prepared the query');
-    console.log('pool: ');
-    console.log(pool);
 
     await pool
       .query(query)
