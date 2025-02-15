@@ -53,7 +53,7 @@ const ListArticles = ({ articles }) => {
                   title={post.article_title}
                   picture={post.article_image}
                   created={post.created}
-                  deleteArticle={deleteArticle}
+                  deleteArticle={() => deleteArticle()}
                 />
               );
             })}
