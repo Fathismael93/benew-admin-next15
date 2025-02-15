@@ -33,9 +33,9 @@ async function getSinglePost(id) {
 async function ViewArticle({ params }) {
   const { id } = await params;
 
-  await getSinglePost(id);
+  const data = await getSinglePost(id);
 
-  return <SingleArticle />;
+  return <SingleArticle data={data} />;
 }
 
 export default ViewArticle;
