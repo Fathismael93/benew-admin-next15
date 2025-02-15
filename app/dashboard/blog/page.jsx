@@ -7,11 +7,15 @@ async function getPosts() {
 
   await axios
     .get('https://benew-admin-next15.vercel.app/api/dashboard/blog')
-    .then((response) => console.log(response.data.articles))
+    .then((response) => {
+      console.log('response articles');
+      console.log(response.data);
+      articles = response.data.articles;
+    })
     .catch((error) => console.log(error));
 
-  // console.log('articles: ');
-  // console.log(articles);
+  console.log('articles: ');
+  console.log(articles);
 
   return articles;
 }
