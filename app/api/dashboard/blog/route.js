@@ -10,15 +10,17 @@ export async function GET() {
     // Acquire a client from the pool
     client = await getClient();
 
-    const query = `
-      SELECT 
-        article_id, 
-        article_title, 
-        article_image, 
-        TO_CHAR(article_created, 'YYYY-MM-DD') AS created 
-      FROM articles 
-      ORDER BY article_created DESC, article_id DESC
-    `;
+    // const query = `
+    //   SELECT
+    //     article_id,
+    //     article_title,
+    //     article_image,
+    //     TO_CHAR(article_created, 'YYYY-MM-DD') AS created
+    //   FROM articles
+    //   ORDER BY article_created DESC, article_id DESC
+    // `;
+
+    const query = `SELECT * FROM articles`;
 
     console.log('We prepared the query');
 
