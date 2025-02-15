@@ -10,35 +10,29 @@ export async function GET() {
     // Acquire a client from the pool
     client = await getClient();
 
-    // const query = `
-    //   SELECT
-    //     article_id,
-    //     article_title,
-    //     article_image,
-    //     TO_CHAR(article_created, 'YYYY-MM-DD') AS created
-    //   FROM articles
-    //   ORDER BY article_created DESC, article_id DESC
-    // `;
+    const query = `
+      SELECT
+        article_id,
+        article_title,
+        article_image,
+        TO_CHAR(article_created, 'YYYY-MM-DD') AS created
+      FROM articles
+      ORDER BY article_created DESC, article_id DESC
+    `;
 
-    const query = `SELECT * FROM articles`;
+    // const query = `SELECT * FROM articles`;
 
     console.log('We prepared the query');
 
-    await client
-      .query(query)
-      .then((result) => {
-        console.log('result in the await client.query: : ');
-        console.log(result);
-      })
-      .catch((err) => {
-        console.log('error in the await client.query: ');
-        console.log(err);
-      });
+    const { rows } = await client.query(query);
+
+    console.log('result in the await client.query: : ');
+    console.log(rows);
 
     return NextResponse.json(
       {
         success: true,
-        articles: [], // Ensuring a default empty array if no articles are found
+        articles: rows || [], // Ensuring a default empty array if no articles are found
       },
       {
         status: 200,
