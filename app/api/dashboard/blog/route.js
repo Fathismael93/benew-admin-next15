@@ -22,7 +22,7 @@ export async function GET() {
 
     console.log('We prepared the query');
 
-    const { rows } = await client.query(query);
+    const rows = await client.query(query);
 
     console.log('rows: ');
     console.log(rows);
