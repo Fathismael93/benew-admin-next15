@@ -46,7 +46,7 @@ const SingleArticle = ({ data }) => {
               <button
                 type="button"
                 className={`${styles.addButton} ${styles.delete}`}
-                onClick={() => deleteArticle(data.article_id)}
+                onClick={deleteArticle(data.article_id)}
               >
                 Delete
               </button>
