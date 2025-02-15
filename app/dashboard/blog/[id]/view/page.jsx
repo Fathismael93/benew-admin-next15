@@ -9,13 +9,14 @@ import parse from 'html-react-parser';
 import styles from '@/ui/styling/dashboard/blog/view-article/view.module.css';
 import { articleIDSchema } from '@/utils/schemas';
 
-function View({ params }) {
-  const { id } = params;
+async function View({ params }) {
+  console.log(await params);
+  const { id } = await params;
   const [article, setArticle] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  useEffect(() => {
+  useEffect(async () => {
     async function getSinglePost() {
       try {
         await articleIDSchema.validate({ id });
@@ -33,7 +34,7 @@ function View({ params }) {
       }
     }
 
-    getSinglePost(id);
+    await getSinglePost(id);
   }, [id]);
 
   // eslint-disable-next-line camelcase
