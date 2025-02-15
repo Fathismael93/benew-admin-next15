@@ -21,7 +21,9 @@ const ListArticles = ({ articles }) => {
   const deleteArticle = async (article_id) => {
     await axios
       // eslint-disable-next-line camelcase
-      .delete(`/api/dashboard/blog/${article_id}/delete`)
+      .delete(
+        `https://benew-admin-next15.vercel.app/api/dashboard/blog/${article_id}/delete`,
+      )
       .then((response) => setIsSuccess(response.data.success))
       .catch((error) => console.error(error));
   };
