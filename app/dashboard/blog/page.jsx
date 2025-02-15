@@ -9,7 +9,7 @@ async function getPosts() {
     .then((response) => {
       console.log('response: ');
       console.log(response.data);
-      articles = response;
+      articles = response.data.articles;
     })
     .catch((error) => console.log(error));
 
