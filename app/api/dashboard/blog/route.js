@@ -27,7 +27,7 @@ export async function GET() {
     const result = await pool.query(query);
 
     console.log('result in the await client.query: : ');
-    console.log(result.rows.rows);
+    console.log(result.rows);
 
     return NextResponse.json(
       {
