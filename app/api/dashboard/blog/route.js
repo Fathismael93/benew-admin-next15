@@ -24,7 +24,7 @@ export async function GET() {
 
     console.log('We prepared the query');
 
-    const { result } = await client.query(query);
+    const result = await client.query(query);
 
     console.log('result in the await client.query: : ');
     console.log(result);
@@ -32,7 +32,7 @@ export async function GET() {
     return NextResponse.json(
       {
         success: true,
-        articles: result.rows || [], // Ensuring a default empty array if no articles are found
+        articles: result || [], // Ensuring a default empty array if no articles are found
       },
       {
         status: 200,
