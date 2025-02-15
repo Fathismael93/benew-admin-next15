@@ -2,7 +2,7 @@ import axios from 'axios';
 import { articleIDSchema } from '@/utils/schemas';
 // import SingleArticle from '@/ui/pages/blog/SingleArticle';
 
-async function getSinglePost() {
+async function getSinglePost(id) {
   try {
     await articleIDSchema.validate({ id });
 
