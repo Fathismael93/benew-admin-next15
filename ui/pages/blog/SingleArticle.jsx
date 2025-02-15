@@ -27,7 +27,7 @@ const SingleArticle = ({ data }) => {
 
   return (
     <section>
-      {data ? (
+      {/* {data ? (
         <div className={styles.postDetailContainer}>
           <div className={styles.postDetailTop}>
             <p className={styles.dateWritten}>
@@ -68,7 +68,7 @@ const SingleArticle = ({ data }) => {
         </div>
       ) : (
         <h2 className="error-center">{errorMessage}</h2>
-      )}
+      )} */}
     </section>
   );
 };
