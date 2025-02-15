@@ -12,6 +12,7 @@ const SingleArticle = ({ data }) => {
   const [errorMessage, setErrorMessage] = useState('');
 
   // eslint-disable-next-line camelcase
+
   const deleteArticle = async (article_id) => {
     await axios
       // eslint-disable-next-line camelcase
@@ -33,7 +34,7 @@ const SingleArticle = ({ data }) => {
               {data && <span>{`Publié le ${data.created}`}</span>}
             </p>
             <div className={styles.postDetailButtons}>
-              <Link href={`blog/${data.article_id}/edit`}>
+              <Link href={`/dashboard/blog/${data.article_id}/edit`}>
                 <button
                   type="button"
                   className={`${styles.addButton} ${styles.edit}`}
@@ -44,14 +45,14 @@ const SingleArticle = ({ data }) => {
               <button
                 type="button"
                 className={`${styles.addButton} ${styles.delete}`}
-                onClick={() => deleteArticle(data.article_id)}
+                // onClick={() => deleteArticle(data.article_id)}
               >
                 Delete
               </button>
             </div>
           </div>
           <h1>{data && data.article_title}</h1>
-          {/* <div className={styles.postDetailImage}>
+          <div className={styles.postDetailImage}>
             <CldImage
               priority
               src={data.article_image}
@@ -63,7 +64,7 @@ const SingleArticle = ({ data }) => {
           </div>
           <div className={styles.postDetailPara}>
             {data && data.article_text}
-          </div> */}
+          </div>
         </div>
       ) : (
         <h2 className="error-center">{errorMessage}</h2>
