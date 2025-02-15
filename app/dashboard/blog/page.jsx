@@ -1,4 +1,3 @@
-import React from 'react';
 import axios from 'axios';
 import ListArticles from '@/ui/pages/blog/ListArticles';
 
@@ -22,6 +21,7 @@ async function getPosts() {
 }
 
 async function Blog() {
+  console.log('We are in the Blog server components');
   const articles = await getPosts();
 
   return <ListArticles articles={articles} />;
