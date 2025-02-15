@@ -12,36 +12,36 @@ export async function POST(req) {
   console.log('we are in the POST REQUEST of the blog api');
   try {
     // Handle rate limiting
-    // const ip = req.headers.get('x-forwarded-for') || req.socket.remoteAddress;
+    const ip = req.headers.get('x-forwarded-for') || req.socket.remoteAddress;
 
-    // if (!ip) {
-    //   return NextResponse.json(
-    //     { success: false, message: 'Unable to determine IP address.' },
-    //     { status: 400 },
-    //   );
-    // }
+    if (!ip) {
+      return NextResponse.json(
+        { success: false, message: 'Unable to determine IP address.' },
+        { status: 400 },
+      );
+    }
 
-    // const currentTime = Date.now();
-    // if (!requestCounts[ip]) {
-    //   requestCounts[ip] = { count: 1, firstRequestTime: currentTime };
-    // } else {
-    //   const elapsedTime = currentTime - requestCounts[ip].firstRequestTime;
-    //   if (
-    //     elapsedTime < RATE_LIMIT_WINDOW &&
-    //     requestCounts[ip].count >= MAX_REQUESTS
-    //   ) {
-    //     return NextResponse.json(
-    //       { success: false, message: 'Rate limit exceeded. Try again later.' },
-    //       { status: 429 },
-    //     );
-    //   }
-    //   console.log('We are here');
-    //   if (elapsedTime >= RATE_LIMIT_WINDOW) {
-    //     requestCounts[ip] = { count: 1, firstRequestTime: currentTime }; // Reset count
-    //   } else {
-    //     requestCounts[ip].count++;
-    //   }
-    // }
+    const currentTime = Date.now();
+    if (!requestCounts[ip]) {
+      requestCounts[ip] = { count: 1, firstRequestTime: currentTime };
+    } else {
+      const elapsedTime = currentTime - requestCounts[ip].firstRequestTime;
+      if (
+        elapsedTime < RATE_LIMIT_WINDOW &&
+        requestCounts[ip].count >= MAX_REQUESTS
+      ) {
+        return NextResponse.json(
+          { success: false, message: 'Rate limit exceeded. Try again later.' },
+          { status: 429 },
+        );
+      }
+      console.log('We are here');
+      if (elapsedTime >= RATE_LIMIT_WINDOW) {
+        requestCounts[ip] = { count: 1, firstRequestTime: currentTime }; // Reset count
+      } else {
+        requestCounts[ip].count++;
+      }
+    }
 
     console.log('We are starting to get data from request');
 
