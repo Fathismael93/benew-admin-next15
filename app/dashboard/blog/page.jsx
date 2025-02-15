@@ -4,6 +4,7 @@ import ListArticles from '@/ui/pages/blog/ListArticles';
 
 async function getPosts() {
   let articles;
+  console.log('We are in the getPosts method');
 
   await axios
     .get('https://benew-admin-next15.vercel.app/api/dashboard/blog')
