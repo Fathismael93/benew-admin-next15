@@ -24,15 +24,15 @@ export async function GET() {
 
     console.log('We prepared the query');
 
-    const { rows } = await client.query(query);
+    const { result } = await client.query(query);
 
     console.log('result in the await client.query: : ');
-    console.log(rows);
+    console.log(result.rows);
 
     return NextResponse.json(
       {
         success: true,
-        articles: rows || [], // Ensuring a default empty array if no articles are found
+        articles: result.rows || [], // Ensuring a default empty array if no articles are found
       },
       {
         status: 200,
