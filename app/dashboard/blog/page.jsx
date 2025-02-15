@@ -10,6 +10,9 @@ async function getPosts() {
     .then((response) => (articles = response.data.articles))
     .catch((error) => console.log(error));
 
+  console.log('articles: ');
+  console.log(articles);
+
   return articles;
 }
 
