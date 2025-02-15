@@ -23,6 +23,8 @@ async function View({ params }) {
         await axios
           .get(`/api/dashboard/blog/${id}/view`)
           .then((response) => {
+            console.log('response');
+            console.log(response);
             setArticle(response.data.data);
           })
           .catch(() => {

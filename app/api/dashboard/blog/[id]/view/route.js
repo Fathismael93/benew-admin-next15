@@ -32,7 +32,10 @@ export async function GET(req, { params }) {
     }
 
     // 2. Validate the article ID
+    console.log('params');
+    console.log(await params);
     const { id } = await params;
+    console.log(id);
 
     try {
       await articleIDSchema.validate({ id });
@@ -67,9 +70,11 @@ export async function GET(req, { params }) {
           values: [id],
         };
 
-        const result = await client.query(query);
+        const { rows } = await client.query(query);
+        console.log('rows: ');
+        console.log(rows);
 
-        if (result.rows.length === 0) {
+        if (rows.length === 0) {
           console.info('Article not found', { id });
           return NextResponse.json(
             {
@@ -82,8 +87,8 @@ export async function GET(req, { params }) {
 
         // 4. Sanitize the output
         const sanitizedData = sanitizeOutput
-          ? sanitizeOutput(result.rows[0])
-          : result.rows[0];
+          ? sanitizeOutput(rows[0])
+          : rows[0];
 
         // 5. Return successful response with proper caching headers
         return NextResponse.json(
