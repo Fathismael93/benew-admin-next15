@@ -8,12 +8,8 @@ import parse from 'html-react-parser';
 import styles from '@/ui/styling/dashboard/blog/view-article/view.module.css';
 
 const SingleArticle = ({ data }) => {
-  const [article, setArticle] = useState(data);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-
-  console.log('article state value');
-  console.log(article);
 
   // eslint-disable-next-line camelcase
   const deleteArticle = async (article_id) => {
@@ -30,14 +26,14 @@ const SingleArticle = ({ data }) => {
 
   return (
     <section>
-      {article ? (
+      {data ? (
         <div className={styles.postDetailContainer}>
           <div className={styles.postDetailTop}>
             <p className={styles.dateWritten}>
-              {article && <span>{`Publié le ${article.created}`}</span>}
+              {data && <span>{`Publié le ${data.article_created}`}</span>}
             </p>
             <div className={styles.postDetailButtons}>
-              <Link href={`blog/${id}/edit`}>
+              <Link href={`blog/${data.article_id}/edit`}>
                 <button
                   type="button"
                   className={`${styles.addButton} ${styles.edit}`}
@@ -48,17 +44,17 @@ const SingleArticle = ({ data }) => {
               <button
                 type="button"
                 className={`${styles.addButton} ${styles.delete}`}
-                onClick={() => deleteArticle(id)}
+                onClick={() => deleteArticle(data.article_id)}
               >
                 Delete
               </button>
             </div>
           </div>
-          <h1>{article && article.article_title}</h1>
+          <h1>{data && data.article_title}</h1>
           <div className={styles.postDetailImage}>
             <CldImage
               priority
-              src={article.article_image}
+              src={data.article_image}
               alt="Image illustration of the article"
               width={750}
               height={500}
@@ -66,7 +62,7 @@ const SingleArticle = ({ data }) => {
             />
           </div>
           <div className={styles.postDetailPara}>
-            {article && parse(article.article_text)}
+            {data && parse(data.article_text)}
           </div>
         </div>
       ) : (
