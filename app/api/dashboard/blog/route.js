@@ -4,6 +4,8 @@ import { getClient } from '@/utils/dbConnect';
 export async function GET() {
   let client;
 
+  console.log('we are in the api');
+
   try {
     // Acquire a client from the pool
     client = await getClient();
@@ -18,7 +20,11 @@ export async function GET() {
       ORDER BY article_created DESC, article_id DESC
     `;
 
+    console.log('We prepared the query');
+
     const { rows } = await client.query(query);
+
+    console.log(rows);
 
     return NextResponse.json(
       {
