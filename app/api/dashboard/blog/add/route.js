@@ -9,6 +9,7 @@ const MAX_REQUESTS = 5; // Max 5 requests per minute
 let requestCounts = {};
 
 export async function POST(req) {
+  console.log('we are in the POST REQUEST of the blog api');
   try {
     // Handle rate limiting
     const ip = req.headers.get('x-forwarded-for') || req.socket.remoteAddress;
@@ -41,8 +42,15 @@ export async function POST(req) {
       }
     }
 
+    console.log('');
+
     const formData = await req.json();
     const { title, text, imageUrl } = formData;
+
+    console.log('gotten from req.body the data');
+    console.log(title);
+    console.log(text);
+    console.log(imageUrl);
 
     // Trim inputs to prevent leading/trailing whitespace issues
     const cleanedData = {

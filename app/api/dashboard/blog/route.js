@@ -4,7 +4,7 @@ import { getClient } from '@/utils/dbConnect';
 export async function GET() {
   let client;
 
-  console.log('we are in the api');
+  console.log('we are in the GET REQUEST of the blog api');
 
   try {
     // Acquire a client from the pool
