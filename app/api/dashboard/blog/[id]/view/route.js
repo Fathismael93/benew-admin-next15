@@ -32,10 +32,7 @@ export async function GET(req, { params }) {
     }
 
     // 2. Validate the article ID
-    console.log('params');
-    console.log(await params);
     const { id } = await params;
-    console.log(id);
 
     try {
       await articleIDSchema.validate({ id });
@@ -71,8 +68,6 @@ export async function GET(req, { params }) {
         };
 
         const { rows } = await client.query(query);
-        console.log('rows: ');
-        console.log(rows);
 
         if (rows.length === 0) {
           console.info('Article not found', { id });

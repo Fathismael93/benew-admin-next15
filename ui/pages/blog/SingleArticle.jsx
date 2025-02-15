@@ -30,7 +30,7 @@ const SingleArticle = ({ data }) => {
         <div className={styles.postDetailContainer}>
           <div className={styles.postDetailTop}>
             <p className={styles.dateWritten}>
-              {data && <span>{`Publié le ${data.article_created}`}</span>}
+              {data && <span>{`Publié le ${data.created}`}</span>}
             </p>
             <div className={styles.postDetailButtons}>
               <Link href={`blog/${data.article_id}/edit`}>
