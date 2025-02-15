@@ -8,7 +8,7 @@ async function getPosts() {
     .get('https://benew-admin-next15.vercel.app/api/dashboard/blog')
     .then((response) => {
       console.log('response: ');
-      console.log(response.data);
+      console.log(response);
       articles = response.data.articles;
     })
     .catch((error) => console.log(error));
