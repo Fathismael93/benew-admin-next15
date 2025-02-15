@@ -1,6 +1,6 @@
 .editor {
-    width: 85%; /* Set width to 85% */
-    height: 30rem !important; /* Set height to 30rem with !important */
+    width: 85% !important; /* Set width to 85% */
+    height: 30rem; /* Set height to 30rem with !important */
     margin: 0 auto; /* Center the editor horizontally */
     padding: 20px;
     border: 1px solid #ddd;
