@@ -6,7 +6,6 @@ import { redirect } from 'next/navigation';
 import { CldImage } from 'next-cloudinary';
 import parse from 'html-react-parser';
 import styles from '@/ui/styling/dashboard/blog/view-article/view.module.css';
-import { articleIDSchema } from '@/utils/schemas';
 
 const SingleArticle = ({ data }) => {
   const [article, setArticle] = useState(data);

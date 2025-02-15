@@ -13,7 +13,7 @@ async function getSinglePost(id) {
       )
       .then((response) => {
         console.log('response');
-        console.log(response);
+        console.log(response.data);
         data = response.data.data;
       })
       .catch((e) => {
