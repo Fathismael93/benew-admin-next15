@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server';
 import pool from '@/utils/dbConnect';
 
 export async function GET() {
-  console.log('we are in the GET REQUEST of the blog api');
-
   try {
     // Acquire a client from the pool
     // client = await getClient();
