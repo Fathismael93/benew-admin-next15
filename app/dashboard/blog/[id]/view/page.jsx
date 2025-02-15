@@ -12,11 +12,15 @@ async function getSinglePost() {
         console.log('response');
         console.log(response);
       })
-      .catch(() => {
+      .catch((e) => {
+        console.log('Axios catch');
         console.log('Article inexistant !');
+        console.log(e);
       });
   } catch (error) {
+    console.log('try catch');
     console.log('Article inexistant !');
+    console.log(error);
   }
 }
 
