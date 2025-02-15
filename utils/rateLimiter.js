@@ -29,7 +29,7 @@ const rateLimitOptions = {
   fetchMethod: async (key, staleValue, { options, signal, context }) => {},
 };
 
-export const rateLimiter = new LRUCache(rateLimitOptions);
+const rateLimiter = new LRUCache(rateLimitOptions);
 
 export function limitRequest(ip) {
   const currentRequests = rateLimiter.get(ip) || 0;

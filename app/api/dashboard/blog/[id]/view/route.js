@@ -1,34 +1,48 @@
 import { NextResponse } from 'next/server';
 import { articleIDSchema } from '@/utils/schemas';
 import { getClient } from '@/utils/dbConnect';
-import { rateLimiter } from '@/utils/rateLimiter';
 import { sanitizeOutput } from '@/utils/sanitizers';
 
 export const dynamic = 'force-dynamic';
 
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute window
+const MAX_REQUESTS = 5; // Max 5 requests per minute
+
+// Rate limit store in-memory for this example (this could be more complex with Redis or DB)
+let requestCounts = {};
+
 export async function GET(req, { params }) {
   try {
     // 1. Apply rate limiting
-    try {
-      const limited = await rateLimiter.check(req);
+    // Handle rate limiting
+    const ip = req.headers.get('x-forwarded-for') || req.socket.remoteAddress;
 
-      if (limited) {
+    if (!ip) {
+      return NextResponse.json(
+        { success: false, message: 'Unable to determine IP address.' },
+        { status: 400 },
+      );
+    }
+
+    const currentTime = Date.now();
+    if (!requestCounts[ip]) {
+      requestCounts[ip] = { count: 1, firstRequestTime: currentTime };
+    } else {
+      const elapsedTime = currentTime - requestCounts[ip].firstRequestTime;
+      if (
+        elapsedTime < RATE_LIMIT_WINDOW &&
+        requestCounts[ip].count >= MAX_REQUESTS
+      ) {
         return NextResponse.json(
-          {
-            success: false,
-            message: 'Too many requests, please try again later',
-          },
-          {
-            status: 429,
-            headers: {
-              'Retry-After': '60',
-            },
-          },
+          { success: false, message: 'Rate limit exceeded. Try again later.' },
+          { status: 429 },
         );
       }
-    } catch (error) {
-      // Continue execution even if rate limiting fails
-      console.error('Rate limiting error:', error);
+      if (elapsedTime >= RATE_LIMIT_WINDOW) {
+        requestCounts[ip] = { count: 1, firstRequestTime: currentTime }; // Reset count
+      } else {
+        requestCounts[ip].count++;
+      }
     }
 
     // 2. Validate the article ID
