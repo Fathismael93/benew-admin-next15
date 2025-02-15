@@ -44,7 +44,6 @@ export async function POST(req) {
     // }
 
     console.log('We are starting to get data from request');
-    console.log(req.json());
 
     const formData = await req.json();
     const { title, text, imageUrl } = formData;
