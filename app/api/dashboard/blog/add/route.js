@@ -35,6 +35,7 @@ export async function POST(req) {
           { status: 429 },
         );
       }
+      console.log('We are here');
       if (elapsedTime >= RATE_LIMIT_WINDOW) {
         requestCounts[ip] = { count: 1, firstRequestTime: currentTime }; // Reset count
       } else {
@@ -42,7 +43,8 @@ export async function POST(req) {
       }
     }
 
-    console.log('');
+    console.log('We are starting to get data from request');
+    console.log(req.json());
 
     const formData = await req.json();
     const { title, text, imageUrl } = formData;
