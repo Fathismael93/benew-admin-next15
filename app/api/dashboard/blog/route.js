@@ -28,7 +28,7 @@ export async function GET() {
       .query(query)
       .then((result) => {
         console.log('result in the await client.query: : ');
-        console.log(result);
+        console.log(result.rows);
       })
       .catch((err) => {
         console.log('error in the await client.query: : ');
