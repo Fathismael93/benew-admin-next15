@@ -62,7 +62,7 @@ const SingleArticle = ({ data }) => {
             />
           </div>
           <div className={styles.postDetailPara}>
-            {data && parse(data.article_text)}
+            {data && data.article_text}
           </div>
         </div>
       ) : (

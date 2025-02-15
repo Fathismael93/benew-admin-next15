@@ -12,20 +12,14 @@ async function getSinglePost(id) {
         `https://benew-admin-next15.vercel.app/api/dashboard/blog/${id}/view`,
       )
       .then((response) => {
-        console.log('response');
-        console.log(response.data);
         data = response.data.data;
       })
       .catch((e) => {
-        console.log('Axios catch');
-        console.log('Article inexistant !');
         console.log(e);
       });
 
     return data;
   } catch (error) {
-    console.log('try catch');
-    console.log('Article inexistant !');
     console.log(error);
   }
 }
