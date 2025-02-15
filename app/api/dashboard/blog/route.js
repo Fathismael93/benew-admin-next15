@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import pool from '@/utils/dbConnect';
 
 export async function GET() {
-  let client;
+  let rows;
 
   console.log('we are in the GET REQUEST of the blog api');
 
@@ -24,7 +24,16 @@ export async function GET() {
 
     console.log('We prepared the query');
 
-    const {rows} = await pool.query(query);
+    await pool
+      .query(query)
+      .then((result) => {
+        console.log('result in the await client.query: : ');
+        console.log(result);
+      })
+      .catch((err) => {
+        console.log('error in the await client.query: : ');
+        console.log(err);
+      });
 
     console.log('result in the await client.query: : ');
     console.log(rows);
