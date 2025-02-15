@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { CldImage } from 'next-cloudinary';
 import parse from 'html-react-parser';
 import styles from '@/ui/styling/dashboard/blog/view-article/view.module.css';
+import axios from 'axios';
 
 const SingleArticle = ({ data }) => {
   const [isSuccess, setIsSuccess] = useState(false);
@@ -27,7 +28,7 @@ const SingleArticle = ({ data }) => {
 
   return (
     <section>
-      {/* {data ? (
+      {data ? (
         <div className={styles.postDetailContainer}>
           <div className={styles.postDetailTop}>
             <p className={styles.dateWritten}>
@@ -68,7 +69,7 @@ const SingleArticle = ({ data }) => {
         </div>
       ) : (
         <h2 className="error-center">{errorMessage}</h2>
-      )} */}
+      )}
     </section>
   );
 };
