@@ -1,21 +1,21 @@
 .editor {
-  width: 85% !important; /* Set width to 85% */
-  height: 30rem; /* Set height to 30rem with !important */
-  overflow-y: auto; /* Add scrollbar if content exceeds height */
-  margin: 0 auto; /* Center the editor horizontally */
+  width: 85% !important;
+  height: 30rem;
+  overflow-y: auto;
+  margin: 0 auto;
   padding: 20px;
   border: 1px solid #ddd;
   border-radius: 8px;
   background: #182237;
-  box-sizing: border-box; /* Ensure padding and border are included in the width/height */
+  box-sizing: border-box;
 }
 
 .menu {
   margin-bottom: 10px;
   display: flex;
-  align-items: center; /* This helps align all elements vertically */
-  flex-wrap: wrap; /* Allow wrapping for smaller screens */
-  gap: 5px; /* Add some gap between wrapped items */
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
 }
 
 .menu button {
@@ -31,24 +31,33 @@
   background: #ddd;
 }
 
+/* Upload button specific styling */
+.uploadButton {
+  background-color: #2b8a3e !important; /* Green color for upload button */
+  color: white !important;
+}
+
+.uploadButton:hover {
+  background-color: #2b7a3e !important;
+}
+
 /* Fixed styles for font size dropdown */
 .fontSizeSelect {
   margin-right: 8px;
-  padding: 2px 5px; /* Reduced vertical padding */
+  padding: 2px 5px;
   border: 1px solid #ccc;
   border-radius: 4px;
   background: #f9f9f9;
   cursor: pointer;
-  height: auto; /* Let the content determine the height */
-  min-height: 28px; /* Minimum height that works across browsers */
-  min-width: 70px; /* Ensure enough width for the content */
-  font-size: 14px; /* Consistent font size */
-  line-height: 1.2; /* Proper line height for text */
-  vertical-align: middle; /* Align text vertically */
-  text-align: left; /* Align text to the left */
+  height: auto;
+  min-height: 28px;
+  min-width: 70px;
+  font-size: 14px;
+  line-height: 1.2;
+  vertical-align: middle;
+  text-align: left;
 }
 
-/* Ensure dropdown options are visible */
 .fontSizeSelect option {
   padding: 4px;
   font-size: 14px;
@@ -57,24 +66,14 @@
   color: black;
 }
 
-/* Image buttons container */
-.imageButtons {
-  display: flex;
-  align-items: center;
-}
-
-.imageButtons button {
-  margin-right: 8px;
-}
-
 .ProseMirror {
-  min-height: calc(30rem - 60px); /* Adjust height to account for padding and menu */
+  min-height: calc(30rem - 60px);
   padding: 10px;
   border: 1px solid #eee;
   border-radius: 4px;
-  overflow-y: auto; /* Add scrollbar if content exceeds height */
-  box-sizing: border-box; /* Ensure padding and border are included in the height */
-  color: black; /* Set text color to black */
+  overflow-y: auto;
+  box-sizing: border-box;
+  color: black;
 }
 
 /* Style for images in the editor */
@@ -86,7 +85,25 @@
   border-radius: 4px;
 }
 
-/* Add a subtle border to images on hover for better visibility */
 .ProseMirror img:hover {
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Style for cloudinary placeholder elements */
+.ProseMirror cloudinary-image {
+  display: block;
+  margin: 1em 0;
+  min-height: 200px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  position: relative;
+}
+
+.ProseMirror cloudinary-image::before {
+  content: 'Loading image...';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #666;
 }
