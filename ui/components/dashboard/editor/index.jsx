@@ -1,15 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextStyle from '@tiptap/extension-text-style';
 import Underline from '@tiptap/extension-underline';
-import { fontSize } from '@/utils/fontSizeExtension'; // Custom extension we created
+import Image from '@tiptap/extension-image';
+import { fontSize } from '@/utils/fontSizeExtension';
 import styles from './editor.module.css';
 
 const TiptapEditor = ({ text, handleEditorChange }) => {
-  const [selectedFontSize, setSelectedFontSize] = useState('16px'); // Default font size
+  const [selectedFontSize, setSelectedFontSize] = useState('16px');
+  const fileInputRef = useRef(null);
 
   const editor = useEditor({
     extensions: [
@@ -20,21 +22,53 @@ const TiptapEditor = ({ text, handleEditorChange }) => {
       }),
       TextStyle,
       fontSize,
-      Underline, // Add the underline extension
+      Underline,
+      Image.configure({
+        inline: false,
+        allowBase64: true,
+      }),
     ],
-    content: text, // Initialize editor with the state content
+    content: text,
     onUpdate: ({ editor }) => {
-      const html = editor.getHTML(); // Get the current content as HTML
-      handleEditorChange(html); // Update the state with the new content
+      const html = editor.getHTML();
+      handleEditorChange(html);
     },
   });
 
   const handleFontSizeChange = (event) => {
     const size = event.target.value;
     setSelectedFontSize(size);
-
-    // Apply the font size to the selected text
     editor?.chain().focus().setFontSize(size).run();
+  };
+
+  // Function to handle image upload from local file
+  const handleImageUpload = (event) => {
+    const file = event.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target.result;
+        editor?.chain().focus().setImage({ src: result }).run();
+      };
+      reader.readAsDataURL(file);
+    }
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Function to insert image from URL
+  const addImageFromUrl = useCallback(() => {
+    const url = window.prompt('Enter the URL of the image:');
+    if (url) {
+      editor?.chain().focus().setImage({ src: url }).run();
+    }
+  }, [editor]);
+
+  // Function to trigger file input click
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
   };
 
   if (!editor) {
@@ -93,6 +127,23 @@ const TiptapEditor = ({ text, handleEditorChange }) => {
           <option value="28px">28px</option>
           <option value="32px">32px</option>
         </select>
+
+        {/* Image Buttons */}
+        <div className={styles.imageButtons}>
+          <button onClick={triggerFileInput} aria-label="Upload Image">
+            Upload Image
+          </button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImageUpload}
+            accept="image/*"
+            style={{ display: 'none' }}
+          />
+          <button onClick={addImageFromUrl} aria-label="Add Image URL">
+            Add Image URL
+          </button>
+        </div>
       </div>
       <EditorContent editor={editor} />
     </div>

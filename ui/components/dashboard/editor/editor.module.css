@@ -14,6 +14,8 @@
   margin-bottom: 10px;
   display: flex;
   align-items: center; /* This helps align all elements vertically */
+  flex-wrap: wrap; /* Allow wrapping for smaller screens */
+  gap: 5px; /* Add some gap between wrapped items */
 }
 
 .menu button {
@@ -32,15 +34,14 @@
 /* Fixed styles for font size dropdown */
 .fontSizeSelect {
   margin-right: 8px;
-  margin-top: .5rem;
   padding: 2px 5px; /* Reduced vertical padding */
   border: 1px solid #ccc;
   border-radius: 4px;
   background: #f9f9f9;
   cursor: pointer;
   height: auto; /* Let the content determine the height */
-  max-height: 40px; /* Minimum height that works across browsers */
-  max-width: 100px; /* Ensure enough width for the content */
+  min-height: 28px; /* Minimum height that works across browsers */
+  min-width: 70px; /* Ensure enough width for the content */
   font-size: 14px; /* Consistent font size */
   line-height: 1.2; /* Proper line height for text */
   vertical-align: middle; /* Align text vertically */
@@ -56,6 +57,16 @@
   color: black;
 }
 
+/* Image buttons container */
+.imageButtons {
+  display: flex;
+  align-items: center;
+}
+
+.imageButtons button {
+  margin-right: 8px;
+}
+
 .ProseMirror {
   min-height: calc(30rem - 60px); /* Adjust height to account for padding and menu */
   padding: 10px;
@@ -64,4 +75,18 @@
   overflow-y: auto; /* Add scrollbar if content exceeds height */
   box-sizing: border-box; /* Ensure padding and border are included in the height */
   color: black; /* Set text color to black */
+}
+
+/* Style for images in the editor */
+.ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1em 0;
+  border-radius: 4px;
+}
+
+/* Add a subtle border to images on hover for better visibility */
+.ProseMirror img:hover {
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
 }
