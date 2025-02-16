@@ -27,16 +27,26 @@
   background: #ddd;
 }
 
-/* Styles for font size dropdown */
+/* Improved styles for font size dropdown */
 .fontSizeSelect {
   margin-right: 8px;
-  margin-top: 2rem;
-  padding: 5px 10px;
+  margin-top: .5rem;
+  padding: 5px;
   border: 1px solid #ccc;
   border-radius: 4px;
   background: #f9f9f9;
   cursor: pointer;
   height: 30px;
+  min-width: 70px; /* Ensure enough width for the content */
+  text-overflow: visible; /* Show overflowing text */
+  appearance: menulist; /* Use browser's native dropdown appearance */
+}
+
+/* Ensure dropdown options are visible */
+.fontSizeSelect option {
+  padding: 4px;
+  background: white;
+  color: black;
 }
 
 .ProseMirror {
