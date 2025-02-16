@@ -83,18 +83,7 @@ export async function POST(req) {
 
     console.log('We have prepared the query');
 
-    await pool
-      .query(query)
-      .then((result) => {
-        console.log('result after inserting blogpost in db');
-        console.log(result);
-      })
-      .catch((err) => {
-        console.log('error related to inserting blogpost in db');
-        console.log(err);
-      });
-
-    const { rows } = [];
+    const { rows } = await pool.query(query);
 
     return NextResponse.json(
       {
