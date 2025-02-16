@@ -30,6 +30,7 @@
 /* Styles for font size dropdown */
 .fontSizeSelect {
   margin-right: 8px;
+  margin-top: 2rem;
   padding: 5px 10px;
   border: 1px solid #ccc;
   border-radius: 4px;
