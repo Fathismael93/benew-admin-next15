@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { articleIDSchema } from '@/utils/schemas';
 import { getClient } from '@/utils/dbConnect';
-import { sanitizeOutput } from '@/utils/sanitizers';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,11 +95,6 @@ export async function GET(req, { params }) {
             { status: 404 },
           );
         }
-
-        // 4. Sanitize the output
-        // const sanitizedData = sanitizeOutput
-        //   ? sanitizeOutput(rows[0])
-        //   : rows[0];
 
         // 4. Sanitize the output
         const sanitizedData = rows[0];
