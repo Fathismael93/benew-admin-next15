@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, memo } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextStyle from '@tiptap/extension-text-style';
@@ -8,6 +8,32 @@ import Underline from '@tiptap/extension-underline';
 import Image from '@tiptap/extension-image';
 import { fontSize } from '@/utils/fontSizeExtension';
 import styles from './editor.module.css';
+
+// Memoized button component for better performance
+const EditorButton = memo(({ onClick, isActive, label, children }) => (
+  <button
+    onClick={onClick}
+    className={isActive ? styles['is-active'] : ''}
+    aria-label={label}
+    type="button"
+  >
+    {children}
+  </button>
+));
+
+EditorButton.displayName = 'EditorButton';
+
+// Font size options array
+const FONT_SIZE_OPTIONS = [
+  '12px',
+  '14px',
+  '16px',
+  '18px',
+  '20px',
+  '24px',
+  '28px',
+  '32px',
+];
 
 const TiptapEditor = ({ text, handleEditorChange }) => {
   const [selectedFontSize, setSelectedFontSize] = useState('16px');
@@ -17,7 +43,7 @@ const TiptapEditor = ({ text, handleEditorChange }) => {
     extensions: [
       StarterKit.configure({
         heading: {
-          levels: [1], // Only allow H1, remove H2
+          levels: [1],
         },
       }),
       TextStyle,
@@ -26,39 +52,43 @@ const TiptapEditor = ({ text, handleEditorChange }) => {
       Image.configure({
         inline: false,
         allowBase64: true,
+        HTMLAttributes: {
+          class: styles.editorImage,
+        },
       }),
     ],
     content: text,
     onUpdate: ({ editor }) => {
-      const html = editor.getHTML();
-      handleEditorChange(html);
+      handleEditorChange(editor.getHTML());
     },
   });
 
-  const handleFontSizeChange = (event) => {
-    const size = event.target.value;
-    setSelectedFontSize(size);
-    editor?.chain().focus().setFontSize(size).run();
-  };
+  const handleFontSizeChange = useCallback(
+    (event) => {
+      const size = event.target.value;
+      setSelectedFontSize(size);
+      editor?.chain().focus().setFontSize(size).run();
+    },
+    [editor],
+  );
 
-  // Function to handle image upload from local file
-  const handleImageUpload = (event) => {
-    const file = event.target.files[0];
-    if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target.result;
-        editor?.chain().focus().setImage({ src: result }).run();
-      };
-      reader.readAsDataURL(file);
-    }
-    // Reset file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
+  const handleImageUpload = useCallback(
+    (event) => {
+      const file = event.target.files?.[0];
+      if (file?.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          editor?.chain().focus().setImage({ src: e.target.result }).run();
+        };
+        reader.readAsDataURL(file);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
+    },
+    [editor],
+  );
 
-  // Function to insert image from URL
   const addImageFromUrl = useCallback(() => {
     const url = window.prompt('Enter the URL of the image:');
     if (url) {
@@ -66,10 +96,9 @@ const TiptapEditor = ({ text, handleEditorChange }) => {
     }
   }, [editor]);
 
-  // Function to trigger file input click
-  const triggerFileInput = () => {
+  const triggerFileInput = useCallback(() => {
     fileInputRef.current?.click();
-  };
+  }, []);
 
   if (!editor) {
     return <div>Loading editor...</div>;
@@ -78,61 +107,54 @@ const TiptapEditor = ({ text, handleEditorChange }) => {
   return (
     <div className={styles.editor}>
       <div className={styles.menu}>
-        <button
+        <EditorButton
           onClick={() => editor.chain().focus().toggleBold().run()}
-          className={editor.isActive('bold') ? styles['is-active'] : ''}
-          aria-label="Bold"
+          isActive={editor.isActive('bold')}
+          label="Bold"
         >
           Bold
-        </button>
-        <button
+        </EditorButton>
+        <EditorButton
           onClick={() => editor.chain().focus().toggleItalic().run()}
-          className={editor.isActive('italic') ? styles['is-active'] : ''}
-          aria-label="Italic"
+          isActive={editor.isActive('italic')}
+          label="Italic"
         >
           Italic
-        </button>
-        <button
+        </EditorButton>
+        <EditorButton
           onClick={() => editor.chain().focus().toggleUnderline().run()}
-          className={editor.isActive('underline') ? styles['is-active'] : ''}
-          aria-label="Underline"
+          isActive={editor.isActive('underline')}
+          label="Underline"
         >
           Underline
-        </button>
-        <button
+        </EditorButton>
+        <EditorButton
           onClick={() =>
             editor.chain().focus().toggleHeading({ level: 1 }).run()
           }
-          className={
-            editor.isActive('heading', { level: 1 }) ? styles['is-active'] : ''
-          }
-          aria-label="Heading 1"
+          isActive={editor.isActive('heading', { level: 1 })}
+          label="Heading 1"
         >
           H1
-        </button>
+        </EditorButton>
 
-        {/* Font Size Dropdown */}
         <select
           value={selectedFontSize}
           onChange={handleFontSizeChange}
           aria-label="Font Size"
           className={styles.fontSizeSelect}
         >
-          <option value="12px">12px</option>
-          <option value="14px">14px</option>
-          <option value="16px">16px</option>
-          <option value="18px">18px</option>
-          <option value="20px">20px</option>
-          <option value="24px">24px</option>
-          <option value="28px">28px</option>
-          <option value="32px">32px</option>
+          {FONT_SIZE_OPTIONS.map((size) => (
+            <option key={size} value={size}>
+              {size}
+            </option>
+          ))}
         </select>
 
-        {/* Image Buttons */}
         <div className={styles.imageButtons}>
-          <button onClick={triggerFileInput} aria-label="Upload Image">
+          <EditorButton onClick={triggerFileInput} label="Upload Image">
             Upload Image
-          </button>
+          </EditorButton>
           <input
             type="file"
             ref={fileInputRef}
@@ -140,9 +162,9 @@ const TiptapEditor = ({ text, handleEditorChange }) => {
             accept="image/*"
             style={{ display: 'none' }}
           />
-          <button onClick={addImageFromUrl} aria-label="Add Image URL">
+          <EditorButton onClick={addImageFromUrl} label="Add Image URL">
             Add Image URL
-          </button>
+          </EditorButton>
         </div>
       </div>
       <EditorContent editor={editor} />
@@ -150,4 +172,4 @@ const TiptapEditor = ({ text, handleEditorChange }) => {
   );
 };
 
-export default TiptapEditor;
+export default memo(TiptapEditor);
