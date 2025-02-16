@@ -1,51 +1,51 @@
 .postDetailContainer {
-    width: 65%;
-    padding: 2rem;
-    background-color: var(--bgSoft);
-    margin-top: 20px;
-  }
-  
-  .postDetailTop {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 1.6rem;
-  }
-  
-  .dateWritten {
-    color: var(--textSoft);
-    font-style: italic;
-    font-size: 0.8rem;
-  }
-  
-  .postDetailButtons {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-  }
-  
-  .addButton {
-    padding: 10px;
-    background-color: #5d57c9;
-    color: var(--text);
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 1rem;
-  }
-  
-  .edit {
-    background-color: #f7cb7375;
-  }
-  
-  .delete {
-    background-color: #f7737375;
-  }
-  
-  .postDetailImage {
-    margin: 1rem 0;
-    overflow: hidden;
-  }
-  
-  .postDetailPara p {
-    margin-bottom: 0.7rem;
-  }
+  width: 65%;
+  padding: 2rem;
+  background-color: var(--bgSoft);
+  margin-top: 20px;
+}
+
+.postDetailTop {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1.6rem;
+}
+
+.dateWritten {
+  color: var(--textSoft);
+  font-style: italic;
+  font-size: 0.8rem;
+}
+
+.postDetailButtons {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.addButton {
+  padding: 10px;
+  background-color: #5d57c9;
+  color: var(--text);
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.edit {
+  background-color: #f7cb7375;
+}
+
+.delete {
+  background-color: #f7737375;
+}
+
+.postDetailImage {
+  margin: 1rem 0;
+  overflow: hidden;
+}
+
+.postDetailPara p {
+  margin-bottom: 0.7rem;
+}
