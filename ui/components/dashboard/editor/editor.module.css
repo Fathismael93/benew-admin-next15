@@ -12,6 +12,8 @@
 
 .menu {
   margin-bottom: 10px;
+  display: flex;
+  align-items: center; /* This helps align all elements vertically */
 }
 
 .menu button {
@@ -27,24 +29,29 @@
   background: #ddd;
 }
 
-/* Improved styles for font size dropdown */
+/* Fixed styles for font size dropdown */
 .fontSizeSelect {
   margin-right: 8px;
   margin-top: .5rem;
-  padding: 5px;
+  padding: 2px 5px; /* Reduced vertical padding */
   border: 1px solid #ccc;
   border-radius: 4px;
   background: #f9f9f9;
   cursor: pointer;
-  height: 30px;
+  height: auto; /* Let the content determine the height */
+  min-height: 28px; /* Minimum height that works across browsers */
   min-width: 70px; /* Ensure enough width for the content */
-  text-overflow: visible; /* Show overflowing text */
-  appearance: menulist; /* Use browser's native dropdown appearance */
+  font-size: 14px; /* Consistent font size */
+  line-height: 1.2; /* Proper line height for text */
+  vertical-align: middle; /* Align text vertically */
+  text-align: left; /* Align text to the left */
 }
 
 /* Ensure dropdown options are visible */
 .fontSizeSelect option {
   padding: 4px;
+  font-size: 14px;
+  line-height: 1.2;
   background: white;
   color: black;
 }
