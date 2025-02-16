@@ -39,7 +39,7 @@
   background: #f9f9f9;
   cursor: pointer;
   height: auto; /* Let the content determine the height */
-  max-height: 50px; /* Minimum height that works across browsers */
+  max-height: 40px; /* Minimum height that works across browsers */
   max-width: 100px; /* Ensure enough width for the content */
   font-size: 14px; /* Consistent font size */
   line-height: 1.2; /* Proper line height for text */
