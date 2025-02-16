@@ -6,7 +6,7 @@
     padding: 20px;
     border: 1px solid #ddd;
     border-radius: 8px;
-    background: #fff;
+    background: #182237;
     box-sizing: border-box; /* Ensure padding and border are included in the width/height */
   }
   
@@ -37,27 +37,9 @@
     color: black; /* Set text color to black */
   }
   
-  .ProseMirror:focus {
-    outline: none;
-    border-color: #0070f3;
-    color: black; /* Set text color to black */
-  }
-  
   .ProseMirror img {
     max-width: 100%;
     height: auto;
-  }
-
-  .ProseMirror h1 {
-    color: black; /* Ensure headings are black */
-  }
-
-  .ProseMirror p {
-    color: black; /* Ensure headings are black */
-  }
-  
-  .ProseMirror a {
-    color: blue; /* Style links if needed */
   }
 
   .menu input[type="color"] {
