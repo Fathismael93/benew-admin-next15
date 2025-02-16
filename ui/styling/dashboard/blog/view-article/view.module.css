@@ -49,3 +49,23 @@
 .postDetailPara p {
   margin-bottom: 0.7rem;
 }
+
+/* New styles for centering images within the parsed content */
+.postDetailPara img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.5rem auto;  /* This centers the image horizontally */
+  border-radius: 4px;   /* Optional: adds rounded corners */
+}
+
+/* Add responsive adjustments for smaller screens */
+@media (max-width: 768px) {
+  .postDetailContainer {
+      width: 85%;
+  }
+  
+  .postDetailPara img {
+      width: 100%;
+  }
+}
