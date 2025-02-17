@@ -23,6 +23,7 @@ export async function POST(req) {
       console.log('Is there an error Happening in the validation inputs api');
       const errors = {};
       validationError.inner.forEach((error) => {
+        console.log(error);
         errors[error.path] = error.message;
       });
       return NextResponse.json({ errors }, { status: 400 });
