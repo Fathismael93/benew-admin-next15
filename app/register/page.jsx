@@ -31,31 +31,30 @@ const RegistrationPage = () => {
       setErrors({});
 
       // Send data to the API
-      const response = await fetch(
-        'https://benew-admin-next15.vercel.app/api/register',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formData),
+      await fetch('https://benew-admin-next15.vercel.app/api/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      );
+        body: JSON.stringify(formData),
+      })
+        .then((result) => console.log(result))
+        .catch((err) => console.log(err));
 
-      const data = await response.json();
+      //   const data = await response.json();
 
-      if (!response.ok) {
-        // Handle validation errors from the API
-        if (data.errors) {
-          setErrors(data.errors);
-        } else {
-          setErrors({ submit: data.error || 'Registration failed' });
-        }
-        return;
-      }
+      //   if (!response.ok) {
+      //     // Handle validation errors from the API
+      //     if (data.errors) {
+      //       setErrors(data.errors);
+      //     } else {
+      //       setErrors({ submit: data.error || 'Registration failed' });
+      //     }
+      //     return;
+      //   }
 
-      // Handle successful registration
-      router.push('/login');
+      //   // Handle successful registration
+      //   router.push('/login');
       // You can redirect to login page or handle success as needed
     } catch (validationErrors) {
       const newErrors = {};
