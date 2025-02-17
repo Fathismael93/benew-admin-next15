@@ -38,9 +38,6 @@ const RegistrationPage = () => {
         'https://benew-admin-next15.vercel.app/api/register',
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
           body: JSON.stringify(formData),
         },
       );
