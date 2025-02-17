@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import pool from '@/utils/dbConnect';
 import { registrationSchema } from '@/utils/schemas'; // Import the same schema used in frontend
 
-export default async function POST(req, res) {
+export async function POST(req, res) {
   try {
     console.log('We are register api');
     const { username, email, password } = req.body;
