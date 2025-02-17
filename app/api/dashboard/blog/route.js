@@ -3,9 +3,6 @@ import pool from '@/utils/dbConnect';
 
 export async function GET() {
   try {
-    // Acquire a client from the pool
-    // client = await getClient();
-
     const query = `
       SELECT
         article_id,

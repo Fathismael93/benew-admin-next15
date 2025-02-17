@@ -1,7 +1,7 @@
 // api/register.js
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import pool from '@/utils/dbConnect';
+import { getClient } from '@/utils/dbConnect';
 import { registrationSchema } from '@/utils/schemas';
 
 export async function POST(req) {
@@ -20,6 +20,7 @@ export async function POST(req) {
         { abortEarly: false },
       );
     } catch (validationError) {
+      console.log('Is there an error Happening in the validation inputs api');
       const errors = {};
       validationError.inner.forEach((error) => {
         errors[error.path] = error.message;
@@ -28,6 +29,8 @@ export async function POST(req) {
     }
 
     console.log('We are starting to check if user exists');
+
+    const client = await getClient();
 
     // Check if user already exists
     const userExistsQuery = 'SELECT user_id FROM users WHERE user_email = $1';
