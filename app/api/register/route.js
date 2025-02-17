@@ -2,13 +2,9 @@ import bcrypt from 'bcryptjs';
 import pool from '@/utils/dbConnect';
 import { registrationSchema } from '@/utils/schemas'; // Import the same schema used in frontend
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    console.log('We are register api');
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
+export default async function POST(req, res) {
   try {
+    console.log('We are register api');
     const { username, email, password } = req.body;
 
     // Validate input using Yup schema
