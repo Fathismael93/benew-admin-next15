@@ -5,11 +5,9 @@ import { registrationSchema } from '@/utils/schemas'; // Import the same schema 
 export async function POST(req, res) {
   try {
     console.log('We are register api');
-    console.log('resources');
-    console.log(res);
-    const { username, email, password } = req.body;
     console.log('req.body: ');
-    console.log(req.body);
+    console.log(await req.json());
+    const { username, email, password } = req.body;
 
     // Validate input using Yup schema
     try {
@@ -64,7 +62,7 @@ export async function POST(req, res) {
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error('Registration error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }
