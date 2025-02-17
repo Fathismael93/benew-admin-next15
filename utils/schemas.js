@@ -17,14 +17,17 @@ export const articleIDSchema = yup.object().shape({
 });
 
 // Validation schema using Yup
-export const registrationSchema = Yup.object({
-  username: Yup.string()
+export const registrationSchema = yup.object({
+  username: yup
+    .string()
     .required('Username is required')
     .min(3, 'Username must be at least 3 characters'),
-  email: Yup.string()
+  email: yup
+    .string()
     .email('Invalid email address')
     .required('Email is required'),
-  password: Yup.string()
+  password: yup
+    .string()
     .required('Password is required')
     .min(6, 'Password must be at least 6 characters'),
 });
