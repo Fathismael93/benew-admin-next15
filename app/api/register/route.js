@@ -6,12 +6,8 @@ export async function POST(req, res) {
   try {
     console.log('We are register api');
     const { username, email, password } = req.body;
-    console.log('username: ');
-    console.log(username);
-    console.log('email: ');
-    console.log(email);
-    console.log('password: ');
-    console.log(password);
+    console.log('req.body: ');
+    console.log(req.body);
 
     // Validate input using Yup schema
     try {
