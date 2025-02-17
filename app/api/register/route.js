@@ -24,6 +24,8 @@ export async function POST(req) {
       return NextResponse.json({ errors }, { status: 400 });
     }
 
+    console.log('We are starting to check if user is connected');
+
     // Check if user already exists
     const userExistsQuery = 'SELECT user_id FROM users WHERE user_email = $1';
     const userExistsResult = await pool.query(userExistsQuery, [email]);
