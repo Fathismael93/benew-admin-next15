@@ -21,10 +21,10 @@ export async function POST(req) {
       validationError.inner.forEach((error) => {
         errors[error.path] = error.message;
       });
-      return NextResponse.error(
+      return NextResponse.json(
         {
           success: false,
-          message: errors,
+          errors,
         },
         { status: 400 },
       );
@@ -37,7 +37,7 @@ export async function POST(req) {
     const userExistsResult = await pool.query(userExistsQuery, [email]);
 
     if (userExistsResult.rows.length > 0) {
-      return NextResponse.error(
+      return NextResponse.json(
         {
           success: false,
           message: 'A user with this email already exists',
