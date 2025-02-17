@@ -31,17 +31,21 @@ const RegistrationPage = () => {
       setErrors({});
 
       // Send data to the API
-      await fetch('https://benew-admin-next15.vercel.app/api/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        'https://benew-admin-next15.vercel.app/api/register',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
         },
-        body: JSON.stringify(formData),
-      })
+      );
+
+      await response
+        .json()
         .then((result) => console.log(result))
         .catch((err) => console.log(err));
-
-      //   const data = await response.json();
 
       //   if (!response.ok) {
       //     // Handle validation errors from the API
