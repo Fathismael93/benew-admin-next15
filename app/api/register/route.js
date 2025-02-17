@@ -9,7 +9,7 @@ export async function POST(req, res) {
     console.log(res);
     const { username, email, password } = req.body;
     console.log('req.body: ');
-    console.log(JSON.parse(req.body));
+    console.log(req.body);
 
     // Validate input using Yup schema
     try {
