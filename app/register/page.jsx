@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import '@/ui/styling/register/register.css';
+import { registrationSchema } from '@/utils/schemas';
 
 const RegistrationPage = () => {
   const [formData, setFormData] = useState({
@@ -24,7 +25,7 @@ const RegistrationPage = () => {
 
     try {
       // Validate the form data
-      await validationSchema.validate(formData, { abortEarly: false });
+      await registrationSchema.validate(formData, { abortEarly: false });
       setErrors({}); // Clear errors if validation passes
       alert(JSON.stringify(formData, null, 2)); // Submit the form data
     } catch (validationErrors) {

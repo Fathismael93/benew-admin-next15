@@ -17,7 +17,7 @@ export const articleIDSchema = yup.object().shape({
 });
 
 // Validation schema using Yup
-const registrationSchema = Yup.object({
+export const registrationSchema = Yup.object({
   username: Yup.string()
     .required('Username is required')
     .min(3, 'Username must be at least 3 characters'),
