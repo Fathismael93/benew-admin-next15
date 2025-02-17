@@ -19,6 +19,7 @@
     "@tiptap/react": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5",
     "axios": "^1.7.9",
+    "bcryptjs": "^3.0.0",
     "cloudinary": "^2.5.1",
     "html-react-parser": "^5.2.2",
     "lru-cache": "^11.0.2",

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import '@/ui/styling/register/register.css';
 import { registrationSchema } from '@/utils/schemas';
+import { useRouter } from 'next/navigation';
 
 const RegistrationPage = () => {
   const [formData, setFormData] = useState({
@@ -11,6 +12,7 @@ const RegistrationPage = () => {
     password: '',
   });
   const [errors, setErrors] = useState({});
+  const router = useRouter();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -26,14 +28,38 @@ const RegistrationPage = () => {
     try {
       // Validate the form data
       await registrationSchema.validate(formData, { abortEarly: false });
-      setErrors({}); // Clear errors if validation passes
-      alert(JSON.stringify(formData, null, 2)); // Submit the form data
+      setErrors({});
+
+      // Send data to the API
+      const response = await fetch('/api/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Handle validation errors from the API
+        if (data.errors) {
+          setErrors(data.errors);
+        } else {
+          setErrors({ submit: data.error || 'Registration failed' });
+        }
+        return;
+      }
+
+      // Handle successful registration
+      router.push('/login');
+      // You can redirect to login page or handle success as needed
     } catch (validationErrors) {
       const newErrors = {};
       validationErrors.inner.forEach((error) => {
         newErrors[error.path] = error.message;
       });
-      setErrors(newErrors); // Set validation errors
+      setErrors(newErrors);
     }
   };
 
