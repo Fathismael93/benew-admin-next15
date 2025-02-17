@@ -5,6 +5,7 @@ import { getClient } from '@/utils/dbConnect';
 import { quickValidationSchema } from '@/utils/schemas';
 
 export async function POST(req) {
+  let client;
   try {
     // Parse the request body
     const body = await req.json();
@@ -26,7 +27,7 @@ export async function POST(req) {
 
     console.log('We are starting to check if user exits');
 
-    const client = await getClient();
+    client = await getClient();
 
     // Check if user already exists
     const userExistsQuery = 'SELECT user_id FROM users WHERE user_email = $1';
@@ -59,9 +60,7 @@ export async function POST(req) {
     // Return success response (excluding password)
     const newUser = result.rows[0];
 
-    if (client) {
-      client.release();
-    }
+    if (client) client.release();
 
     return NextResponse.json(
       {
@@ -76,9 +75,7 @@ export async function POST(req) {
       { status: 201 },
     );
   } catch (error) {
-    if (client) {
-      client.release();
-    }
+    if (client) client.release();
 
     console.error('Registration error:', error);
     return NextResponse.json(

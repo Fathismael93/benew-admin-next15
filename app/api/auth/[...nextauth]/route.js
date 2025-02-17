@@ -1,7 +1,7 @@
 import NextAuth from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
-import pool from '@/utils/dbConnect';
+import { getClient } from '@/utils/dbConnect';
 
 const handler = NextAuth({
   providers: [
@@ -12,16 +12,21 @@ const handler = NextAuth({
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
+        let client;
         try {
           // Find user in the database
+          client = await getClient();
+
           const query =
             'SELECT user_id, user_name, user_email, user_password FROM users WHERE user_email = $1';
-          const result = await pool.query(query, [
+
+          const result = await client.query(query, [
             credentials.email.toLowerCase(),
           ]);
 
           if (result.rows.length === 0) {
             // No user found with this email
+            if (client) client.release();
             return null;
           }
 
@@ -35,16 +40,20 @@ const handler = NextAuth({
 
           if (!isPasswordValid) {
             // Invalid password
+            if (client) client.release();
             return null;
           }
 
           // Return user object (excluding password)
+          if (client) client.release();
+
           return {
             id: user.user_id,
             name: user.user_name,
             email: user.user_email,
           };
         } catch (error) {
+          if (client) client.release();
           console.error('Auth error:', error);
           return null;
         }
