@@ -6,6 +6,9 @@ import { registrationSchema } from '@/utils/schemas';
 
 export async function POST(req) {
   try {
+    console.log(
+      'We are starting to check if registration information is sent to api register',
+    );
     // Parse the request body
     const body = await req.json();
     const { username, email, password } = body;
@@ -24,7 +27,7 @@ export async function POST(req) {
       return NextResponse.json({ errors }, { status: 400 });
     }
 
-    console.log('We are starting to check if user is connected');
+    console.log('We are starting to check if user exists');
 
     // Check if user already exists
     const userExistsQuery = 'SELECT user_id FROM users WHERE user_email = $1';
