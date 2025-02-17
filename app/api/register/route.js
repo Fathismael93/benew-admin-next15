@@ -4,7 +4,12 @@ import { registrationSchema } from '@/utils/schemas'; // Import the same schema 
 
 export async function POST(req, res) {
   try {
-    const { username, email, password } = await req.json();
+    console.log('We are register api');
+    const body = await req.json();
+    console.log('body: ');
+    console.log(body);
+
+    const { username, email, password } = req.body;
 
     // Validate input using Yup schema
     try {
