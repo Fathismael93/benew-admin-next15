@@ -8,12 +8,6 @@ export async function POST(req, res) {
     const body = await req.json();
 
     const { username, email, password } = body;
-    console.log('username: ');
-    console.log(username);
-    console.log('email: ');
-    console.log(email);
-    console.log('password: ');
-    console.log(password);
 
     // Validate input using Yup schema
     try {
@@ -29,6 +23,8 @@ export async function POST(req, res) {
       return res.status(400).json({ errors });
     }
 
+    console.log('Checking if user with this email exists');
+
     // Check if user already exists
     const userExistsQuery = 'SELECT user_id FROM users WHERE user_email = $1';
     const userExistsResult = await pool.query(userExistsQuery, [email]);
@@ -42,6 +38,8 @@ export async function POST(req, res) {
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
+
+    console.log('Prepared Inserting Query');
 
     // Insert new user
     const insertUserQuery = `
@@ -58,6 +56,8 @@ export async function POST(req, res) {
 
     // Return success response (excluding password)
     const newUser = result.rows[0];
+    console.log('newUser: ');
+    console.log(newUser);
     res.status(201).json({
       message: 'User registered successfully',
       user: {
