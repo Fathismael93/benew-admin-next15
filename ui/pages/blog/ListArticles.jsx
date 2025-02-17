@@ -43,7 +43,7 @@ const ListArticles = ({ articles }) => {
         </Link>
       </div>
       <div className={styles.bottom}>
-        {articles.length > 0 ? (
+        {articles !== undefined && articles.length > 0 ? (
           <div className={styles.dashboardContainer}>
             {articles.map((post) => {
               return (
