@@ -23,7 +23,7 @@ export async function POST(req, res) {
 
     // Check if user already exists
     const userExistsQuery =
-      'SELECT id FROM users WHERE email = $1 OR username = $2';
+      'SELECT user_id FROM users WHERE user_email = $1 OR user_name = $2';
     const userExistsResult = await pool.query(userExistsQuery, [
       email,
       username,
@@ -41,9 +41,9 @@ export async function POST(req, res) {
 
     // Insert new user
     const insertUserQuery = `
-      INSERT INTO users (username, email, password, created_at)
+      INSERT INTO users (user_name, user_email, user_password, user_added)
       VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
-      RETURNING id, username, email, created_at
+      RETURNING user_id, user_name, user_email, user_added
     `;
 
     const result = await pool.query(insertUserQuery, [
