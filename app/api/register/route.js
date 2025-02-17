@@ -1,8 +1,9 @@
 import bcrypt from 'bcryptjs';
 import pool from '@/utils/dbConnect';
 import { registrationSchema } from '@/utils/schemas'; // Import the same schema used in frontend
+import { NextResponse } from 'next/server';
 
-export async function POST(req, res) {
+export async function POST(req) {
   try {
     console.log('We are register api');
     const body = await req.json();
@@ -20,7 +21,13 @@ export async function POST(req, res) {
       validationError.inner.forEach((error) => {
         errors[error.path] = error.message;
       });
-      return res.status(400).json({ errors });
+      return NextResponse.error(
+        {
+          success: false,
+          message: errors,
+        },
+        { status: 400 },
+      );
     }
 
     console.log('Checking if user with this email exists');
@@ -30,9 +37,13 @@ export async function POST(req, res) {
     const userExistsResult = await pool.query(userExistsQuery, [email]);
 
     if (userExistsResult.rows.length > 0) {
-      return res.status(400).json({
-        error: 'A user with this email already exists',
-      });
+      return NextResponse.error(
+        {
+          success: false,
+          message: 'A user with this email already exists',
+        },
+        { status: 400 },
+      );
     }
 
     // Hash password
@@ -58,17 +69,27 @@ export async function POST(req, res) {
     const newUser = result.rows[0];
     console.log('newUser: ');
     console.log(newUser);
-    res.status(201).json({
-      message: 'User registered successfully',
-      user: {
-        id: newUser.user_id,
-        username: newUser.user_name,
-        email: newUser.user_email,
-        createdAt: newUser.user_added,
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'User registered successfully',
+        user: {
+          id: newUser.user_id,
+          username: newUser.user_name,
+          email: newUser.user_email,
+          createdAt: newUser.user_added,
+        },
       },
-    });
+      { status: 201 },
+    );
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    return NextResponse.error(
+      {
+        success: false,
+        error: 'Internal server error',
+      },
+      { status: 500 },
+    );
   }
 }
