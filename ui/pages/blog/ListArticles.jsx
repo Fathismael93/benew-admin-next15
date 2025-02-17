@@ -17,8 +17,6 @@ const ListArticles = ({ articles }) => {
   const [errorMessage, setErrorMessage] = useState('');
   const router = useRouter();
 
-  console.log('articles in ListArticles: ');
-  console.log(articles);
   // eslint-disable-next-line camelcase
   const deleteArticle = async (article_id) => {
     await axios
