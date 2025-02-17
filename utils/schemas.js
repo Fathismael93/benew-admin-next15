@@ -1,24 +1,5 @@
 import * as yup from 'yup';
 
-export const presentationSchema = yup.object().shape({
-  name: yup
-    .string()
-    .required('Name is required')
-    .min(3, 'Name must be longer than 3 characters'),
-  title: yup
-    .string()
-    .required('Title is required')
-    .min(7, 'Title must be longer than 7 characters'),
-  text: yup
-    .string()
-    .required('Text is required')
-    .min(10, 'Text must be longer than 3 characters'),
-});
-
-export const deletePresentationSchema = yup.object().shape({
-  id: yup.number().positive("This presentation id doesn't exist"),
-});
-
 export const addArticleSchema = yup.object().shape({
   title: yup
     .string()
@@ -33,4 +14,17 @@ export const addArticleSchema = yup.object().shape({
 
 export const articleIDSchema = yup.object().shape({
   id: yup.number().positive("This article id doesn't exist"),
+});
+
+// Validation schema using Yup
+const registrationSchema = Yup.object({
+  username: Yup.string()
+    .required('Username is required')
+    .min(3, 'Username must be at least 3 characters'),
+  email: Yup.string()
+    .email('Invalid email address')
+    .required('Email is required'),
+  password: Yup.string()
+    .required('Password is required')
+    .min(6, 'Password must be at least 6 characters'),
 });
