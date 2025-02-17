@@ -64,7 +64,7 @@ export async function POST(req, res) {
       },
     });
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error(error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }
