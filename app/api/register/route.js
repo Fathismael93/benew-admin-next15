@@ -1,13 +1,13 @@
+// pages/api/register.js
+import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import pool from '@/utils/dbConnect';
-import { registrationSchema } from '@/utils/schemas'; // Import the same schema used in frontend
-import { NextResponse } from 'next/server';
+import { registrationSchema } from '@/utils/schemas';
 
 export async function POST(req) {
   try {
-    console.log('We are register api');
+    // Parse the request body
     const body = await req.json();
-
     const { username, email, password } = body;
 
     // Validate input using Yup schema
@@ -21,16 +21,8 @@ export async function POST(req) {
       validationError.inner.forEach((error) => {
         errors[error.path] = error.message;
       });
-      return NextResponse.json(
-        {
-          success: false,
-          errors,
-        },
-        { status: 400 },
-      );
+      return NextResponse.json({ errors }, { status: 400 });
     }
-
-    console.log('Checking if user with this email exists');
 
     // Check if user already exists
     const userExistsQuery = 'SELECT user_id FROM users WHERE user_email = $1';
@@ -38,10 +30,7 @@ export async function POST(req) {
 
     if (userExistsResult.rows.length > 0) {
       return NextResponse.json(
-        {
-          success: false,
-          message: 'A user with this email already exists',
-        },
+        { error: 'A user with this email or username already exists' },
         { status: 400 },
       );
     }
@@ -49,8 +38,6 @@ export async function POST(req) {
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-
-    console.log('Prepared Inserting Query');
 
     // Insert new user
     const insertUserQuery = `
@@ -67,28 +54,22 @@ export async function POST(req) {
 
     // Return success response (excluding password)
     const newUser = result.rows[0];
-    console.log('newUser: ');
-    console.log(newUser);
     return NextResponse.json(
       {
-        success: true,
         message: 'User registered successfully',
         user: {
-          id: newUser.user_id,
-          username: newUser.user_name,
-          email: newUser.user_email,
-          createdAt: newUser.user_added,
+          id: newUser.id,
+          username: newUser.username,
+          email: newUser.email,
+          created_at: newUser.created_at,
         },
       },
       { status: 201 },
     );
   } catch (error) {
     console.error('Registration error:', error);
-    return NextResponse.error(
-      {
-        success: false,
-        error: 'Internal server error',
-      },
+    return NextResponse.json(
+      { error: 'Internal server error' },
       { status: 500 },
     );
   }

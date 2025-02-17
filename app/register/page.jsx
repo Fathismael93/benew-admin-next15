@@ -68,8 +68,8 @@ const RegistrationPage = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        if (data) {
-          setErrors(data);
+        if (data.errors) {
+          setErrors(data.errors);
         } else {
           setErrors({ submit: data.error || 'Registration failed' });
         }
