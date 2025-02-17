@@ -42,23 +42,20 @@ const RegistrationPage = () => {
         },
       );
 
-      await response
-        .json()
-        .then((result) => console.log(result))
-        .catch((err) => console.log(err));
+      const data = await response.json();
 
-      //   if (!response.ok) {
-      //     // Handle validation errors from the API
-      //     if (data.errors) {
-      //       setErrors(data.errors);
-      //     } else {
-      //       setErrors({ submit: data.error || 'Registration failed' });
-      //     }
-      //     return;
-      //   }
+      if (!response.ok) {
+        // Handle validation errors from the API
+        if (data.errors) {
+          setErrors(data.errors);
+        } else {
+          setErrors({ submit: data.error || 'Registration failed' });
+        }
+        return;
+      }
 
-      //   // Handle successful registration
-      //   router.push('/login');
+      // Handle successful registration
+      router.push('/login');
       // You can redirect to login page or handle success as needed
     } catch (validationErrors) {
       const newErrors = {};
