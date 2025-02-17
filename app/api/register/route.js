@@ -1,7 +1,7 @@
 // api/register.js
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import pool from '@/utils/dbConnect';
+import { getClient } from '@/utils/dbConnect';
 import { quickValidationSchema } from '@/utils/schemas';
 
 export async function POST(req) {
@@ -26,9 +26,11 @@ export async function POST(req) {
 
     console.log('We are starting to check if user exits');
 
+    const client = await getClient();
+
     // Check if user already exists
     const userExistsQuery = 'SELECT user_id FROM users WHERE user_email = $1';
-    const userExistsResult = await pool.query(userExistsQuery, [email]);
+    const userExistsResult = await client.query(userExistsQuery, [email]);
 
     if (userExistsResult.rows.length > 0) {
       return NextResponse.json(
@@ -48,7 +50,7 @@ export async function POST(req) {
       RETURNING user_id, user_name, user_email, user_added
     `;
 
-    const result = await pool.query(insertUserQuery, [
+    const result = await client.query(insertUserQuery, [
       username,
       email.toLowerCase(),
       hashedPassword,
@@ -56,6 +58,11 @@ export async function POST(req) {
 
     // Return success response (excluding password)
     const newUser = result.rows[0];
+
+    if (client) {
+      client.release();
+    }
+
     return NextResponse.json(
       {
         message: 'User registered successfully',
@@ -69,6 +76,10 @@ export async function POST(req) {
       { status: 201 },
     );
   } catch (error) {
+    if (client) {
+      client.release();
+    }
+
     console.error('Registration error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
