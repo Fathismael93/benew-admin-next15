@@ -50,6 +50,8 @@ const RegistrationPage = () => {
       if (!response.ok) {
         // Handle validation errors from the API
         if (data.errors) {
+          console.log('data: ');
+          console.log(data);
           setErrors(data.errors);
         } else {
           setErrors({ submit: data.error || 'Registration failed' });
