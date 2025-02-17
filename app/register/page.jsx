@@ -30,6 +30,9 @@ const RegistrationPage = () => {
       await registrationSchema.validate(formData, { abortEarly: false });
       setErrors({});
 
+      console.log('formData: ');
+      console.log(formData);
+
       // Send data to the API
       const response = await fetch(
         'https://benew-admin-next15.vercel.app/api/register',
