@@ -24,6 +24,7 @@
     "html-react-parser": "^5.2.2",
     "lru-cache": "^11.0.2",
     "next": "15.1.6",
+    "next-auth": "^4.24.11",
     "next-cloudinary": "^6.16.0",
     "pg": "^8.13.1",
     "react": "^19.0.0",

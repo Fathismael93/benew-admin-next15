@@ -1,4 +1,4 @@
-// pages/api/register.js
+// api/register.js
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import pool from '@/utils/dbConnect';

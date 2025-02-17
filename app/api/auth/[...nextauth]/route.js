@@ -1,0 +1,84 @@
+import NextAuth from 'next-auth';
+import CredentialsProvider from 'next-auth/providers/credentials';
+import bcrypt from 'bcryptjs';
+import pool from '@/utils/dbConnect';
+
+const handler = NextAuth({
+  providers: [
+    CredentialsProvider({
+      name: 'credentials',
+      credentials: {
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' },
+      },
+      async authorize(credentials) {
+        try {
+          // Find user in the database
+          const query =
+            'SELECT user_id, user_name, user_email, user_password FROM users WHERE user_email = $1';
+          const result = await pool.query(query, [
+            credentials.email.toLowerCase(),
+          ]);
+
+          if (result.rows.length === 0) {
+            // No user found with this email
+            return null;
+          }
+
+          const user = result.rows[0];
+
+          // Verify password
+          const isPasswordValid = await bcrypt.compare(
+            credentials.password,
+            user.user_password,
+          );
+
+          if (!isPasswordValid) {
+            // Invalid password
+            return null;
+          }
+
+          // Return user object (excluding password)
+          return {
+            id: user.user_id,
+            name: user.user_name,
+            email: user.user_email,
+          };
+        } catch (error) {
+          console.error('Auth error:', error);
+          return null;
+        }
+      },
+    }),
+  ],
+  callbacks: {
+    jwt: async ({ token, user }) => {
+      // Initial sign in
+      if (user) {
+        token.id = user.id;
+        token.name = user.name;
+        token.email = user.email;
+      }
+      return token;
+    },
+    session: async ({ session, token }) => {
+      if (token) {
+        session.user.id = token.id;
+        session.user.name = token.name;
+        session.user.email = token.email;
+      }
+      return session;
+    },
+  },
+  pages: {
+    signIn: '/login',
+    error: '/login',
+  },
+  session: {
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  secret: process.env.NEXTAUTH_SECRET,
+});
+
+export { handler as GET, handler as POST };
