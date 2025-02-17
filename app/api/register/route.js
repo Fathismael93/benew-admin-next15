@@ -8,6 +8,8 @@ export async function POST(req, res) {
     const { username, email, password } = req.body;
     console.log('req.body: ');
     console.log(JSON.parse(req.body));
+    console.log('resources');
+    console.log(res);
 
     // Validate input using Yup schema
     try {
