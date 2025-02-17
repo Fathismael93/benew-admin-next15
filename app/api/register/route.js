@@ -7,7 +7,7 @@ export async function POST(req, res) {
     console.log('We are register api');
     const { username, email, password } = req.body;
     console.log('req.body: ');
-    console.log(req);
+    console.log(JSON.parse(req.body));
 
     // Validate input using Yup schema
     try {
@@ -24,16 +24,12 @@ export async function POST(req, res) {
     }
 
     // Check if user already exists
-    const userExistsQuery =
-      'SELECT user_id FROM users WHERE user_email = $1 OR user_name = $2';
-    const userExistsResult = await pool.query(userExistsQuery, [
-      email,
-      username,
-    ]);
+    const userExistsQuery = 'SELECT user_id FROM users WHERE user_email = $1';
+    const userExistsResult = await pool.query(userExistsQuery, [email]);
 
     if (userExistsResult.rows.length > 0) {
       return res.status(400).json({
-        error: 'A user with this email or username already exists',
+        error: 'A user with this email already exists',
       });
     }
 
@@ -43,8 +39,8 @@ export async function POST(req, res) {
 
     // Insert new user
     const insertUserQuery = `
-      INSERT INTO users (user_name, user_email, user_password, user_added)
-      VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+      INSERT INTO users (user_name, user_email, user_password)
+      VALUES ($1, $2, $3)
       RETURNING user_id, user_name, user_email, user_added
     `;
 
@@ -59,10 +55,10 @@ export async function POST(req, res) {
     res.status(201).json({
       message: 'User registered successfully',
       user: {
-        id: newUser.id,
-        username: newUser.username,
-        email: newUser.email,
-        created_at: newUser.created_at,
+        id: newUser.user_id,
+        username: newUser.user_name,
+        email: newUser.user_email,
+        createdAt: newUser.user_added,
       },
     });
   } catch (error) {
