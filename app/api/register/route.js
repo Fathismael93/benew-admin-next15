@@ -1,37 +1,30 @@
 // api/register.js
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { getClient } from '@/utils/dbConnect';
-import { registrationSchema } from '@/utils/schemas';
+import pool from '@/utils/dbConnect';
+import { quickValidationSchema } from '@/utils/schemas';
 
 export async function POST(req) {
   try {
-    console.log(
-      'We are starting to check if registration information is sent to api register',
-    );
     // Parse the request body
     const body = await req.json();
     const { username, email, password } = body;
 
     // Validate input using Yup schema
     try {
-      await registrationSchema.validate(
+      await quickValidationSchema.validate(
         { username, email, password },
         { abortEarly: false },
       );
     } catch (validationError) {
-      console.log('Is there an error Happening in the validation inputs api');
       const errors = {};
       validationError.inner.forEach((error) => {
-        console.log(error);
         errors[error.path] = error.message;
       });
       return NextResponse.json({ errors }, { status: 400 });
     }
 
-    console.log('We are starting to check if user exists');
-
-    const client = await getClient();
+    console.log('We are starting to check if user exits');
 
     // Check if user already exists
     const userExistsQuery = 'SELECT user_id FROM users WHERE user_email = $1';

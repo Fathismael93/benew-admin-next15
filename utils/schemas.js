@@ -123,3 +123,19 @@ export const registrationSchema = yup.object().shape({
       (value) => !value || new Date().getFullYear() - value.getFullYear() >= 13,
     ),
 });
+
+// Optional: Export a lighter version for simple checks
+export const quickValidationSchema = yup.object().shape({
+  username: yup
+    .string()
+    .required('Username is required')
+    .min(3, 'Username must be at least 3 characters'),
+  email: yup
+    .string()
+    .required('Email is required')
+    .email('Invalid email format'),
+  password: yup
+    .string()
+    .required('Password is required')
+    .min(8, 'Password must be at least 8 characters'),
+});
