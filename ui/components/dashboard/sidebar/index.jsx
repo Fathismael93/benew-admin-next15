@@ -75,8 +75,8 @@ function Sidebar() {
           </li>
         ))}
       </ul>
-      <form onSubmit={logoutHandler}>
-        <button className={styles.logout} type="submit">
+      <form>
+        <button className={styles.logout} type="button" onClick={logoutHandler}>
           <MdLogout />
           Logout
         </button>
