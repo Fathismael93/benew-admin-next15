@@ -5,44 +5,44 @@ import axios from 'axios';
 import { CldImage } from 'next-cloudinary';
 import Link from 'next/link';
 import { MdAdd } from 'react-icons/md';
-import styles from '@/ui/styling/dashboard/products/products.module.css';
+import styles from '@/ui/styling/dashboard/applications/applications.module.css';
 import Search from '@/ui/components/dashboard/search';
 
-function ProductsPage() {
+function ApplicationsPage() {
   // eslint-disable-next-line no-unused-vars
-  const [products, setProducts] = useState('');
+  const [applications, setApplications] = useState('');
 
   useEffect(() => {
-    async function getProducts() {
+    async function getApplications() {
       await axios
-        .get('/api/dashboard/products')
+        .get('/api/dashboard/applications')
         .then((response) => console.log(response.data.data.rows))
         .catch((error) => console.error(error));
     }
 
-    getProducts();
+    getApplications();
   }, []);
 
   return (
     <div className={styles.container}>
       <div className={styles.top}>
-        <Search placeholder="Search for a product..." />
-        <Link href="/dashboard/products/add">
+        <Search placeholder="Search for an application..." />
+        <Link href="/dashboard/applications/add">
           <button className={styles.addButton} type="button">
-            <MdAdd /> Product
+            <MdAdd /> Application
           </button>
         </Link>
       </div>
       <div className={styles.presentationsContainer}>
-        {products.length > 0
-          ? products.map(
+        {applications.length > 0
+          ? applications.map(
               ({
                 // eslint-disable-next-line camelcase
-                product_id,
+                application_id,
               }) => {
                 return (
                   // eslint-disable-next-line camelcase
-                  <div key={product_id}>
+                  <div key={application_id}>
                     <div>
                       <CldImage />
                     </div>
@@ -56,4 +56,4 @@ function ProductsPage() {
   );
 }
 
-export default ProductsPage;
+export default ApplicationsPage;

@@ -22,8 +22,13 @@ const menuItems = [
         icon: <MdDashboard />,
       },
       {
-        title: 'Products',
-        path: '/dashboard/products',
+        title: 'Templates',
+        path: '/dashboard/templates',
+        icon: <MdShoppingBag />,
+      },
+      {
+        title: 'Applications',
+        path: '/dashboard/applications',
         icon: <MdShoppingBag />,
       },
       {

@@ -4,9 +4,9 @@ import { React, useState } from 'react';
 import { CldImage, CldUploadWidget } from 'next-cloudinary';
 import axios from 'axios';
 import { redirect } from 'next/navigation';
-import styles from '@/ui/styling/dashboard/products/add/addProduct.module.css';
+import styles from '@/ui/styling/dashboard/applications/add/addApplication.module.css';
 
-function NewProduct() {
+function NewApplication() {
   const [name, setName] = useState('');
   const [link, setLink] = useState('');
   const [description, setDescription] = useState('');
@@ -57,7 +57,7 @@ function NewProduct() {
     }
 
     const response = await axios.post(
-      '/api/dashboard/products/add',
+      '/api/dashboard/applications/add',
       JSON.stringify({
         name,
         link,
@@ -73,14 +73,14 @@ function NewProduct() {
     );
 
     if (await response.data.success) {
-      redirect('/dashboard/products');
+      redirect('/dashboard/applications');
     }
   };
 
   return (
     <section className={styles.createPostContainer}>
       <div className={styles.createPostTitle}>
-        <h2>Add new product</h2>
+        <h2>Add new application</h2>
       </div>
       <form className={styles.createPostForm} onSubmit={(e) => handleSubmit(e)}>
         {errorMessage && <p className={styles.errorMessage}>{errorMessage}</p>}
@@ -193,4 +193,4 @@ function NewProduct() {
   );
 }
 
-export default NewProduct;
+export default NewApplication;
