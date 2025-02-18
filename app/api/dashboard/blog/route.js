@@ -25,7 +25,7 @@ export async function GET() {
     console.log('result in the await client.query: : ');
     console.log(rows);
 
-    if (rows) client.release();
+    if (rows) await client.cleanup();
 
     return NextResponse.json(
       {
@@ -40,7 +40,7 @@ export async function GET() {
       },
     );
   } catch (error) {
-    if (client) client.release();
+    if (client) await client.cleanup();
     console.error('Database Error:', error);
 
     return NextResponse.json(

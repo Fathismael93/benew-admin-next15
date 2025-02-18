@@ -26,7 +26,7 @@ const handler = NextAuth({
 
           if (result.rows.length === 0) {
             // No user found with this email
-            if (client) client.release();
+            if (client) await client.cleanup();
             return null;
           }
 
@@ -40,12 +40,12 @@ const handler = NextAuth({
 
           if (!isPasswordValid) {
             // Invalid password
-            if (client) client.release();
+            if (client) await client.cleanup();
             return null;
           }
 
           // Return user object (excluding password)
-          if (client) client.release();
+          if (client) await client.cleanup();
 
           return {
             id: user.user_id,
@@ -53,7 +53,7 @@ const handler = NextAuth({
             email: user.user_email,
           };
         } catch (error) {
-          if (client) client.release();
+          if (client) await client.cleanup();
           console.error('Auth error:', error);
           return null;
         }
