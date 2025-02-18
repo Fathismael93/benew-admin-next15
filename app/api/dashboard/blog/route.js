@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
-import pool from '@/utils/dbConnect';
+import { getClient } from '@/utils/dbConnect';
 
 export async function GET() {
+  let client;
   try {
+    client = await getClient();
+
     const query = `
       SELECT
         article_id,
@@ -17,10 +20,12 @@ export async function GET() {
 
     console.log('We prepared the query');
 
-    const { rows } = await pool.query(query);
+    const { rows } = await client.query(query);
 
     console.log('result in the await client.query: : ');
     console.log(rows);
+
+    if (rows) client.release();
 
     return NextResponse.json(
       {
@@ -35,6 +40,7 @@ export async function GET() {
       },
     );
   } catch (error) {
+    if (client) client.release();
     console.error('Database Error:', error);
 
     return NextResponse.json(
