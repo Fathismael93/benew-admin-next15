@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import pool from '@/utils/dbConnect';
+import { getClient } from '@/utils/dbConnect';
 import { addArticleSchema } from '@/utils/schemas';
 
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute window
@@ -10,6 +10,7 @@ let requestCounts = {};
 
 export async function POST(req) {
   console.log('we are in the POST REQUEST of the blog api');
+  let client;
   try {
     // Handle rate limiting
     const ip = req.headers.get('x-forwarded-for') || req.socket.remoteAddress;
@@ -74,6 +75,8 @@ export async function POST(req) {
       );
     }
 
+    client = await getClient();
+
     // Insert article into the database
     const query = {
       name: 'insert-article',
@@ -83,7 +86,9 @@ export async function POST(req) {
 
     console.log('We have prepared the query');
 
-    const { rows } = await pool.query(query);
+    const { rows } = await client.query(query);
+
+    if (rows) client.release();
 
     return NextResponse.json(
       {
@@ -94,6 +99,8 @@ export async function POST(req) {
       { status: 201 },
     );
   } catch (error) {
+    if (client) client.release();
+
     console.error('Server Error:', error);
     return NextResponse.json(
       {

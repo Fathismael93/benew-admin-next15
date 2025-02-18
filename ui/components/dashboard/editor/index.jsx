@@ -65,6 +65,7 @@ const TiptapEditor = ({ text, handleEditorChange }) => {
 
   const handleFontSizeChange = useCallback(
     (event) => {
+      event.preventDefault();
       const size = event.target.value;
       setSelectedFontSize(size);
       editor?.chain().focus().setFontSize(size).run();
@@ -74,6 +75,7 @@ const TiptapEditor = ({ text, handleEditorChange }) => {
 
   const handleImageUpload = useCallback(
     (event) => {
+      event.preventDefault();
       const file = event.target.files?.[0];
       if (file?.type.startsWith('image/')) {
         const reader = new FileReader();
@@ -89,14 +91,19 @@ const TiptapEditor = ({ text, handleEditorChange }) => {
     [editor],
   );
 
-  const addImageFromUrl = useCallback(() => {
-    const url = window.prompt('Enter the URL of the image:');
-    if (url) {
-      editor?.chain().focus().setImage({ src: url }).run();
-    }
-  }, [editor]);
+  const addImageFromUrl = useCallback(
+    (event) => {
+      event.preventDefault();
+      const url = window.prompt('Enter the URL of the image:');
+      if (url) {
+        editor?.chain().focus().setImage({ src: url }).run();
+      }
+    },
+    [editor],
+  );
 
-  const triggerFileInput = useCallback(() => {
+  const triggerFileInput = useCallback((event) => {
+    event.preventDefault();
     fileInputRef.current?.click();
   }, []);
 
@@ -108,30 +115,40 @@ const TiptapEditor = ({ text, handleEditorChange }) => {
     <div className={styles.editor}>
       <div className={styles.menu}>
         <EditorButton
-          onClick={() => editor.chain().focus().toggleBold().run()}
+          onClick={(event) => {
+            event.preventDefault();
+            editor.chain().focus().toggleBold().run();
+          }}
           isActive={editor.isActive('bold')}
           label="Bold"
         >
           Bold
         </EditorButton>
         <EditorButton
-          onClick={() => editor.chain().focus().toggleItalic().run()}
+          onClick={(event) => {
+            event.preventDefault();
+            editor.chain().focus().toggleItalic().run();
+          }}
           isActive={editor.isActive('italic')}
           label="Italic"
         >
           Italic
         </EditorButton>
         <EditorButton
-          onClick={() => editor.chain().focus().toggleUnderline().run()}
+          onClick={(event) => {
+            event.preventDefault();
+            editor.chain().focus().toggleUnderline().run();
+          }}
           isActive={editor.isActive('underline')}
           label="Underline"
         >
           Underline
         </EditorButton>
         <EditorButton
-          onClick={() =>
-            editor.chain().focus().toggleHeading({ level: 1 }).run()
-          }
+          onClick={(event) => {
+            event.preventDefault();
+            editor.chain().focus().toggleHeading({ level: 1 }).run();
+          }}
           isActive={editor.isActive('heading', { level: 1 })}
           label="Heading 1"
         >

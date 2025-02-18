@@ -3,16 +3,12 @@ import {
   MdSupervisedUserCircle,
   MdShoppingBag,
   MdAttachMoney,
-  MdWork,
-  MdAnalytics,
-  MdPeople,
-  MdOutlineSettings,
-  MdHelpCenter,
   MdLogout,
 } from 'react-icons/md';
 import Image from 'next/image';
 import MenuLink from './menuLink';
 import styles from './sidebar.module.css';
+import { signOut } from 'next-auth/react';
 
 const menuItems = [
   {
@@ -48,6 +44,10 @@ const menuItems = [
 ];
 
 function Sidebar() {
+  const logoutHandler = () => {
+    signOut();
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.user}>
@@ -73,7 +73,7 @@ function Sidebar() {
           </li>
         ))}
       </ul>
-      <form>
+      <form onSubmit={logoutHandler}>
         <button className={styles.logout} type="submit">
           <MdLogout />
           Logout
