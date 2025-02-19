@@ -46,7 +46,7 @@ const AddTemplatePage = () => {
     try {
       setIsLoading(true);
 
-      const response = await fetch('/api/templates', {
+      const response = await fetch('/api/templates/add', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
