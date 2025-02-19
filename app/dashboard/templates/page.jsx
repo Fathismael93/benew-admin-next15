@@ -3,23 +3,24 @@ import axios from 'axios';
 import ListTemplates from '@/ui/pages/templates/ListTemplates';
 
 async function getTemplates() {
-  let articles;
+  let response;
 
   await axios
     .get('https://benew-admin-next15.vercel.app/api/dashboard/templates')
     .then((response) => {
       console.log('response in getTemplates: ');
       console.log(response);
+      response = response;
     })
     .catch((error) => console.log(error));
 
-  return [];
+  return response;
 }
 
 const TemplatePage = async () => {
-  await getTemplates();
+  const response = await getTemplates();
 
-  return <ListTemplates />;
+  return <ListTemplates response={response} />;
 };
 
 export default TemplatePage;
