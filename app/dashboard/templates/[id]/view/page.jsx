@@ -3,7 +3,9 @@ import React from 'react';
 
 async function getSingleTemplate(id) {
   try {
-    const response = await fetch(`/api/dashboard/templates/${id}/view`);
+    const response = await fetch(
+      `https://benew-admin-next15.vercel.app/api/dashboard/templates/${id}/view`,
+    );
 
     if (response.ok) {
       // Remove the template from the UI without refreshing
