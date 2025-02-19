@@ -100,7 +100,7 @@ const ListTemplates = ({ templates }) => {
                       </button>
                     </Link>
                     <Link
-                      href={`/dashboard/templates/edit/${template.template_id}/edit`}
+                      href={`/dashboard/templates/${template.template_id}/edit`}
                     >
                       <button
                         className={`${styles.actionButton} ${styles.editButton}`}
