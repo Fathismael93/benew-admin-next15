@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { MdAdd, MdVisibility, MdEdit, MdDelete } from 'react-icons/md';
 import { CldImage } from 'next-cloudinary';
 
@@ -13,6 +12,9 @@ const ListTemplates = ({ templates }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
+
+  console.log('templates: ');
+  console.log(templates);
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
