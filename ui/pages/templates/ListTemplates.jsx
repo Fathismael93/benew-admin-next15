@@ -103,18 +103,7 @@ const ListTemplates = ({ templates }) => {
                     </div>
                   </div>
                   <div className={styles.actions}>
-                    <Link
-                      href={`/dashboard/templates/${template.template_id}/view`}
-                    >
-                      <button
-                        className={`${styles.actionButton} ${styles.viewButton}`}
-                      >
-                        <MdVisibility />
-                      </button>
-                    </Link>
-                    <Link
-                      href={`/dashboard/templates/${template.template_id}/edit`}
-                    >
+                    <Link href={`/dashboard/templates/${template.template_id}`}>
                       <button
                         className={`${styles.actionButton} ${styles.editButton}`}
                       >
