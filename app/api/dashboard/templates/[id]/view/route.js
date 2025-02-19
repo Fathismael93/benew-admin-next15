@@ -11,6 +11,7 @@ const MAX_REQUESTS = 5; // Max 5 requests per minute
 let requestCounts = {};
 
 export async function GET(req, { params }) {
+  console.log('We are in GET REQUEST of the SINGLE TEMPLATE API');
   try {
     // 1. Apply rate limiting
     // Handle rate limiting
@@ -87,7 +88,7 @@ export async function GET(req, { params }) {
         console.log(rows);
 
         if (rows.length === 0) {
-          console.info('Article not found', { id });
+          console.info('Template not found', { id });
           if (client) await client.cleanup();
 
           return NextResponse.json(
