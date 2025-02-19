@@ -2,9 +2,9 @@
 
 import React from 'react';
 
-const ListTemplates = ({ response }) => {
-  console.log('response in ListTemplates: ');
-  console.log(response);
+const ListTemplates = ({ templates }) => {
+  console.log('templates in ListTemplates: ');
+  console.log(templates);
   return <div>ListTemplates</div>;
 };
 
