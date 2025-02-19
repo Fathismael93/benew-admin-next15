@@ -141,7 +141,7 @@ const AddTemplatePage = () => {
               clientAllowedFormats: ['jpg', 'jpeg', 'png', 'webp'],
               maxImageFileSize: 5000000, // 5MB
             }}
-            signatureEndpoint="/api/cloudinary-signature"
+            signatureEndpoint="/api/dashboard/templates/add/sign-image"
             onSuccess={handleUploadSuccess}
             onError={handleUploadError}
           >
