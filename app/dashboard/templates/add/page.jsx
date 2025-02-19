@@ -74,7 +74,7 @@ const AddTemplatePage = () => {
 
       // Redirect to templates list after successful addition
       setTimeout(() => {
-        router.push('/admin/templates');
+        router.push('/dashboard/templates');
       }, 2000);
     } catch (err) {
       setError(err.message || 'An error occurred');
@@ -128,7 +128,6 @@ const AddTemplatePage = () => {
 
         <div className={styles.imageUpload}>
           <CldUploadWidget
-            uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET}
             options={{
               sources: ['local', 'url', 'camera'],
               multiple: false,

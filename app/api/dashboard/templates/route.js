@@ -1,17 +1,24 @@
-export async function GET() {
-  try {
-    const client = await pool.connect();
+import { NextResponse } from 'next/server';
+import { getClient } from '@/utils/dbConnect';
 
+export async function GET() {
+  console.log('we are in the GET REQUEST of the templates api');
+  const client = await getClient();
+  try {
     try {
       const result = await client.query(
-        'SELECT * FROM templates ORDER BY template_added DESC',
+        'SELECT template_id, template_name, template_image FROM templates ORDER BY template_added DESC',
       );
+
+      console.log('result: ');
+      console.log(result);
 
       return NextResponse.json({ templates: result.rows }, { status: 200 });
     } finally {
-      client.release();
+      await client.cleanup();
     }
   } catch (error) {
+    await client.cleanup();
     console.error('Error fetching templates:', error);
 
     return NextResponse.json(
