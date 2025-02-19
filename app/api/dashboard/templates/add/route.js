@@ -6,6 +6,8 @@ export async function POST(request) {
   const client = await getClient();
   try {
     const body = await request.json();
+    console.log('body: ');
+    console.log(body);
     const { templateName, templateImageId, templateHasWeb, templateHasMobile } =
       body;
 
@@ -39,6 +41,8 @@ export async function POST(request) {
 
     try {
       const result = await client.query(queryText, values);
+      console.log('result: ');
+      console.log(result);
       const newTemplateId = result.rows[0].template_id;
 
       return NextResponse.json(
