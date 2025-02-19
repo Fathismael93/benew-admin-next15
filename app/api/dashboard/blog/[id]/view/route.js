@@ -96,15 +96,12 @@ export async function GET(req, { params }) {
           );
         }
 
-        // 4. Sanitize the output
-        const sanitizedData = rows[0];
-
         // 5. Return successful response with proper caching headers
         return NextResponse.json(
           {
             success: true,
             message: 'Article retrieved successfully',
-            data: sanitizedData,
+            data: rows[0],
           },
           {
             status: 200,

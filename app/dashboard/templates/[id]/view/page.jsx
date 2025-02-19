@@ -2,6 +2,7 @@ import SingleTemplate from '@/ui/pages/templates/SingleTemplate';
 import React from 'react';
 
 async function getSingleTemplate(id) {
+  let template;
   try {
     const response = await fetch(
       `https://benew-admin-next15.vercel.app/api/dashboard/templates/${id}/view`,
@@ -9,7 +10,10 @@ async function getSingleTemplate(id) {
 
     if (response.ok) {
       // Remove the template from the UI without refreshing
-      window.location.reload();
+      const data = await response.json();
+      template = data;
+
+      return template;
     } else {
       console.error('Failed to get template');
     }

@@ -100,8 +100,6 @@ export async function GET(req, { params }) {
           );
         }
 
-        // 4. Sanitize the output
-        const sanitizedData = rows[0];
         if (client) await client.cleanup();
 
         // 5. Return successful response with proper caching headers
@@ -109,7 +107,7 @@ export async function GET(req, { params }) {
           {
             success: true,
             message: 'Template retrieved successfully',
-            data: sanitizedData,
+            data: rows[0],
           },
           {
             status: 200,
