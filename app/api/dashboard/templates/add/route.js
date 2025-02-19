@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getClient } from '@/utils/dbConnect';
 
 export async function POST(request) {
+  console.log('we are in the POST REQUEST of the templates api');
   const client = await getClient();
   try {
     const body = await request.json();
