@@ -11,7 +11,7 @@ async function getSingleTemplate(id) {
     if (response.ok) {
       // Remove the template from the UI without refreshing
       const data = await response.json();
-      template = data;
+      template = data.data;
 
       return template;
     } else {

@@ -90,6 +90,11 @@
   padding: 15px;
 }
 
+.informations {
+  display: flex;
+  justify-content: space-between;
+}
+
 .templateName {
   font-size: 16px;
   font-weight: 600;
@@ -98,6 +103,10 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.platforms {
+  gap: 10px;
 }
 
 .actions {

@@ -2,7 +2,14 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { MdAdd, MdVisibility, MdEdit, MdDelete } from 'react-icons/md';
+import {
+  MdAdd,
+  MdVisibility,
+  MdEdit,
+  MdDelete,
+  MdMonitor,
+  MdPhoneIphone,
+} from 'react-icons/md';
 import { CldImage } from 'next-cloudinary';
 
 import styles from '@/ui/styling/dashboard/templates/templates.module.css';
@@ -86,9 +93,15 @@ const ListTemplates = ({ templates }) => {
                   )}
                 </div>
                 <div className={styles.cardContent}>
-                  <h3 className={styles.templateName}>
-                    {template.template_name}
-                  </h3>
+                  <div className={styles.informations}>
+                    <h3 className={styles.templateName}>
+                      {template.template_name}
+                    </h3>
+                    <div className={styles.platforms}>
+                      <MdMonitor />
+                      {template.template_has_mobile && <MdPhoneIphone />}
+                    </div>
+                  </div>
                   <div className={styles.actions}>
                     <Link
                       href={`/dashboard/templates/${template.template_id}/view`}

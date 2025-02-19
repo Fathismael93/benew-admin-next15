@@ -69,14 +69,14 @@ export async function GET(req, { params }) {
         const query = {
           name: 'get-single-template',
           text: `
-            SELECT 
+            SELECT
               template_id,
               template_name,
               template_image,
               template_has_web,
               template_has_mobile,
-              TO_CHAR(template_added, 'dd/MM/yyyy') as created 
-            FROM templates 
+              TO_CHAR(template_added, 'dd/MM/yyyy') as created
+            FROM templates
             WHERE template_id = $1
           `,
           values: [id],
