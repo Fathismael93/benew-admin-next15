@@ -22,7 +22,7 @@ export async function GET() {
     return NextResponse.json(
       {
         success: true,
-        articles: rows || [], // Ensuring a default empty array if no articles are found
+        users: rows || [], // Ensuring a default empty array if no articles are found
       },
       {
         status: 200,
