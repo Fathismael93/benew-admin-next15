@@ -131,7 +131,6 @@ const AddTemplatePage = () => {
             options={{
               sources: ['local', 'url', 'camera'],
               multiple: false,
-              cropping: true,
               folder: 'templates',
               clientAllowedFormats: ['jpg', 'jpeg', 'png', 'webp'],
               maxImageFileSize: 5000000, // 5MB

@@ -29,7 +29,7 @@ const ListTemplates = ({ templates }) => {
     setIsDeleting(true);
 
     try {
-      const response = await fetch(`/api/dashboard/templates/${id}`, {
+      const response = await fetch(`/api/dashboard/templates/${id}/delete`, {
         method: 'DELETE',
       });
 
@@ -90,7 +90,9 @@ const ListTemplates = ({ templates }) => {
                     {template.template_name}
                   </h3>
                   <div className={styles.actions}>
-                    <Link href={`/dashboard/templates/${template.template_id}`}>
+                    <Link
+                      href={`/dashboard/templates/${template.template_id}/view`}
+                    >
                       <button
                         className={`${styles.actionButton} ${styles.viewButton}`}
                       >
@@ -98,7 +100,7 @@ const ListTemplates = ({ templates }) => {
                       </button>
                     </Link>
                     <Link
-                      href={`/dashboard/templates/edit/${template.template_id}`}
+                      href={`/dashboard/templates/edit/${template.template_id}/edit`}
                     >
                       <button
                         className={`${styles.actionButton} ${styles.editButton}`}
