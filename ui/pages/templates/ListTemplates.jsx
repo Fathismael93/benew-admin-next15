@@ -99,7 +99,7 @@ const ListTemplates = ({ templates }) => {
                     </h3>
                     <div className={styles.platforms}>
                       <MdMonitor />
-                      {template.template_has_mobile && <MdPhoneIphone />}
+                      {template.template_has_web && <MdPhoneIphone />}
                     </div>
                   </div>
                   <div className={styles.actions}>
