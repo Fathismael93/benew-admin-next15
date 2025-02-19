@@ -10,7 +10,6 @@ const AddTemplatePage = () => {
   const [templateName, setTemplateName] = useState('');
   const [hasWeb, setHasWeb] = useState(true);
   const [hasMobile, setHasMobile] = useState(false);
-  const [imageUrl, setImageUrl] = useState('');
   const [publicId, setPublicId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -19,7 +18,6 @@ const AddTemplatePage = () => {
 
   const handleUploadSuccess = (result) => {
     const uploadInfo = result.info;
-    setImageUrl(uploadInfo.secure_url);
     setPublicId(uploadInfo.public_id);
     setSuccess('Image uploaded successfully!');
     setTimeout(() => setSuccess(''), 3000);
@@ -40,7 +38,7 @@ const AddTemplatePage = () => {
       return;
     }
 
-    if (!imageUrl) {
+    if (!publicId) {
       setError('Please upload an image for the template');
       return;
     }
@@ -55,7 +53,6 @@ const AddTemplatePage = () => {
         },
         body: JSON.stringify({
           templateName,
-          templateImage: imageUrl,
           templateImageId: publicId,
           templateHasWeb: hasWeb,
           templateHasMobile: hasMobile,
@@ -73,7 +70,6 @@ const AddTemplatePage = () => {
       setTemplateName('');
       setHasWeb(true);
       setHasMobile(false);
-      setImageUrl('');
       setPublicId('');
 
       // Redirect to templates list after successful addition

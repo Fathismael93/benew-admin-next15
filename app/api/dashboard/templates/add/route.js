@@ -1,29 +1,18 @@
 // app/api/templates/route.js
 import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
-
-// Create PostgreSQL connection pool
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl:
-    process.env.NODE_ENV === 'production'
-      ? { rejectUnauthorized: false }
-      : false,
-});
+import { getClient } from '@/utils/dbConnect';
 
 export async function POST(request) {
+  const client = await getClient();
   try {
     const body = await request.json();
-    const {
-      templateName,
-      templateImage,
-      templateImageId,
-      templateHasWeb,
-      templateHasMobile,
-    } = body;
+    const { templateName, templateImageId, templateHasWeb, templateHasMobile } =
+      body;
 
     // Validate required fields
-    if (!templateName || !templateImage) {
+    if (!templateName || !templateImageId) {
+      await client.cleanup();
+
       return NextResponse.json(
         { message: 'Template name and image are required' },
         { status: 400 },
@@ -35,7 +24,6 @@ export async function POST(request) {
       INSERT INTO templates (
         template_name,
         template_image,
-        template_image_id,
         template_has_web,
         template_has_mobile
       ) VALUES ($1, $2, $3, $4, $5)
@@ -44,13 +32,10 @@ export async function POST(request) {
 
     const values = [
       templateName,
-      templateImage,
       templateImageId || null,
       templateHasWeb === undefined ? true : templateHasWeb,
       templateHasMobile === undefined ? false : templateHasMobile,
     ];
-
-    const client = await pool.connect();
 
     try {
       const result = await client.query(queryText, values);
@@ -64,9 +49,11 @@ export async function POST(request) {
         { status: 201 },
       );
     } finally {
-      client.release();
+      await client.cleanup();
     }
   } catch (error) {
+    await client.cleanup();
+
     console.error('Error adding template:', error);
 
     return NextResponse.json(
