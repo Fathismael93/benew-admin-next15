@@ -29,7 +29,7 @@ export async function POST(request) {
         template_image,
         template_has_web,
         template_has_mobile
-      ) VALUES ($1, $2, $3, $4, $5)
+      ) VALUES ($1, $2, $3, $4)
       RETURNING template_id
     `;
 
