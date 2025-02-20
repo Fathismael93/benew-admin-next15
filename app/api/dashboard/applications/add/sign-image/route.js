@@ -1,7 +1,7 @@
 import { v2 as cloudinary } from 'cloudinary';
 import { NextResponse } from 'next/server';
 
-export default async function POST(req) {
+export async function POST(req) {
   const body = await req.json();
   const { paramsToSign } = body;
 
@@ -11,8 +11,14 @@ export default async function POST(req) {
     api_secret: process.env.CLOUDINARY_API_SECRET,
   });
 
+  // Ensure the folder is set to "applications"
+  const signedParams = {
+    ...paramsToSign,
+    folder: 'applications',
+  };
+
   const signature = cloudinary.utils.api_sign_request(
-    paramsToSign,
+    signedParams,
     process.env.CLOUDINARY_API_SECRET,
   );
 

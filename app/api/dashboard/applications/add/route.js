@@ -1,11 +1,20 @@
 import { NextResponse } from 'next/server';
-import client from '../../../../../utils/dbConnect';
+import { getClient } from '@/utils/dbConnect';
 
 export async function POST(req) {
+  let client;
   try {
     const formData = await req.json();
-
-    const { name, link, description, category, fee, rent, imageUrl } = formData;
+    const {
+      name,
+      link,
+      description,
+      category,
+      fee,
+      rent,
+      imageUrl,
+      templateId,
+    } = formData;
 
     if (!name || name.length < 3) {
       return NextResponse.json({
@@ -21,14 +30,7 @@ export async function POST(req) {
       });
     }
 
-    if (!description || description.length < 6) {
-      return NextResponse.json({
-        success: false,
-        message: 'Description is missing',
-      });
-    }
-
-    if (!category || category.length < 6) {
+    if (!category) {
       return NextResponse.json({
         success: false,
         message: 'Category is missing',
@@ -49,36 +51,50 @@ export async function POST(req) {
       });
     }
 
-    if (!imageUrl || imageUrl.length < 1) {
+    if (!imageUrl) {
       return NextResponse.json({
         success: false,
         message: 'Image is missing',
       });
     }
 
-    const addPresentation = await client.query(
-      'INSERT INTO products ' +
-        '(product_name, product_link, product_description, product_category, product_fee, product_rent, product_images) ' +
-        'VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [name, link, description, category, fee, rent, imageUrl],
-    );
-
-    if (addPresentation.rows[0]) {
-      console.log(addPresentation.rows[0]);
+    if (!templateId) {
       return NextResponse.json({
-        success: true,
-        message: 'Data saved successfully',
-        data: addPresentation.rows[0],
+        success: false,
+        message: 'Template ID is missing',
       });
     }
+
+    client = await getClient();
+
+    const addApplication = await client.query(
+      'INSERT INTO applications ' +
+        '(application_name, application_link, application_description, application_category, application_fee, application_rent, application_image, application_template_id) ' +
+        'VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+      [name, link, description, category, fee, rent, imageUrl, templateId],
+    );
+
+    if (addApplication.rows[0]) {
+      await client.cleanup();
+      return NextResponse.json({
+        success: true,
+        message: 'Application added successfully',
+        data: addApplication.rows[0],
+      });
+    }
+
+    await client.cleanup();
     return NextResponse.json({
       success: false,
-      message: 'Something goes wrong !Please try again',
+      message: 'Failed to add application. Please try again.',
     });
   } catch (e) {
+    console.error('Error adding application:', e);
+    if (client) await client.cleanup();
+
     return NextResponse.json({
       success: false,
-      message: 'Something goes wrong !Please try again',
+      message: 'Something went wrong! Please try again',
     });
   }
 }
