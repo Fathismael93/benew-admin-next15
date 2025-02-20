@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import client from '@/utils/dbConnect';
+import { getClient } from '@/utils/dbConnect';
 import cloudinary from '@/utils/cloudinary';
 
 export const dynamic = 'force-dynamic';
@@ -22,6 +22,7 @@ export async function DELETE(req, { params }) {
   const imageID = body.imageID;
 
   try {
+    const client = await getClient();
     const result = await client.query(
       'DELETE FROM articles WHERE article_id=$1',
       [id],
@@ -50,11 +51,16 @@ export async function DELETE(req, { params }) {
         message: 'Article and associated image deleted successfully',
       });
     }
+
+    if (client) await client.cleanup();
+
     return NextResponse.json({
       success: false,
       message: 'Something goes wrong !Please try again',
     });
   } catch (e) {
+    if (client) await client.cleanup();
+
     return NextResponse.json({
       success: false,
       message: 'Something goes wrong !Please try again',
