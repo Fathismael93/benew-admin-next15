@@ -184,7 +184,6 @@ function AddApplication({ templates }) {
           </div>
         </div>
         <CldUploadWidget
-          uploadPreset="applications"
           signatureEndpoint="/api/dashboard/applications/add/sign-image"
           onSuccess={(result) => {
             setImageUrl(result?.info?.public_id);
