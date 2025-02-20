@@ -8,6 +8,9 @@ export async function DELETE(req, { params }) {
   console.log('WE are in the DELETE REQUEST OF SINGLE ARTICLE API');
   const { id } = await params;
 
+  console.log('ID of the article that is being deleted !');
+  console.log(id);
+
   if (!Number.isInteger(parseInt(id, 10))) {
     return NextResponse.json({
       success: false,
@@ -23,6 +26,9 @@ export async function DELETE(req, { params }) {
       'DELETE FROM articles WHERE article_id=$1',
       [id],
     );
+
+    console.log('Result after deleting article from db');
+    console.log(result);
 
     if (result.rowCount > 0) {
       console.log('Article deleted successfully!');
