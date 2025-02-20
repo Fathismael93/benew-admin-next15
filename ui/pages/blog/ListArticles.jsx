@@ -18,11 +18,15 @@ const ListArticles = ({ articles }) => {
   const router = useRouter();
 
   // eslint-disable-next-line camelcase
-  const deleteArticle = async (article_id) => {
+  const deleteArticle = async (articleID, articleImage) => {
     await axios
       // eslint-disable-next-line camelcase
       .delete(
-        `https://benew-admin-next15.vercel.app/api/dashboard/blog/${article_id}/delete`,
+        `https://benew-admin-next15.vercel.app/api/dashboard/blog/${articleID}/delete`,
+        JSON.stringify({ imageID: articleImage }),
+        {
+          headers: { 'Content-Type': 'application/json' },
+        },
       )
       .then((response) => setIsSuccess(response.data.success))
       .catch((error) => console.error(error));
@@ -53,7 +57,9 @@ const ListArticles = ({ articles }) => {
                   title={post.article_title}
                   picture={post.article_image}
                   created={post.created}
-                  deleteArticle={() => deleteArticle()}
+                  deleteArticle={() =>
+                    deleteArticle(post.article_id, post.article_image)
+                  }
                 />
               );
             })}
