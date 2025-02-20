@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getClient } from '@/utils/dbConnect';
-import cloudinary from '@/utils/cloudinaryConfig';
+import cloudinary from '@/utils/cloudinary';
 
 export const dynamic = 'force-dynamic';
 
