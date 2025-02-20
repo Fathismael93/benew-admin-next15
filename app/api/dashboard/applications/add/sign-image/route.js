@@ -2,6 +2,7 @@ import { v2 as cloudinary } from 'cloudinary';
 import { NextResponse } from 'next/server';
 
 export async function POST(req) {
+  console.log('POST REQUEST OF ADDING IMAGE APPLICATIONS');
   try {
     const body = await req.json();
     const { paramsToSign } = body;

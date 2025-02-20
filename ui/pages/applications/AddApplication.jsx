@@ -188,6 +188,9 @@ function AddApplication({ templates }) {
           onSuccess={(result) => {
             setImageUrl(result?.info?.public_id);
           }}
+          options={{
+            folder: 'applications', // Specify the folder here
+          }}
         >
           {({ open }) => {
             function handleOnClick(e) {
