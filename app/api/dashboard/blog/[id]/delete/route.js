@@ -4,6 +4,7 @@ import client from '@/utils/dbConnect';
 export const dynamic = 'force-dynamic';
 
 export async function DELETE(req, { params }) {
+  console.log('WE are in the DELETE REQUEST OF SINGLE ARTICLE API');
   const { id } = await params;
 
   if (!Number.isInteger(parseInt(id, 10))) {
