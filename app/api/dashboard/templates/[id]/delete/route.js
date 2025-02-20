@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getClient } from '@/utils/dbConnect';
+import cloudinary from '@/utils/cloudinaryConfig';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,41 +16,51 @@ export async function DELETE(req, { params }) {
   }
 
   const body = await req.json();
+  const imageID = body.imageID;
 
-  console.log('body: ');
-  console.log(body);
+  let client;
 
-  // let client;
+  try {
+    client = await getClient();
+    const result = await client.query(
+      'DELETE FROM templates WHERE template_id=$1',
+      [id],
+    );
 
-  // try {
-  //   client = await getClient();
-  //   const result = await client.query(
-  //     'DELETE FROM templates WHERE template_id=$1',
-  //     [id],
-  //   );
+    if (result.rowCount > 0) {
+      console.log('Template deleted successfully!');
 
-  //   if (result) {
-  //     console.log('Template deleted successfully !');
-  //     if (client) await client.cleanup();
+      // Delete image from Cloudinary
+      if (imageID) {
+        try {
+          await cloudinary.uploader.destroy(imageID);
+          console.log('Image deleted from Cloudinary successfully');
+        } catch (cloudError) {
+          console.error('Error deleting image from Cloudinary:', cloudError);
+        }
+      }
 
-  //     return NextResponse.json({
-  //       success: true,
-  //       message: 'Template deleted successfully',
-  //     });
-  //   }
+      if (client) await client.cleanup();
 
-  //   if (client) await client.cleanup();
+      return NextResponse.json({
+        success: true,
+        message: 'Template and associated image deleted successfully',
+      });
+    }
 
-  //   return NextResponse.json({
-  //     success: false,
-  //     message: 'Something goes wrong !Please try again',
-  //   });
-  // } catch (e) {
-  //   if (client) await client.cleanup();
+    if (client) await client.cleanup();
 
-  //   return NextResponse.json({
-  //     success: false,
-  //     message: 'Something goes wrong !Please try again',
-  //   });
-  // }
+    return NextResponse.json({
+      success: false,
+      message: 'Something went wrong! Please try again',
+    });
+  } catch (e) {
+    console.error('Error deleting template:', e);
+    if (client) await client.cleanup();
+
+    return NextResponse.json({
+      success: false,
+      message: 'Something went wrong! Please try again',
+    });
+  }
 }
