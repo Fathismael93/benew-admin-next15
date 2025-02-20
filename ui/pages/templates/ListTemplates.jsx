@@ -31,13 +31,17 @@ const ListTemplates = ({ templates }) => {
     template.template_name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
-  const handleDeleteClick = async (id) => {
+  const handleDeleteClick = async (id, imagePublicId) => {
     setDeleteId(id);
     setIsDeleting(true);
 
     try {
       const response = await fetch(`/api/dashboard/templates/${id}/delete`, {
         method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ imageID: imagePublicId }),
       });
 
       if (response.ok) {
@@ -112,7 +116,12 @@ const ListTemplates = ({ templates }) => {
                     </Link>
                     <button
                       className={`${styles.actionButton} ${styles.deleteButton}`}
-                      onClick={() => handleDeleteClick(template.template_id)}
+                      onClick={() =>
+                        handleDeleteClick(
+                          template.template_id,
+                          template.template_image,
+                        )
+                      }
                       disabled={isDeleting && deleteId === template.template_id}
                     >
                       <MdDelete />

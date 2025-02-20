@@ -14,37 +14,42 @@ export async function DELETE(req, { params }) {
     });
   }
 
-  let client;
+  const body = await req.json();
 
-  try {
-    client = await getClient();
-    const result = await client.query(
-      'DELETE FROM templates WHERE template_id=$1',
-      [id],
-    );
+  console.log('body: ');
+  console.log(body);
 
-    if (result) {
-      console.log('Template deleted successfully !');
-      if (client) await client.cleanup();
+  // let client;
 
-      return NextResponse.json({
-        success: true,
-        message: 'Template deleted successfully',
-      });
-    }
+  // try {
+  //   client = await getClient();
+  //   const result = await client.query(
+  //     'DELETE FROM templates WHERE template_id=$1',
+  //     [id],
+  //   );
 
-    if (client) await client.cleanup();
+  //   if (result) {
+  //     console.log('Template deleted successfully !');
+  //     if (client) await client.cleanup();
 
-    return NextResponse.json({
-      success: false,
-      message: 'Something goes wrong !Please try again',
-    });
-  } catch (e) {
-    if (client) await client.cleanup();
-    
-    return NextResponse.json({
-      success: false,
-      message: 'Something goes wrong !Please try again',
-    });
-  }
+  //     return NextResponse.json({
+  //       success: true,
+  //       message: 'Template deleted successfully',
+  //     });
+  //   }
+
+  //   if (client) await client.cleanup();
+
+  //   return NextResponse.json({
+  //     success: false,
+  //     message: 'Something goes wrong !Please try again',
+  //   });
+  // } catch (e) {
+  //   if (client) await client.cleanup();
+
+  //   return NextResponse.json({
+  //     success: false,
+  //     message: 'Something goes wrong !Please try again',
+  //   });
+  // }
 }
