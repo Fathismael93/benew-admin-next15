@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-import axios from 'axios';
 import { MdAdd } from 'react-icons/md';
 
 import styles from '@/ui/styling/dashboard/blog/blog.module.css';
@@ -12,29 +11,32 @@ import Search from '@/ui/components/dashboard/search';
 import PostCard from '@/ui/components/dashboard/PostCard';
 
 const ListArticles = ({ articles }) => {
-  const [isSuccess, setIsSuccess] = useState(false);
   // eslint-disable-next-line no-unused-vars
   const [errorMessage, setErrorMessage] = useState('');
   const router = useRouter();
 
   // eslint-disable-next-line camelcase
   const deleteArticle = async (articleID, articleImage) => {
-    await axios
-      // eslint-disable-next-line camelcase
-      .delete(
-        `https://benew-admin-next15.vercel.app/api/dashboard/blog/${articleID}/delete`,
-        JSON.stringify({ imageID: articleImage }),
-        {
-          headers: { 'Content-Type': 'application/json' },
+    try {
+      const response = await fetch(`/api/dashboard/blog/${articleID}/delete`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      )
-      .then((response) => setIsSuccess(response.data.success))
-      .catch((error) => console.error(error));
-  };
+        body: JSON.stringify({ imageID: articleImage }),
+      });
 
-  if (isSuccess) {
-    router.push('/dashboard/blog/');
-  }
+      if (response.ok) {
+        // Remove the template from the UI without refreshing
+        setIsSuccess(true);
+        window.location.reload();
+      } else {
+        console.error('Failed to delete template');
+      }
+    } catch (error) {
+      console.error('Error deleting template:', error);
+    }
+  };
 
   return (
     <div className={styles.container}>

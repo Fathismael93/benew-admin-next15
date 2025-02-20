@@ -14,7 +14,7 @@ export async function DELETE(req, { params }) {
     });
   }
 
-  const body = req.body;
+  const body = await req.json();
 
   console.log('body: ');
   console.log(body);
