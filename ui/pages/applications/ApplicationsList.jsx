@@ -6,7 +6,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { CldImage } from 'next-cloudinary';
 import axios from 'axios';
-import styles from '@/ui/styling/dashboard/applications/list/applicationsList.module.css';
+import styles from '@/ui/styling/dashboard/applications/applicationsList.module.css';
 
 function ApplicationsList({ applications }) {
   const router = useRouter();
