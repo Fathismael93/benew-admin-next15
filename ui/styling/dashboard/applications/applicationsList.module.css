@@ -40,7 +40,6 @@
 
 .applicationCard {
   background-color: var(--bg);
-  padding: 1rem;
   border-radius: 10px;
   display: flex;
   flex-direction: column;
@@ -68,6 +67,7 @@
 
 .applicationDetails {
   display: flex;
+  padding: 1rem;
   flex-direction: column;
   gap: 0.5rem;
 }
