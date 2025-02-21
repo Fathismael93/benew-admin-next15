@@ -1,105 +1,150 @@
-.container {
+/* ui/styling/dashboard/applications/applicationsList.module.css */
+
+.applicationsContainer {
   background-color: var(--bgSoft);
   padding: 20px;
   border-radius: 7px;
   margin-top: 20px;
   width: 85%;
 }
-  
-  .top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin: 20px 0;
-  }
-  
-  .addButton {
-    padding: 10px;
-    background-color: #5d57c9;
-    color: var(--text);
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 1rem;
-  }
 
-  .applicationsContainer h1 {
-    margin-bottom: 2rem;
-    text-align: center;
-  }
-  
-  .applicationsGrid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.5rem;
-  }
-  
-  .applicationCard {
-    background-color: var(--bg);
-    padding: 1rem;
-    border-radius: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-  
-  .applicationImage {
-    width: 100%;
-    height: 200px;
-    overflow: hidden;
-    border-radius: 10px;
-  }
-  
-  .applicationImage .image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  
-  .applicationDetails {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  
-  .applicationDetails h2 {
-    font-size: 1.2rem;
-    color: var(--text);
-  }
-  
-  .applicationDetails p {
-    font-size: 0.9rem;
-    color: var(--textSoft);
-  }
-  
-  .applicationDetails a {
-    color: #5d57c9;
-    text-decoration: none;
-    font-size: 0.9rem;
-  }
-  
-  .applicationDetails a:hover {
-    text-decoration: underline;
-  }
-  
-  .applicationActions {
-    display: flex;
-    justify-content: space-between;
-    gap: 0.5rem;
-  }
-  
-  .actionButton {
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    background-color: var(--bgSoft);
-    color: var(--text);
-    transition: background-color 0.3s ease;
-  }
-  
-  .actionButton:hover {
-    background-color: #5d57c9;
-    color: white;
-  }
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 20px 0;
+}
+
+.addButton {
+  padding: 10px;
+  background-color: #5d57c9;
+  color: var(--text);
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.addButton:hover {
+  background-color: #6b66d6;
+}
+
+.applicationsContainer h1 {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.applicationsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.applicationCard {
+  background-color: var(--bg);
+  padding: 1rem;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.applicationCard:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.applicationImage {
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.applicationImage .image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.applicationDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.applicationDetails h2 {
+  font-size: 1.2rem;
+  color: var(--text);
+}
+
+.applicationDetails p {
+  font-size: 0.9rem;
+  color: var(--textSoft);
+}
+
+.applicationDetails a {
+  color: #5d57c9;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.applicationDetails a:hover {
+  text-decoration: underline;
+}
+
+.applicationActions {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.actionLink {
+  padding: 0.5rem 1rem;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-align: center;
+  text-decoration: none;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.viewLink {
+  background-color: #4caf50; /* Green for View */
+  color: white;
+}
+
+.viewLink:hover {
+  background-color: #45a049;
+}
+
+.editLink {
+  background-color: #ffa500; /* Orange for Edit */
+  color: white;
+}
+
+.editLink:hover {
+  background-color: #e69500;
+}
+
+.actionButton {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.deleteButton {
+  background-color: #f44336; /* Red for Delete */
+  color: white;
+}
+
+.deleteButton:hover {
+  background-color: #e53935;
+}

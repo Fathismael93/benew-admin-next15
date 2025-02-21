@@ -1,5 +1,3 @@
-// ui/pages/applications/ApplicationsList.js (Client Component)
-
 'use client';
 
 import React from 'react';
@@ -16,14 +14,6 @@ function ApplicationsList({ applications }) {
 
   console.log(applications);
 
-  const handleView = (id) => {
-    router.push(`/dashboard/applications/${id}`);
-  };
-
-  const handleEdit = (id) => {
-    router.push(`/dashboard/applications/edit/${id}`);
-  };
-
   const handleDelete = async (id) => {
     if (confirm('Are you sure you want to delete this application?')) {
       const response = await axios.delete(
@@ -39,10 +29,10 @@ function ApplicationsList({ applications }) {
   return (
     <div className={styles.applicationsContainer}>
       <div className={styles.top}>
-        <Search placeholder="Search for a article..." />
-        <Link href="/dashboard/blog/add">
+        <Search placeholder="Search for an application..." />
+        <Link href="/dashboard/applications/add">
           <button className={styles.addButton} type="button">
-            <MdAdd /> Article
+            <MdAdd /> Add Application
           </button>
         </Link>
       </div>
@@ -73,20 +63,20 @@ function ApplicationsList({ applications }) {
                 </a>
               </div>
               <div className={styles.applicationActions}>
-                <button
-                  className={styles.actionButton}
-                  onClick={() => handleView(app.application_id)}
+                <Link
+                  href={`/dashboard/applications/${app.application_id}`}
+                  className={`${styles.actionLink} ${styles.viewLink}`}
                 >
                   View
-                </button>
-                <button
-                  className={styles.actionButton}
-                  onClick={() => handleEdit(app.application_id)}
+                </Link>
+                <Link
+                  href={`/dashboard/applications/edit/${app.application_id}`}
+                  className={`${styles.actionLink} ${styles.editLink}`}
                 >
                   Edit
-                </button>
+                </Link>
                 <button
-                  className={styles.actionButton}
+                  className={`${styles.actionButton} ${styles.deleteButton}`}
                   onClick={() => handleDelete(app.application_id)}
                 >
                   Delete
