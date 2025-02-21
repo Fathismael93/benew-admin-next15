@@ -35,6 +35,14 @@ function ApplicationsList({ applications }) {
 
   return (
     <div className={styles.applicationsContainer}>
+      <div className={styles.top}>
+        <Search placeholder="Search for a article..." />
+        <Link href="/dashboard/blog/add">
+          <button className={styles.addButton} type="button">
+            <MdAdd /> Article
+          </button>
+        </Link>
+      </div>
       <h1>Applications List</h1>
       <div className={styles.applicationsGrid}>
         {applications !== undefined &&
