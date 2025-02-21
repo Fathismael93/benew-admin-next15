@@ -94,6 +94,7 @@
 
 .applicationActions {
   display: flex;
+  padding: 1rem;
   justify-content: space-between;
   gap: 0.5rem;
 }
