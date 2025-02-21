@@ -79,7 +79,7 @@ export async function POST(req) {
       await client.cleanup();
       return NextResponse.json({
         success: true,
-        message: 'Application added successfully',
+        message: 'Application added successfully !',
         data: addApplication.rows[0],
       });
     }
