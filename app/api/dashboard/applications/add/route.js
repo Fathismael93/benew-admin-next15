@@ -12,7 +12,7 @@ export async function POST(req) {
       category,
       fee,
       rent,
-      imageUrl,
+      imageUrls, // Changed to array
       templateId,
     } = formData;
 
@@ -51,10 +51,11 @@ export async function POST(req) {
       });
     }
 
-    if (!imageUrl) {
+    if (!imageUrls || imageUrls.length === 0) {
+      // Check if at least one image is uploaded
       return NextResponse.json({
         success: false,
-        message: 'Image is missing',
+        message: 'At least one image is required',
       });
     }
 
@@ -69,9 +70,9 @@ export async function POST(req) {
 
     const addApplication = await client.query(
       'INSERT INTO applications ' +
-        '(application_name, application_link, application_description, application_category, application_fee, application_rent, application_image, application_template_id) ' +
+        '(application_name, application_link, application_description, application_category, application_fee, application_rent, application_images, application_template_id) ' +
         'VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-      [name, link, description, category, fee, rent, imageUrl, templateId],
+      [name, link, description, category, fee, rent, imageUrls, templateId], // Changed to array
     );
 
     if (addApplication.rows[0]) {

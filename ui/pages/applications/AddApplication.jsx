@@ -13,7 +13,7 @@ function AddApplication({ templates }) {
   const [fee, setFee] = useState(0);
   const [rent, setRent] = useState(0);
   const [category, setCategory] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
+  const [imageUrls, setImageUrls] = useState([]); // Changed to array
   const [templateId, setTemplateId] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const router = useRouter();
@@ -46,8 +46,9 @@ function AddApplication({ templates }) {
       return;
     }
 
-    if (!imageUrl) {
-      setErrorMessage('Image is missing');
+    if (imageUrls.length === 0) {
+      // Check if at least one image is uploaded
+      setErrorMessage('At least one image is required');
       return;
     }
 
@@ -65,8 +66,8 @@ function AddApplication({ templates }) {
         category,
         fee,
         rent,
-        imageUrl,
-        templateId: parseInt(templateId, 10), // Ensure templateId is sent as integer
+        imageUrls, // Changed to array
+        templateId: parseInt(templateId, 10),
       }),
       {
         headers: { 'Content-Type': 'application/json' },
@@ -78,7 +79,6 @@ function AddApplication({ templates }) {
     }
   };
 
-  // Get the selected template details
   const selectedTemplate = templates.find(
     (t) => t.template_id.toString() === templateId,
   );
@@ -186,10 +186,11 @@ function AddApplication({ templates }) {
         <CldUploadWidget
           signatureEndpoint="/api/dashboard/applications/add/sign-image"
           onSuccess={(result) => {
-            setImageUrl(result?.info?.public_id);
+            setImageUrls((prev) => [...prev, result?.info?.public_id]); // Add new image URL to array
           }}
           options={{
-            folder: 'applications', // Specify the folder here
+            folder: 'applications',
+            multiple: true, // Allow multiple uploads
           }}
         >
           {({ open }) => {
@@ -208,17 +209,19 @@ function AddApplication({ templates }) {
             );
           }}
         </CldUploadWidget>
-        {imageUrl && (
+        {imageUrls.length > 0 && (
           <div className={styles.images}>
-            <div className={styles.postDetailImage}>
-              <CldImage
-                width="350"
-                height="300"
-                src={imageUrl}
-                sizes="100vw"
-                alt="Application illustration"
-              />
-            </div>
+            {imageUrls.map((url, index) => (
+              <div key={index} className={styles.postDetailImage}>
+                <CldImage
+                  width="350"
+                  height="300"
+                  src={url}
+                  sizes="100vw"
+                  alt={`Application illustration ${index + 1}`}
+                />
+              </div>
+            ))}
           </div>
         )}
         <button type="submit" className={styles.addButton}>
