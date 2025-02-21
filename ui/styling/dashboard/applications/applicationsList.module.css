@@ -32,11 +32,6 @@
   background-color: #6b66d6;
 }
 
-.applicationsContainer h1 {
-  margin-bottom: 2rem;
-  text-align: center;
-}
-
 .applicationsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));

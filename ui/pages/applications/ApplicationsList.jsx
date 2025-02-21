@@ -36,7 +36,6 @@ function ApplicationsList({ applications }) {
           </button>
         </Link>
       </div>
-      <h1>Applications List</h1>
       <div className={styles.applicationsGrid}>
         {applications !== undefined &&
           applications.map((app) => (
