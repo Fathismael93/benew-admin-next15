@@ -7,6 +7,9 @@ import { useRouter } from 'next/navigation';
 import { CldImage } from 'next-cloudinary';
 import axios from 'axios';
 import styles from '@/ui/styling/dashboard/applications/applicationsList.module.css';
+import Search from '@/ui/components/dashboard/search';
+import Link from 'next/link';
+import { MdAdd } from 'react-icons/md';
 
 function ApplicationsList({ applications }) {
   const router = useRouter();
