@@ -17,7 +17,7 @@ function ApplicationsList({ applications }) {
   const handleDelete = async (id, application_images) => {
     if (confirm('Are you sure you want to delete this application?')) {
       const response = await axios.delete(
-        '/api/dashboard/applications/delete',
+        `/api/dashboard/applications/${id}/delete`,
         {
           data: { id, application_images }, // Send id and application_images in the body
         },
