@@ -2,24 +2,48 @@
 
 import { NextResponse } from 'next/server';
 import { getClient } from '@/utils/dbConnect';
+import cloudinary from '@/utils/cloudinary';
 
-export async function DELETE(req, { params }) {
-  const { id } = await params;
-
+export async function DELETE(req) {
   let client;
   try {
+    const { id, application_images } = await req.json(); // Get id and application_images from the body
+
+    if (!id) {
+      return NextResponse.json({
+        success: false,
+        message: 'Application ID is missing',
+      });
+    }
+
     client = await getClient();
 
-    const result = await client.query(
+    // Delete images from Cloudinary
+    if (application_images && application_images.length > 0) {
+      for (const publicId of application_images) {
+        try {
+          await cloudinary.uploader.destroy(publicId);
+          console.log(`Deleted image from Cloudinary: ${publicId}`);
+        } catch (error) {
+          console.error(
+            `Error deleting image from Cloudinary: ${publicId}`,
+            error,
+          );
+        }
+      }
+    }
+
+    // Delete the application from the database
+    const deleteResult = await client.query(
       'DELETE FROM applications WHERE application_id = $1 RETURNING *',
       [id],
     );
 
-    if (result.rows[0]) {
+    if (deleteResult.rows[0]) {
       await client.cleanup();
       return NextResponse.json({
         success: true,
-        message: 'Application deleted successfully',
+        message: 'Application and associated images deleted successfully',
       });
     }
 

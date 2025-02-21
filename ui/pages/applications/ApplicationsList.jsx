@@ -14,10 +14,13 @@ function ApplicationsList({ applications }) {
 
   console.log(applications);
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id, application_images) => {
     if (confirm('Are you sure you want to delete this application?')) {
       const response = await axios.delete(
-        `/api/dashboard/applications/delete?id=${id}`,
+        '/api/dashboard/applications/delete',
+        {
+          data: { id, application_images }, // Send id and application_images in the body
+        },
       );
 
       if (response.data.success) {
@@ -76,7 +79,9 @@ function ApplicationsList({ applications }) {
                 </Link>
                 <button
                   className={`${styles.actionButton} ${styles.deleteButton}`}
-                  onClick={() => handleDelete(app.application_id)}
+                  onClick={() =>
+                    handleDelete(app.application_id, app.application_images)
+                  }
                 >
                   Delete
                 </button>
