@@ -11,6 +11,8 @@ import styles from '@/ui/styling/dashboard/applications/applicationsList.module.
 function ApplicationsList({ applications }) {
   const router = useRouter();
 
+  console.log(applications);
+
   const handleView = (id) => {
     router.push(`/dashboard/applications/${id}`);
   };
