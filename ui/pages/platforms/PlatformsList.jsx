@@ -2,6 +2,9 @@
 
 import React from 'react';
 import styles from '@/ui/styling/dashboard/platforms/platforms.module.css';
+import Search from '@/ui/components/dashboard/search';
+import Link from 'next/link';
+import { MdAdd } from 'react-icons/md';
 
 const PlatformsList = () => {
   return (
