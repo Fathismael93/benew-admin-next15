@@ -1,7 +1,8 @@
 import React from 'react';
+import PlatformsList from '@/ui/pages/platforms/PlatformsList';
 
 const page = () => {
-  return <div>page</div>;
+  return <PlatformsList />;
 };
 
 export default page;
