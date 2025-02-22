@@ -42,7 +42,7 @@ const SingleArticle = ({ data }) => {
               {data && <span>{`Publié le ${data.created}`}</span>}
             </p>
             <div className={styles.postDetailButtons}>
-              <Link href={`blog/${data.article_id}/edit`}>
+              <Link href="/edit">
                 <button
                   type="button"
                   className={`${styles.addButton} ${styles.edit}`}
