@@ -6,6 +6,7 @@ import {
   MdShoppingBag,
   MdAttachMoney,
   MdLogout,
+  MdCreditCard,
 } from 'react-icons/md';
 import Image from 'next/image';
 import MenuLink from './menuLink';
@@ -20,6 +21,11 @@ const menuItems = [
         title: 'Dashboard',
         path: '/dashboard',
         icon: <MdDashboard />,
+      },
+      {
+        title: 'Platforms',
+        path: '/dashboard/platforms',
+        icon: <MdCreditCard />,
       },
       {
         title: 'Templates',
