@@ -71,7 +71,7 @@ export async function PUT(req, { params }) {
         'application_fee = $5, ' +
         'application_rent = $6, ' +
         'application_images = $7, ' +
-        'application_other_version = $8 ' +
+        'application_other_versions = $8 ' +
         'WHERE application_id = $9 RETURNING *',
       [
         name,
