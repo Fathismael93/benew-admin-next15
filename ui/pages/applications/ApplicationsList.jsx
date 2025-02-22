@@ -72,7 +72,7 @@ function ApplicationsList({ applications }) {
                   View
                 </Link>
                 <Link
-                  href={`/dashboard/applications/edit/${app.application_id}`}
+                  href={`/dashboard/applications/${app.application_id}/edit`}
                   className={`${styles.actionLink} ${styles.editLink}`}
                 >
                   Edit

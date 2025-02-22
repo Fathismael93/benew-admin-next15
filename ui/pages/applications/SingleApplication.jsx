@@ -94,7 +94,7 @@ function SingleApplication({ application }) {
       </div>
       <div className={styles.applicationActions}>
         <Link
-          href={`/dashboard/applications/edit/${application.application_id}`}
+          href={`/dashboard/applications/${application.application_id}/edit`}
           className={`${styles.actionLink} ${styles.editLink}`}
         >
           Edit
