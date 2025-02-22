@@ -127,6 +127,7 @@ function EditApplication({ application }) {
         </div>
         <textarea
           name="description"
+          className={styles.description}
           placeholder="Application Description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
