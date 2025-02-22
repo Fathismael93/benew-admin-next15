@@ -24,6 +24,7 @@ export async function DELETE(req) {
     );
 
     if (deleteResult.rows[0]) {
+      console.log('platform deleted');
       await client.cleanup();
       return NextResponse.json({
         success: true,
