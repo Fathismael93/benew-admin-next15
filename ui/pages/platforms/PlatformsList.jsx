@@ -7,8 +7,24 @@ import styles from '@/ui/styling/dashboard/platforms/platforms.module.css';
 import Search from '@/ui/components/dashboard/search';
 import Link from 'next/link';
 import { MdAdd } from 'react-icons/md';
+import { useRouter } from 'next/navigation';
+import axios from 'axios';
 
 const PlatformsList = ({ platforms }) => {
+  const router = useRouter();
+
+  const handleDelete = async (id) => {
+    if (confirm('Are you sure you want to delete this platform?')) {
+      const response = await axios.delete(
+        `/api/dashboard/platforms/delete?id=${id}`,
+      );
+
+      if (response.data.success) {
+        router.refresh(); // Refresh the page to reflect changes
+      }
+    }
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.top}>
@@ -28,12 +44,6 @@ const PlatformsList = ({ platforms }) => {
                 <p>{platform.platform_number}</p>
               </div>
               <div className={styles.platformActions}>
-                <Link
-                  href={`/dashboard/platforms/edit/${platform.platform_id}`}
-                  className={`${styles.actionLink} ${styles.editLink}`}
-                >
-                  Edit
-                </Link>
                 <button
                   className={`${styles.actionButton} ${styles.deleteButton}`}
                   onClick={() => handleDelete(platform.platform_id)}
