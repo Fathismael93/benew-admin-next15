@@ -4,12 +4,16 @@ import { NextResponse } from 'next/server';
 import { getClient } from '@/utils/dbConnect';
 
 export async function GET() {
+  console.log('We are in the GET REQUEST API of platforms');
   let client;
   try {
     client = await getClient();
 
     const result = await client.query('SELECT * FROM platforms');
     const platforms = result.rows;
+
+    console.log('PLATFORMS');
+    console.log(platforms);
 
     await client.cleanup();
     return NextResponse.json({ platforms });
