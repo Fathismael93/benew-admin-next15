@@ -42,7 +42,9 @@ const SingleArticle = ({ data }) => {
               {data && <span>{`Publié le ${data.created}`}</span>}
             </p>
             <div className={styles.postDetailButtons}>
-              <Link href="/edit">
+              <Link
+                href={`https://benew-admin-next15.vercel.app/dashboard/blog/${data.article_id}/edit`}
+              >
                 <button
                   type="button"
                   className={`${styles.addButton} ${styles.edit}`}
