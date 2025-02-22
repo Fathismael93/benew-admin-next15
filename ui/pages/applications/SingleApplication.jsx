@@ -76,11 +76,11 @@ function SingleApplication({ application }) {
           <p>
             <strong>Rent:</strong> {application.application_rent}
           </p>
-          {application.application_other_version && (
+          {application.application_other_versions && (
             <p>
               <strong>Other Versions:</strong>
               <ul>
-                {application.application_other_version.map((url, index) => (
+                {application.application_other_versions.map((url, index) => (
                   <li key={index}>
                     <a href={url} target="_blank" rel="noopener noreferrer">
                       {url}

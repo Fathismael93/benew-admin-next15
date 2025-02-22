@@ -1,0 +1,65 @@
+.editPostContainer {
+  background-color: var(--bgSoft);
+  padding: 20px;
+  border-radius: 7px;
+  margin-top: 20px;
+  width: 85%;
+}
+
+.editPostTitle h2 {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.editPostForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.errorMessage {
+  background-color: #f7737375;
+  color: var(--text);
+  font-size: 0.8rem;
+  padding: 0.8rem 1.1rem;
+  display: block;
+  margin-bottom: 1.1rem;
+  border-radius: 7px;
+}
+
+.editPostForm input,
+.editPostForm select {
+  width: 100%;
+  padding: 0.7rem 1.1rem;
+  resize: none;
+  border-radius: 10px;
+}
+
+.changeImage {
+  cursor: pointer;
+  margin-top: 10px;
+  background: none;
+  color: var(--text);
+  max-width: fit-content;
+  padding: 10px;
+  font-size: 1rem;
+  border-radius: 5px;
+}
+
+.postDetailImage {
+  margin: 1rem 0;
+  height: fit-content;
+  max-height: 26rem;
+  overflow: hidden;
+  border: none;
+}
+
+.updateButton {
+  padding: 10px;
+  background-color: #5d57c9;
+  color: var(--text);
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1rem;
+}
