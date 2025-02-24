@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { MdAdd } from 'react-icons/md';
 
 function ApplicationsList({ data }) {
+  console.log("What's the problem !");
   const [applications, setApplications] = useState(data);
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
