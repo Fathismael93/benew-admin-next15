@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CldImage, CldUploadWidget } from 'next-cloudinary';
 import axios from 'axios';
@@ -24,6 +24,17 @@ function EditApplication({ application }) {
     application.application_other_versions?.join(', ') || '',
   );
   const [errorMessage, setErrorMessage] = useState('');
+
+  useEffect(() => {
+    setName(application.application_name);
+    setLink(application.application_link);
+    setDescription(application.application_description);
+    setFee(application.application_fee);
+    setRent(application.application_rent);
+    setCategory(application.application_category);
+    setImageUrls(application.application_images);
+    setOtherVersions(application.application_other_versions);
+  }, [name, link, description, fee, rent, category, imageUrls, otherVersions]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

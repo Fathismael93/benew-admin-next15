@@ -20,6 +20,12 @@ const ListTemplates = ({ templates }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
 
+  const [templates, setTemplates] = useState(templates);
+
+  useEffect(() => {
+    setTemplates(templates);
+  }, [templates]);
+
   console.log('templates: ');
   console.log(templates);
 

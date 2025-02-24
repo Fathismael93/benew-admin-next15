@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { CldImage } from 'next-cloudinary';
 import styles from '@/ui/styling/dashboard/applications/singleApplication.module.css';
 import Link from 'next/link';
@@ -9,7 +9,12 @@ import axios from 'axios';
 import { useRouter } from 'next/navigation';
 
 function SingleApplication({ application }) {
+  const [application, setApplication] = useState(application);
   const router = useRouter();
+
+  useEffect(() => {
+    setApplication(application);
+  }, [application]);
 
   if (!application) {
     return <div>Application not found</div>;

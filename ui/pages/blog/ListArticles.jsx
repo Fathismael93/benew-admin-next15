@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
 import { MdAdd } from 'react-icons/md';
 
@@ -11,11 +10,12 @@ import Search from '@/ui/components/dashboard/search';
 import PostCard from '@/ui/components/dashboard/PostCard';
 
 const ListArticles = ({ articles }) => {
-  // eslint-disable-next-line no-unused-vars
-  const [errorMessage, setErrorMessage] = useState('');
-  const router = useRouter();
+  const [articles, setArticles] = useState(articles);
 
-  // eslint-disable-next-line camelcase
+  useEffect(() => {
+    setArticles(articles);
+  }, [articles]);
+
   const deleteArticle = async (articleID, articleImage) => {
     try {
       const response = await fetch(`/api/dashboard/blog/${articleID}/delete`, {

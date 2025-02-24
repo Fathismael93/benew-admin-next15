@@ -11,7 +11,12 @@ import { useRouter } from 'next/navigation';
 import axios from 'axios';
 
 const PlatformsList = ({ platforms }) => {
+  const [platforms, setPlatforms] = useState(platforms);
   const router = useRouter();
+
+  useEffect(() => {
+    setPlatforms(platforms);
+  }, [platforms]);
 
   const handleDelete = async (id) => {
     if (confirm('Are you sure you want to delete this platform?')) {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CldImage } from 'next-cloudinary';
@@ -8,8 +8,12 @@ import parse from 'html-react-parser';
 import styles from '@/ui/styling/dashboard/blog/view-article/view.module.css';
 
 const SingleArticle = ({ data }) => {
-  const [errorMessage, setErrorMessage] = useState('');
+  const [data, setData] = useState(data);
   const router = useRouter();
+
+  useEffect(() => {
+    setData(data);
+  }, [data]);
 
   // eslint-disable-next-line camelcase
   const deleteArticle = async (articleID, articleImage) => {

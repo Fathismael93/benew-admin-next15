@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { CldImage } from 'next-cloudinary';
 import axios from 'axios';
@@ -10,7 +10,12 @@ import Link from 'next/link';
 import { MdAdd } from 'react-icons/md';
 
 function ApplicationsList({ applications }) {
+  const [applications, setApplications] = useState(applications);
   const router = useRouter();
+
+  useEffect(() => {
+    setApplications(applications);
+  }, [applications]);
 
   console.log(applications);
 
