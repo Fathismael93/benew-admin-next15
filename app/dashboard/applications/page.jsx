@@ -20,7 +20,7 @@ async function getApplications() {
 const ApplicationsPage = async () => {
   const applications = await getApplications();
 
-  return <ApplicationsList applications={applications} />;
+  return <ApplicationsList data={applications} />;
 };
 
 export default ApplicationsPage;

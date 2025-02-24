@@ -20,7 +20,7 @@ async function getPlatforms() {
 const PlatformsPage = async () => {
   const platforms = await getPlatforms();
 
-  return <PlatformsList platforms={platforms} />;
+  return <PlatformsList data={platforms} />;
 };
 
 export default PlatformsPage;

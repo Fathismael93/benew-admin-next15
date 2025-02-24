@@ -21,7 +21,7 @@ const SingleApplicationPage = async ({ params }) => {
   const { id } = await params;
   const application = await getSingleApplication(id);
 
-  return <SingleApplication application={application} />;
+  return <SingleApplication data={application} />;
 };
 
 export default SingleApplicationPage;

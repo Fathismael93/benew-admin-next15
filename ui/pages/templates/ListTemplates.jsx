@@ -15,16 +15,16 @@ import { CldImage } from 'next-cloudinary';
 import styles from '@/ui/styling/dashboard/templates/templates.module.css';
 import Search from '@/ui/components/dashboard/search';
 
-const ListTemplates = ({ templates }) => {
+const ListTemplates = ({ data }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
 
-  const [templates, setTemplates] = useState(templates);
+  const [templates, setTemplates] = useState(data);
 
   useEffect(() => {
-    setTemplates(templates);
-  }, [templates]);
+    setTemplates(data);
+  }, [data]);
 
   console.log('templates: ');
   console.log(templates);

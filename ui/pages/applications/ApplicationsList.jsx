@@ -9,13 +9,13 @@ import Search from '@/ui/components/dashboard/search';
 import Link from 'next/link';
 import { MdAdd } from 'react-icons/md';
 
-function ApplicationsList({ applications }) {
-  const [applications, setApplications] = useState(applications);
+function ApplicationsList({ data }) {
+  const [applications, setApplications] = useState(data);
   const router = useRouter();
 
   useEffect(() => {
-    setApplications(applications);
-  }, [applications]);
+    setApplications(data);
+  }, [data]);
 
   console.log(applications);
 

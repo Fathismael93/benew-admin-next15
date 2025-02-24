@@ -8,13 +8,13 @@ import { MdArrowBack } from 'react-icons/md';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 
-function SingleApplication({ application }) {
-  const [application, setApplication] = useState(application);
+function SingleApplication({ data }) {
+  const [application, setApplication] = useState(data);
   const router = useRouter();
 
   useEffect(() => {
-    setApplication(application);
-  }, [application]);
+    setApplication(data);
+  }, [data]);
 
   if (!application) {
     return <div>Application not found</div>;

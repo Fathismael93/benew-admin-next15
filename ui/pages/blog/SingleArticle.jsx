@@ -7,13 +7,13 @@ import { CldImage } from 'next-cloudinary';
 import parse from 'html-react-parser';
 import styles from '@/ui/styling/dashboard/blog/view-article/view.module.css';
 
-const SingleArticle = ({ data }) => {
-  const [data, setData] = useState(data);
+const SingleArticle = ({ article }) => {
+  const [data, setData] = useState(article);
   const router = useRouter();
 
   useEffect(() => {
-    setData(data);
-  }, [data]);
+    setData(article);
+  }, [article]);
 
   // eslint-disable-next-line camelcase
   const deleteArticle = async (articleID, articleImage) => {

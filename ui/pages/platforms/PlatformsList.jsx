@@ -2,7 +2,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import styles from '@/ui/styling/dashboard/platforms/platforms.module.css';
 import Search from '@/ui/components/dashboard/search';
 import Link from 'next/link';
@@ -10,13 +10,13 @@ import { MdAdd } from 'react-icons/md';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 
-const PlatformsList = ({ platforms }) => {
-  const [platforms, setPlatforms] = useState(platforms);
+const PlatformsList = ({ data }) => {
+  const [platforms, setPlatforms] = useState(data);
   const router = useRouter();
 
   useEffect(() => {
-    setPlatforms(platforms);
-  }, [platforms]);
+    setPlatforms(data);
+  }, [data]);
 
   const handleDelete = async (id) => {
     if (confirm('Are you sure you want to delete this platform?')) {

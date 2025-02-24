@@ -9,12 +9,12 @@ import styles from '@/ui/styling/dashboard/blog/blog.module.css';
 import Search from '@/ui/components/dashboard/search';
 import PostCard from '@/ui/components/dashboard/PostCard';
 
-const ListArticles = ({ articles }) => {
-  const [articles, setArticles] = useState(articles);
+const ListArticles = ({ data }) => {
+  const [articles, setArticles] = useState(data);
 
   useEffect(() => {
-    setArticles(articles);
-  }, [articles]);
+    setArticles(data);
+  }, [data]);
 
   const deleteArticle = async (articleID, articleImage) => {
     try {

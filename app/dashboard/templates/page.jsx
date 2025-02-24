@@ -18,7 +18,7 @@ async function getTemplates() {
 const TemplatesPage = async () => {
   const templates = await getTemplates();
 
-  return <ListTemplates templates={templates} />;
+  return <ListTemplates data={templates} />;
 };
 
 export default TemplatesPage;

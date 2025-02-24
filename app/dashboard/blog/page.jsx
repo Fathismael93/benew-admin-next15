@@ -17,7 +17,7 @@ async function getPosts() {
 const BlogPage = async () => {
   const articles = await getPosts();
 
-  return <ListArticles articles={articles} />;
+  return <ListArticles data={articles} />;
 };
 
 export default BlogPage;
