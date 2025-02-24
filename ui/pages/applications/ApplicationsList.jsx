@@ -65,8 +65,8 @@ function ApplicationsList({ data }) {
               </div>
               <div className={styles.applicationDetails}>
                 <h2>{app.application_name}</h2>
-                <p>Fee: ${app.application_fee}</p>
-                <p>Rent: ${app.application_rent}/month</p>
+                <p>Fee: {app.application_fee} Fdj</p>
+                <p>Rent: {app.application_rent} Fdj/month</p>
                 <a
                   href={app.application_link}
                   target="_blank"
