@@ -23,7 +23,7 @@ const ListTemplates = ({ data }) => {
 
   useEffect(() => {
     setTemplates(data);
-  }, [data, deleteId, isDeleting]);
+  }, [deleteId, isDeleting]);
 
   console.log('templates: ');
   console.log(templates);

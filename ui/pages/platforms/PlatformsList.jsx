@@ -12,19 +12,26 @@ import axios from 'axios';
 
 const PlatformsList = ({ data }) => {
   const [platforms, setPlatforms] = useState(data);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
+
   const router = useRouter();
 
   useEffect(() => {
     setPlatforms(data);
-  }, [data]);
+  }, [deleteId, isDeleting]);
 
   const handleDelete = async (id) => {
     if (confirm('Are you sure you want to delete this platform?')) {
+      setDeleteId(id);
+      setIsDeleting(true);
+
       const response = await axios.delete(
         `/api/dashboard/platforms/delete?id=${id}`,
       );
 
       if (response.data.success) {
+        setIsDeleting(false);
         router.refresh(); // Refresh the page to reflect changes
       }
     }

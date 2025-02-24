@@ -12,15 +12,19 @@ import { MdAdd } from 'react-icons/md';
 function ApplicationsList({ data }) {
   const [applications, setApplications] = useState(data);
   const router = useRouter();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
 
   useEffect(() => {
     setApplications(data);
-  }, [data]);
+  }, [deleteId, isDeleting]);
 
   console.log(applications);
 
   const handleDelete = async (id, application_images) => {
     if (confirm('Are you sure you want to delete this application?')) {
+      setDeleteId(id);
+      setIsDeleting(true);
       const response = await axios.delete(
         `/api/dashboard/applications/${id}/delete`,
         {
@@ -29,6 +33,7 @@ function ApplicationsList({ data }) {
       );
 
       if (response.data.success) {
+        setIsDeleting(false);
         router.refresh(); // Refresh the page to reflect changes
       }
     }
