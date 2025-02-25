@@ -19,6 +19,7 @@ function EditApplication({ application }) {
   const [fee, setFee] = useState(application.application_fee);
   const [rent, setRent] = useState(application.application_rent);
   const [category, setCategory] = useState(application.application_category);
+  const [type, setType] = useState(application.application_type);
   const [imageUrls, setImageUrls] = useState(application.application_images);
   const [otherVersions, setOtherVersions] = useState(
     application.application_other_versions?.join(', ') || '',
@@ -32,9 +33,20 @@ function EditApplication({ application }) {
     setFee(application.application_fee);
     setRent(application.application_rent);
     setCategory(application.application_category);
+    setType(application.application_type);
     setImageUrls(application.application_images);
     setOtherVersions(application.application_other_versions);
-  }, [name, link, description, fee, rent, category, imageUrls, otherVersions]);
+  }, [
+    name,
+    link,
+    description,
+    fee,
+    rent,
+    category,
+    type,
+    imageUrls,
+    otherVersions,
+  ]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -64,6 +76,11 @@ function EditApplication({ application }) {
       return;
     }
 
+    if (!type) {
+      setErrorMessage('Type is missing');
+      return;
+    }
+
     if (imageUrls.length === 0) {
       setErrorMessage('At least one image is required');
       return;
@@ -76,6 +93,7 @@ function EditApplication({ application }) {
         link,
         description: description || null,
         category,
+        type,
         fee,
         rent,
         imageUrls,
@@ -130,6 +148,13 @@ function EditApplication({ application }) {
           />
           <input
             type="text"
+            name="type"
+            placeholder="Application Type"
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+          />
+          <input
+            type="text"
             name="otherVersions"
             placeholder="Other Versions (comma-separated)"
             value={otherVersions}
@@ -144,76 +169,6 @@ function EditApplication({ application }) {
           onChange={(e) => setDescription(e.target.value)}
           rows="5"
         />
-        <div className={styles.radioButtons}>
-          <label>
-            <input
-              type="radio"
-              name="category"
-              value="web"
-              checked={category === 'web'}
-              onChange={(e) => setCategory(e.target.value)}
-            />
-            Web
-          </label>
-          <label>
-            <input
-              type="radio"
-              name="category"
-              value="mobile"
-              checked={category === 'mobile'}
-              onChange={(e) => setCategory(e.target.value)}
-            />
-            Mobile
-          </label>
-        </div>
-        <CldUploadWidget
-          signatureEndpoint="/api/dashboard/applications/add/sign-image"
-          onSuccess={(result) => {
-            setImageUrls((prev) => [...prev, result?.info?.public_id]);
-          }}
-          options={{
-            folder: 'applications',
-            multiple: true,
-          }}
-        >
-          {({ open }) => {
-            function handleOnClick(e) {
-              e.preventDefault();
-              open();
-            }
-            return (
-              <button
-                className={styles.addImage}
-                onClick={handleOnClick}
-                type="button"
-              >
-                Add Image
-              </button>
-            );
-          }}
-        </CldUploadWidget>
-        <div className={styles.images}>
-          {imageUrls.map((url, index) => (
-            <div key={index} className={styles.imageContainer}>
-              <CldImage
-                width="200"
-                height="150"
-                src={url}
-                alt={`Application image ${index + 1}`}
-                className={styles.image}
-              />
-              <button
-                type="button"
-                className={styles.removeImage}
-                onClick={() =>
-                  setImageUrls((prev) => prev.filter((_, i) => i !== index))
-                }
-              >
-                Remove
-              </button>
-            </div>
-          ))}
-        </div>
         <button type="submit" className={styles.saveButton}>
           Save Changes
         </button>

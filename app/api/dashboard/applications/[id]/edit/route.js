@@ -12,6 +12,7 @@ export async function PUT(req, { params }) {
       link,
       description,
       category,
+      type,
       fee,
       rent,
       imageUrls,
@@ -53,6 +54,13 @@ export async function PUT(req, { params }) {
       });
     }
 
+    if (!type) {
+      return NextResponse.json({
+        success: false,
+        message: 'Application type is missing',
+      });
+    }
+
     if (!imageUrls || imageUrls.length === 0) {
       return NextResponse.json({
         success: false,
@@ -68,16 +76,18 @@ export async function PUT(req, { params }) {
         'application_link = $2, ' +
         'application_description = $3, ' +
         'application_category = $4, ' +
-        'application_fee = $5, ' +
-        'application_rent = $6, ' +
-        'application_images = $7, ' +
-        'application_other_versions = $8 ' +
-        'WHERE application_id = $9 RETURNING *',
+        'application_type = $5, ' + // Added application_type
+        'application_fee = $6, ' +
+        'application_rent = $7, ' +
+        'application_images = $8, ' +
+        'application_other_versions = $9 ' +
+        'WHERE application_id = $10 RETURNING *',
       [
         name,
         link,
         description,
         category,
+        type, // Include type in query
         fee,
         rent,
         imageUrls,
