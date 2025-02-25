@@ -59,6 +59,9 @@ function SingleApplication({ data }) {
           ))}
         </div>
         <div className={styles.applicationInfo}>
+          <p className={styles.applicationType}>
+            <strong>Type:</strong> {application.application_type}
+          </p>
           <p>
             <strong>Link:</strong>{' '}
             <a
