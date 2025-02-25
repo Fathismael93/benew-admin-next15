@@ -169,6 +169,76 @@ function EditApplication({ application }) {
           onChange={(e) => setDescription(e.target.value)}
           rows="5"
         />
+        <div className={styles.radioButtons}>
+          <label>
+            <input
+              type="radio"
+              name="category"
+              value="web"
+              checked={category === 'web'}
+              onChange={(e) => setCategory(e.target.value)}
+            />
+            Web
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="category"
+              value="mobile"
+              checked={category === 'mobile'}
+              onChange={(e) => setCategory(e.target.value)}
+            />
+            Mobile
+          </label>
+        </div>
+        <CldUploadWidget
+          signatureEndpoint="/api/dashboard/applications/add/sign-image"
+          onSuccess={(result) => {
+            setImageUrls((prev) => [...prev, result?.info?.public_id]);
+          }}
+          options={{
+            folder: 'applications',
+            multiple: true,
+          }}
+        >
+          {({ open }) => {
+            function handleOnClick(e) {
+              e.preventDefault();
+              open();
+            }
+            return (
+              <button
+                className={styles.addImage}
+                onClick={handleOnClick}
+                type="button"
+              >
+                Add Image
+              </button>
+            );
+          }}
+        </CldUploadWidget>
+        <div className={styles.images}>
+          {imageUrls.map((url, index) => (
+            <div key={index} className={styles.imageContainer}>
+              <CldImage
+                width="200"
+                height="150"
+                src={url}
+                alt={`Application image ${index + 1}`}
+                className={styles.image}
+              />
+              <button
+                type="button"
+                className={styles.removeImage}
+                onClick={() =>
+                  setImageUrls((prev) => prev.filter((_, i) => i !== index))
+                }
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
         <button type="submit" className={styles.saveButton}>
           Save Changes
         </button>
