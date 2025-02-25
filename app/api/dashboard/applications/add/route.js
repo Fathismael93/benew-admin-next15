@@ -14,6 +14,7 @@ export async function POST(req) {
       rent,
       imageUrls, // Changed to array
       templateId,
+      type, // Add type here
     } = formData;
 
     if (!name || name.length < 3) {
@@ -59,6 +60,14 @@ export async function POST(req) {
       });
     }
 
+    // Add validation for type
+    if (!type || type.length < 2) {
+      return NextResponse.json({
+        success: false,
+        message: 'Application type is missing',
+      });
+    }
+
     if (!templateId) {
       return NextResponse.json({
         success: false,
@@ -68,11 +77,22 @@ export async function POST(req) {
 
     client = await getClient();
 
+    // Update the INSERT query to include application_type
     const addApplication = await client.query(
       'INSERT INTO applications ' +
-        '(application_name, application_link, application_description, application_category, application_fee, application_rent, application_images, application_template_id) ' +
-        'VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-      [name, link, description, category, fee, rent, imageUrls, templateId], // Changed to array
+        '(application_name, application_link, application_description, application_category, application_fee, application_rent, application_images, application_template_id, application_type) ' +
+        'VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
+      [
+        name,
+        link,
+        description,
+        category,
+        fee,
+        rent,
+        imageUrls,
+        templateId,
+        type,
+      ], // Add type here
     );
 
     if (addApplication.rows[0]) {

@@ -1,5 +1,3 @@
-// ui/pages/platforms/PlatformsList.js (Client Component)
-
 'use client';
 
 import React, { useEffect, useState } from 'react';

@@ -14,6 +14,7 @@ function AddApplication({ templates }) {
   const [rent, setRent] = useState(0);
   const [category, setCategory] = useState('');
   const [imageUrls, setImageUrls] = useState([]); // Changed to array
+  const [type, setType] = useState('');
   const [templateId, setTemplateId] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const router = useRouter();
@@ -52,11 +53,18 @@ function AddApplication({ templates }) {
       return;
     }
 
+    // Then add the validation in handleSubmit
+    if (!type || type.length < 2) {
+      setErrorMessage('Application type is missing');
+      return;
+    }
+
     if (!templateId) {
       setErrorMessage('Please select a template');
       return;
     }
 
+    // Update the axios post request to include the type
     const response = await axios.post(
       '/api/dashboard/applications/add',
       JSON.stringify({
@@ -66,8 +74,9 @@ function AddApplication({ templates }) {
         category,
         fee,
         rent,
-        imageUrls, // Changed to array
+        imageUrls,
         templateId: parseInt(templateId, 10),
+        type, // Add the type field
       }),
       {
         headers: { 'Content-Type': 'application/json' },
@@ -115,6 +124,12 @@ function AddApplication({ templates }) {
             name="rent"
             placeholder="Location par mois"
             onChange={(e) => setRent(e.target.value)}
+          />
+          <input
+            type="text"
+            name="type"
+            placeholder="Type d'application"
+            onChange={(e) => setType(e.target.value)}
           />
           <select
             className={styles.templateSelect}
