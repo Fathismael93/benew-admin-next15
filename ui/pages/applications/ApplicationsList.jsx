@@ -20,6 +20,7 @@ function ApplicationsList({ data }) {
     setApplications(data);
   }, [deleteId, isDeleting]);
 
+  console.log('Applications: ');
   console.log(applications);
 
   const handleDelete = async (id, application_images) => {
