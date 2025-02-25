@@ -65,11 +65,23 @@
   object-fit: cover;
 }
 
+.applicationType {
+  font-size: 0.9rem;
+  color: var(--textSoft);
+  font-weight: 500;
+  background-color: rgba(93, 87, 201, 0.1); /* Light purple background */
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  display: inline-block;
+  width: fit-content;
+}
+
+/* Adjust spacing in application details */
 .applicationDetails {
   display: flex;
   padding: 1rem;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.7rem; /* Increased gap for better spacing */
 }
 
 .applicationDetails h2 {
