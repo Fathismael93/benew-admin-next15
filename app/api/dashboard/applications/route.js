@@ -8,7 +8,9 @@ export async function GET() {
   try {
     client = await getClient();
 
-    const result = await client.query('SELECT * FROM applications');
+    const result = await client.query(
+      'SELECT application_id, application_name, application_images, application_fee, application_rent, application_link, application_type FROM applications',
+    );
     const applications = result.rows;
 
     await client.cleanup();
