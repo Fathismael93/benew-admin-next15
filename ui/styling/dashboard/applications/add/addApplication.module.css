@@ -120,10 +120,3 @@
     display: inline-block;
     margin-right: 0.5rem;
   }
-
-  /* For smaller screens */
-  @media (max-width: 768px) {
-    .inputs input, .templateSelect {
-      width: 100%; /* Stack inputs on small screens */
-    }
-  }
