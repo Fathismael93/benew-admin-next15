@@ -15,6 +15,11 @@ const OrdersList = ({ data }) => {
           <div className={styles.orderList}>
             {data.map((order) => (
               <div key={order.order_id} className={styles.orderItem}>
+                <img
+                  src={order.application_images[0]}
+                  alt={order.application_name}
+                  className={styles.orderImage}
+                />
                 <div className={styles.orderDetails}>
                   <h3 className={styles.orderTitle}>
                     {order.application_name}
