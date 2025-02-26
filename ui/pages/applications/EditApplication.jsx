@@ -97,7 +97,7 @@ function EditApplication({ application }) {
         fee,
         rent,
         imageUrls,
-        otherVersions: otherVersions.split(',').map((url) => url.trim()),
+        otherVersions: otherVersions?.split(',')?.map((url) => url?.trim()),
       }),
       {
         headers: { 'Content-Type': 'application/json' },
