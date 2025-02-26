@@ -8,15 +8,20 @@ export async function GET() {
     client = await getClient();
 
     const result = await client.query(
-      'SELECT ' +
-        'orders.*, applications.*, platforms.* FROM orders ' +
-        'JOIN applications ON orders.order_application_id = applications.application_id ' +
-        'JOIN platforms ON orders.order_platform_id = platforms.platform_id ' +
-        'ORDER BY orders.order_created DESC; -- Sort by most recent to least recent',
+      `SELECT 
+        orders.order_id,
+        orders.order_payment_status,
+        orders.order_created,
+        orders.order_price,
+        applications.application_name,
+        applications.application_category,
+        applications.application_images
+      FROM orders
+      JOIN applications ON orders.order_application_id = applications.application_id
+      ORDER BY orders.order_created DESC;`,
     );
 
-    console.log('RESULT OF ORDERS');
-    console.log(result);
+    console.log('RESULT OF ORDERS', result.rows);
 
     await client.cleanup();
     return NextResponse.json({ orders: result.rows });

@@ -74,22 +74,14 @@
 
 .orderStatus {
     font-size: 14px;
-}
-
-.orderStatus span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
     font-weight: bold;
-    padding: 3px 8px;
-    border-radius: 5px;
 }
 
-.paid {
-    background-color: #28a745;
-    color: white;
-}
-
-.unpaid {
-    background-color: #dc3545;
-    color: white;
+.orderStatus input {
+    cursor: pointer;
 }
 
 .orderDate {
