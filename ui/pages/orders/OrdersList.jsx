@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { CldImage } from 'next-cloudinary';
 import styles from '@/ui/styling/dashboard/orders/orders.module.css';
 import Search from '@/ui/components/dashboard/search';
 
@@ -15,9 +16,11 @@ const OrdersList = ({ data }) => {
           <div className={styles.orderList}>
             {data.map((order) => (
               <div key={order.order_id} className={styles.orderItem}>
-                <img
+                <CldImage
                   src={order.application_images[0]}
                   alt={order.application_name}
+                  width={60}
+                  height={60}
                   className={styles.orderImage}
                 />
                 <div className={styles.orderDetails}>
