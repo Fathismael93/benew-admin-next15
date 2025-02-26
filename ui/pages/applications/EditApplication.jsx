@@ -195,6 +195,8 @@ function EditApplication({ application }) {
           signatureEndpoint="/api/dashboard/applications/add/sign-image"
           onSuccess={(result) => {
             setImageUrls((prev) => [...prev, result?.info?.public_id]);
+            console.log('Image saved successfully in cloudinary');
+            console.log(imageUrls);
           }}
           options={{
             folder: 'applications',
