@@ -1,0 +1,94 @@
+.container {
+    background-color: var(--bgSoft);
+    padding: 20px;
+    border-radius: 10px;
+    margin-top: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  
+  .bottom {
+    width: 100%;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .orderList {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .orderItem {
+    background-color: var(--bg);
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease-in-out;
+  }
+  
+  .orderItem:hover {
+    transform: scale(1.02);
+  }
+  
+  .orderDetails {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .orderTitle {
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--text);
+  }
+  
+  .orderCategory {
+    font-size: 14px;
+    color: var(--textSoft);
+  }
+  
+  .orderPrice {
+    font-size: 16px;
+    font-weight: bold;
+    color: var(--text);
+  }
+  
+  .orderStatus {
+    font-size: 14px;
+  }
+  
+  .orderStatus span {
+    font-weight: bold;
+    padding: 3px 8px;
+    border-radius: 5px;
+  }
+  
+  .paid {
+    background-color: #28a745;
+    color: white;
+  }
+  
+  .unpaid {
+    background-color: #dc3545;
+    color: white;
+  }
+  
+  .orderDate {
+    font-size: 12px;
+    color: var(--textSoft);
+  }
+  
+  .noOrders {
+    text-align: center;
+    color: var(--textSoft);
+    font-size: 14px;
+  }
