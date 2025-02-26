@@ -26,28 +26,6 @@ function EditApplication({ application }) {
   );
   const [errorMessage, setErrorMessage] = useState('');
 
-  useEffect(() => {
-    setName(application.application_name);
-    setLink(application.application_link);
-    setDescription(application.application_description);
-    setFee(application.application_fee);
-    setRent(application.application_rent);
-    setCategory(application.application_category);
-    setType(application.application_type);
-    setImageUrls(application.application_images);
-    setOtherVersions(application.application_other_versions);
-  }, [
-    name,
-    link,
-    description,
-    fee,
-    rent,
-    category,
-    type,
-    imageUrls,
-    otherVersions,
-  ]);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
