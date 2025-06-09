@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import { getClient } from '@/utils/dbConnect';
 import { registrationSchema } from '@/utils/schemas';
 
-// ----- FONCTIONS UTILITAIRES INTÉGRÉES -----
+// ----- FONCTIONS UTILITAIRES SEULEMENT -----
 
 // Fonction pour détecter les données sensibles
 function containsSensitiveData(str) {
@@ -198,80 +198,29 @@ function filterRequestBody(body) {
   return body;
 }
 
-// Fonctions Sentry avec gestion d'erreur
-async function captureException(error, options = {}) {
-  try {
-    const { captureException } = await import('@sentry/nextjs');
-    return captureException(error, options);
-  } catch (importError) {
-    console.error('Sentry capture failed:', importError.message);
-    console.error('Original error:', error);
-  }
-}
-
-async function setContext(key, context) {
-  try {
-    const { setContext } = await import('@sentry/nextjs');
-    return setContext(key, context);
-  } catch (importError) {
-    console.error('Sentry setContext failed:', importError.message);
-  }
-}
-
-async function setUser(user) {
-  try {
-    const { setUser } = await import('@sentry/nextjs');
-    return setUser(user);
-  } catch (importError) {
-    console.error('Sentry setUser failed:', importError.message);
-  }
-}
-
-async function addBreadcrumb(breadcrumb) {
-  try {
-    const { addBreadcrumb } = await import('@sentry/nextjs');
-    return addBreadcrumb(breadcrumb);
-  } catch (importError) {
-    console.error('Sentry addBreadcrumb failed:', importError.message);
-  }
-}
-
-// ----- API ROUTE PRINCIPALE -----
+// ----- API ROUTE PRINCIPALE (SANS SENTRY) -----
 
 export async function POST(req) {
   let client;
   const startTime = Date.now();
 
-  // Configuration du contexte Sentry pour cette requête
-  await setContext('api_endpoint', {
-    route: '/api/register',
-    method: 'POST',
-    timestamp: new Date().toISOString(),
-  });
+  console.log('🚀 Registration API called at:', new Date().toISOString());
 
   try {
-    // Parse the request body avec gestion d'erreur Sentry
+    // Parse the request body
     let body;
     try {
       body = await req.json();
     } catch (parseError) {
       const errorCategory = categorizeError(parseError);
 
-      await captureException(parseError, {
-        tags: {
-          error_category: errorCategory,
-          api_endpoint: 'register',
-          component: 'request_parsing',
+      console.error('❌ JSON Parse Error:', {
+        category: errorCategory,
+        message: parseError.message,
+        headers: {
+          'content-type': req.headers.get('content-type'),
+          'user-agent': req.headers.get('user-agent'),
         },
-        contexts: {
-          request: {
-            headers: {
-              'content-type': req.headers.get('content-type'),
-              'user-agent': req.headers.get('user-agent'),
-            },
-          },
-        },
-        level: 'error',
       });
 
       return NextResponse.json(
@@ -285,7 +234,9 @@ export async function POST(req) {
     // Vérifier si le corps de la requête contient des données sensibles
     const bodyString = JSON.stringify(body);
     if (containsSensitiveData(bodyString)) {
-      console.log('Registration attempt detected with sensitive data patterns');
+      console.log(
+        '⚠️ Registration attempt detected with sensitive data patterns',
+      );
     }
 
     // Filtrer les données sensibles du corps de la requête
@@ -299,18 +250,9 @@ export async function POST(req) {
       dateOfBirth,
     });
 
-    console.log('Registration attempt:', userDataForLogging);
+    console.log('📝 Registration attempt:', userDataForLogging);
 
-    // Ajouter le contexte utilisateur à Sentry (anonymisé)
-    await setUser(
-      anonymizeUserData({
-        email,
-        username,
-        id: 'registration_attempt',
-      }),
-    );
-
-    // Validate input using Yup schema avec gestion d'erreur Sentry
+    // Validate input using Yup schema
     try {
       await registrationSchema.validate(
         { username, email, phone, password, dateOfBirth },
@@ -319,21 +261,11 @@ export async function POST(req) {
     } catch (validationError) {
       const errorCategory = categorizeError(validationError);
 
-      await captureException(validationError, {
-        tags: {
-          error_category: errorCategory,
-          api_endpoint: 'register',
-          component: 'validation',
-        },
-        contexts: {
-          validation: {
-            failed_fields: validationError.inner?.map((err) => err.path) || [],
-            total_errors: validationError.inner?.length || 0,
-          },
-          user_input: userDataForLogging,
-          request_body: filteredBody,
-        },
-        level: 'warning', // Validation errors are warnings, not critical errors
+      console.error('❌ Validation Error:', {
+        category: errorCategory,
+        failed_fields: validationError.inner?.map((err) => err.path) || [],
+        total_errors: validationError.inner?.length || 0,
+        user_input: userDataForLogging,
       });
 
       const errors = {};
@@ -343,26 +275,18 @@ export async function POST(req) {
       return NextResponse.json({ errors }, { status: 400 });
     }
 
-    // Obtenir le client de base de données avec gestion d'erreur
+    // Obtenir le client de base de données
     try {
       client = await getClient();
+      console.log('✅ Database connection successful');
     } catch (dbConnectionError) {
       const errorCategory = categorizeError(dbConnectionError);
 
-      await captureException(dbConnectionError, {
-        tags: {
-          error_category: errorCategory,
-          api_endpoint: 'register',
-          component: 'database_connection',
-        },
-        contexts: {
-          database: {
-            operation: 'connection',
-            timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
-          },
-          user_context: userDataForLogging,
-        },
-        level: 'error',
+      console.error('❌ Database Connection Error:', {
+        category: errorCategory,
+        message: dbConnectionError.message,
+        timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
+        user_context: userDataForLogging,
       });
 
       return NextResponse.json(
@@ -371,31 +295,23 @@ export async function POST(req) {
       );
     }
 
-    // Check if user already exists avec gestion d'erreur
+    // Check if user already exists
     let userExistsResult;
     try {
       const userExistsQuery = 'SELECT user_id FROM users WHERE user_email = $1';
       userExistsResult = await client.query(userExistsQuery, [
         email.toLowerCase(),
       ]);
+      console.log('✅ User existence check completed');
     } catch (userCheckError) {
       const errorCategory = categorizeError(userCheckError);
 
-      await captureException(userCheckError, {
-        tags: {
-          error_category: errorCategory,
-          api_endpoint: 'register',
-          component: 'user_existence_check',
-          database_operation: 'SELECT',
-        },
-        contexts: {
-          database: {
-            query: 'user_existence_check',
-            table: 'users',
-          },
-          user_context: userDataForLogging,
-        },
-        level: 'error',
+      console.error('❌ User Check Error:', {
+        category: errorCategory,
+        message: userCheckError.message,
+        query: 'user_existence_check',
+        table: 'users',
+        user_context: userDataForLogging,
       });
 
       if (client) await client.cleanup();
@@ -406,13 +322,10 @@ export async function POST(req) {
     }
 
     if (userExistsResult.rows.length > 0) {
-      // Log la tentative de création d'un utilisateur existant
-      await addBreadcrumb({
-        message: 'User registration attempt with existing email',
-        category: 'user_registration',
-        data: userDataForLogging,
-        level: 'info',
-      });
+      console.log(
+        '⚠️ User registration attempt with existing email:',
+        userDataForLogging,
+      );
 
       if (client) await client.cleanup();
       return NextResponse.json(
@@ -421,12 +334,12 @@ export async function POST(req) {
       );
     }
 
-    // Hash password avec gestion d'erreur et utilisation de bcrypt
+    // Hash password
     let hashedPassword;
     try {
       // Vérifier si le mot de passe contient des données sensibles (patterns suspects)
       if (containsSensitiveData(password)) {
-        console.warn('Password contains potentially sensitive patterns');
+        console.warn('⚠️ Password contains potentially sensitive patterns');
       }
 
       const salt = await bcrypt.genSalt(10);
@@ -437,25 +350,17 @@ export async function POST(req) {
         throw new Error('Password hashing returned empty result');
       }
 
-      console.log('Password hashed successfully');
+      console.log('✅ Password hashed successfully');
     } catch (hashError) {
       const errorCategory = categorizeError(hashError);
 
-      await captureException(hashError, {
-        tags: {
-          error_category: errorCategory,
-          api_endpoint: 'register',
-          component: 'password_hashing',
-        },
-        contexts: {
-          password_hashing: {
-            algorithm: 'bcrypt',
-            salt_rounds: 10,
-            bcrypt_version: 'bcryptjs',
-          },
-          user_context: userDataForLogging,
-        },
-        level: 'error',
+      console.error('❌ Password Hashing Error:', {
+        category: errorCategory,
+        message: hashError.message,
+        algorithm: 'bcrypt',
+        salt_rounds: 10,
+        bcrypt_version: 'bcryptjs',
+        user_context: userDataForLogging,
       });
 
       if (client) await client.cleanup();
@@ -465,7 +370,7 @@ export async function POST(req) {
       );
     }
 
-    // Insert new user avec gestion d'erreur complète
+    // Insert new user
     let result;
     try {
       const insertUserQuery = `
@@ -481,6 +386,7 @@ export async function POST(req) {
         phone || null,
         dateOfBirth || null,
       ]);
+      console.log('✅ User inserted successfully');
     } catch (insertError) {
       const errorCategory = categorizeError(insertError);
 
@@ -499,23 +405,13 @@ export async function POST(req) {
         };
       }
 
-      await captureException(insertError, {
-        tags: {
-          error_category: errorCategory,
-          api_endpoint: 'register',
-          component: 'user_insertion',
-          database_operation: 'INSERT',
-          postgres_error_code: insertError.code || 'unknown',
-        },
-        contexts: {
-          database: {
-            operation: 'INSERT INTO users',
-            table: 'users',
-            error_details: errorDetails,
-          },
-          user_context: userDataForLogging,
-        },
-        level: 'error',
+      console.error('❌ User Insertion Error:', {
+        category: errorCategory,
+        postgres_error_code: insertError.code || 'unknown',
+        operation: 'INSERT INTO users',
+        table: 'users',
+        error_details: errorDetails,
+        user_context: userDataForLogging,
       });
 
       if (client) await client.cleanup();
@@ -539,25 +435,12 @@ export async function POST(req) {
     const newUser = result.rows[0];
     const responseTime = Date.now() - startTime;
 
-    // Log du succès avec données anonymisées
-    await addBreadcrumb({
-      message: 'User registration successful',
-      category: 'user_registration',
-      data: {
-        ...anonymizeUserData(newUser),
-        response_time_ms: responseTime,
-      },
-      level: 'info',
-    });
-
-    // Metrics personnalisées
-    await setContext('registration_metrics', {
+    console.log('🎉 User registration successful:', {
+      user: anonymizeUserData(newUser),
       response_time_ms: responseTime,
       database_operations: 3, // connection + check + insert
       success: true,
     });
-
-    console.log('New user created:', anonymizeUserData(newUser));
 
     if (client) await client.cleanup();
 
@@ -583,29 +466,17 @@ export async function POST(req) {
       ? '[FILTERED - Error contains sensitive data]'
       : error.message;
 
-    await captureException(error, {
-      tags: {
-        error_category: errorCategory,
-        api_endpoint: 'register',
-        component: 'global_error_handler',
-      },
-      contexts: {
-        request_metrics: {
-          response_time_ms: responseTime,
-          reached_global_handler: true,
-        },
-        error_details: {
-          name: error.name,
-          message: errorMessage,
-          stack_available: !!error.stack,
-        },
-      },
-      level: 'error',
+    console.error('💥 Global Registration Error:', {
+      category: errorCategory,
+      response_time_ms: responseTime,
+      reached_global_handler: true,
+      error_name: error.name,
+      error_message: errorMessage,
+      stack_available: !!error.stack,
     });
 
     if (client) await client.cleanup();
 
-    console.error('Registration error:', errorCategory, errorMessage);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },
