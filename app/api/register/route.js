@@ -5,16 +5,16 @@ import { getClient } from '@/utils/dbConnect';
 import { registrationSchema } from '@/utils/schemas';
 
 // Importer les fonctions d'instrumentation créées
-import {
-  containsSensitiveData,
-  categorizeError,
-  anonymizeUserData,
-  filterRequestBody,
-  captureException,
-  setContext,
-  setUser,
-  addBreadcrumb,
-} from '@/instrumentation.mjs';
+// import {
+//   containsSensitiveData,
+//   categorizeError,
+//   anonymizeUserData,
+//   filterRequestBody,
+//   captureException,
+//   setContext,
+//   setUser,
+//   addBreadcrumb,
+// } from '@/instrumentation.mjs';
 
 export async function POST(req) {
   let client;
