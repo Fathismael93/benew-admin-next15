@@ -1,20 +1,242 @@
-// api/register.js
+// api/register/route.js
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { getClient } from '@/utils/dbConnect';
 import { registrationSchema } from '@/utils/schemas';
 
-// Importer les fonctions d'instrumentation créées
-// import {
-//   containsSensitiveData,
-//   categorizeError,
-//   anonymizeUserData,
-//   filterRequestBody,
-//   captureException,
-//   setContext,
-//   setUser,
-//   addBreadcrumb,
-// } from '@/instrumentation.mjs';
+// ----- FONCTIONS UTILITAIRES INTÉGRÉES -----
+
+// Fonction pour détecter les données sensibles
+function containsSensitiveData(str) {
+  if (!str || typeof str !== 'string') return false;
+
+  const patterns = [
+    /password/i,
+    /mot\s*de\s*passe/i,
+    /nextauth[_-]?secret/i,
+    /jwt[_-]?token/i,
+    /access[_-]?token/i,
+    /refresh[_-]?token/i,
+    /session[_-]?token/i,
+    /api[_-]?key/i,
+    /secret[_-]?key/i,
+    /cloudinary[_-]?api[_-]?secret/i,
+    /db[_-]?password/i,
+    /database[_-]?password/i,
+    /sentry[_-]?auth[_-]?token/i,
+    /credit\s*card/i,
+    /carte\s*de\s*credit/i,
+    /payment[_-]?method/i,
+    /card[_-]?number/i,
+    /cvv/i,
+    /expiry/i,
+    /\b(?:\d{4}[ -]?){3}\d{4}\b/,
+    /\b(?:\d{3}[ -]?){2}\d{4}\b/,
+    /\b\d{3}[ -]?\d{2}[ -]?\d{4}\b/,
+    /user[_-]?password/i,
+    /email[_-]?verification/i,
+    /reset[_-]?token/i,
+    /verification[_-]?code/i,
+    /platform[_-]?number/i,
+    /application[_-]?price/i,
+    /order[_-]?payment/i,
+  ];
+
+  return patterns.some((pattern) => pattern.test(str));
+}
+
+// Classification des erreurs
+function categorizeError(error) {
+  if (!error) return 'unknown';
+
+  const message = error.message || '';
+  const name = error.name || '';
+  const stack = error.stack || '';
+  const combinedText = (message + name + stack).toLowerCase();
+
+  if (/postgres|pg|database|db|connection|timeout|pool/i.test(combinedText)) {
+    return 'database';
+  }
+
+  if (
+    /nextauth|auth|permission|token|unauthorized|forbidden|session/i.test(
+      combinedText,
+    )
+  ) {
+    return 'authentication';
+  }
+
+  if (/cloudinary|image|upload|transform|media/i.test(combinedText)) {
+    return 'media_upload';
+  }
+
+  if (/network|fetch|http|request|response|api|axios/i.test(combinedText)) {
+    return 'network';
+  }
+
+  if (/validation|schema|required|invalid|yup/i.test(combinedText)) {
+    return 'validation';
+  }
+
+  if (/tiptap|editor|prosemirror/i.test(combinedText)) {
+    return 'editor';
+  }
+
+  if (
+    /template|application|article|blog|platform|order|user/i.test(combinedText)
+  ) {
+    return 'business_logic';
+  }
+
+  if (/rate.?limit|too.?many.?requests|429/i.test(combinedText)) {
+    return 'rate_limiting';
+  }
+
+  return 'application';
+}
+
+// Anonymisation des données utilisateur
+function anonymizeUserData(userData) {
+  if (!userData) return userData;
+
+  const anonymizedData = { ...userData };
+
+  // Supprimer les informations très sensibles
+  delete anonymizedData.ip_address;
+  delete anonymizedData.user_password;
+  delete anonymizedData.session_token;
+
+  // Anonymiser le nom d'utilisateur
+  if (anonymizedData.username || anonymizedData.user_name) {
+    const username = anonymizedData.username || anonymizedData.user_name;
+    anonymizedData.username =
+      username.length > 2
+        ? username[0] + '***' + username.slice(-1)
+        : '[USERNAME]';
+    delete anonymizedData.user_name;
+  }
+
+  // Anonymiser l'email
+  if (anonymizedData.email || anonymizedData.user_email) {
+    const email = anonymizedData.email || anonymizedData.user_email;
+    const atIndex = email.indexOf('@');
+    if (atIndex > 0) {
+      const domain = email.slice(atIndex);
+      anonymizedData.email = `${email[0]}***${domain}`;
+    } else {
+      anonymizedData.email = '[FILTERED_EMAIL]';
+    }
+    delete anonymizedData.user_email;
+  }
+
+  // Anonymiser l'ID utilisateur
+  if (anonymizedData.id || anonymizedData.user_id) {
+    const id = String(anonymizedData.id || anonymizedData.user_id);
+    anonymizedData.id =
+      id.length > 2 ? id.substring(0, 1) + '***' + id.slice(-1) : '[USER_ID]';
+    delete anonymizedData.user_id;
+  }
+
+  // Anonymiser le téléphone
+  if (anonymizedData.phone || anonymizedData.user_phone) {
+    const phone = anonymizedData.phone || anonymizedData.user_phone;
+    anonymizedData.phone =
+      phone.length > 4
+        ? phone.substring(0, 2) + '***' + phone.slice(-2)
+        : '[PHONE]';
+    delete anonymizedData.user_phone;
+  }
+
+  return anonymizedData;
+}
+
+// Filtrage du corps des requêtes
+function filterRequestBody(body) {
+  if (!body) return body;
+
+  if (containsSensitiveData(body)) {
+    try {
+      if (typeof body === 'string') {
+        const parsedBody = JSON.parse(body);
+        const sensitiveFields = [
+          'password',
+          'confirmPassword',
+          'user_password',
+          'api_key',
+          'secret',
+          'token',
+          'auth',
+          'cloudinary_secret',
+          'db_password',
+          'platform_number',
+          'payment_info',
+          'card_number',
+          'cvv',
+          'expiry',
+        ];
+
+        const filteredBody = { ...parsedBody };
+        sensitiveFields.forEach((field) => {
+          if (filteredBody[field]) {
+            filteredBody[field] = '[FILTERED]';
+          }
+        });
+
+        return {
+          filtered: '[CONTIENT DES DONNÉES SENSIBLES]',
+          bodySize: JSON.stringify(parsedBody).length,
+          sanitizedPreview:
+            JSON.stringify(filteredBody).substring(0, 200) + '...',
+        };
+      }
+    } catch (e) {
+      // Parsing JSON échoué
+    }
+    return '[DONNÉES FILTRÉES]';
+  }
+
+  return body;
+}
+
+// Fonctions Sentry avec gestion d'erreur
+async function captureException(error, options = {}) {
+  try {
+    const { captureException } = await import('@sentry/nextjs');
+    return captureException(error, options);
+  } catch (importError) {
+    console.error('Sentry capture failed:', importError.message);
+    console.error('Original error:', error);
+  }
+}
+
+async function setContext(key, context) {
+  try {
+    const { setContext } = await import('@sentry/nextjs');
+    return setContext(key, context);
+  } catch (importError) {
+    console.error('Sentry setContext failed:', importError.message);
+  }
+}
+
+async function setUser(user) {
+  try {
+    const { setUser } = await import('@sentry/nextjs');
+    return setUser(user);
+  } catch (importError) {
+    console.error('Sentry setUser failed:', importError.message);
+  }
+}
+
+async function addBreadcrumb(breadcrumb) {
+  try {
+    const { addBreadcrumb } = await import('@sentry/nextjs');
+    return addBreadcrumb(breadcrumb);
+  } catch (importError) {
+    console.error('Sentry addBreadcrumb failed:', importError.message);
+  }
+}
+
+// ----- API ROUTE PRINCIPALE -----
 
 export async function POST(req) {
   let client;
@@ -33,7 +255,6 @@ export async function POST(req) {
     try {
       body = await req.json();
     } catch (parseError) {
-      // Utiliser la fonction de catégorisation centralisée
       const errorCategory = categorizeError(parseError);
 
       await captureException(parseError, {
@@ -50,6 +271,7 @@ export async function POST(req) {
             },
           },
         },
+        level: 'error',
       });
 
       return NextResponse.json(
@@ -95,7 +317,6 @@ export async function POST(req) {
         { abortEarly: false },
       );
     } catch (validationError) {
-      // Utiliser la fonction de catégorisation centralisée
       const errorCategory = categorizeError(validationError);
 
       await captureException(validationError, {
@@ -126,7 +347,6 @@ export async function POST(req) {
     try {
       client = await getClient();
     } catch (dbConnectionError) {
-      // Utiliser la fonction de catégorisation centralisée
       const errorCategory = categorizeError(dbConnectionError);
 
       await captureException(dbConnectionError, {
@@ -159,7 +379,6 @@ export async function POST(req) {
         email.toLowerCase(),
       ]);
     } catch (userCheckError) {
-      // Utiliser la fonction de catégorisation centralisée
       const errorCategory = categorizeError(userCheckError);
 
       await captureException(userCheckError, {
@@ -220,7 +439,6 @@ export async function POST(req) {
 
       console.log('Password hashed successfully');
     } catch (hashError) {
-      // Utiliser la fonction de catégorisation centralisée
       const errorCategory = categorizeError(hashError);
 
       await captureException(hashError, {
@@ -264,7 +482,6 @@ export async function POST(req) {
         dateOfBirth || null,
       ]);
     } catch (insertError) {
-      // Utiliser la fonction de catégorisation centralisée
       const errorCategory = categorizeError(insertError);
 
       // Analyser le type d'erreur PostgreSQL
