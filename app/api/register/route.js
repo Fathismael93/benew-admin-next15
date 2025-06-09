@@ -14,7 +14,7 @@ import {
   setContext,
   setUser,
   addBreadcrumb,
-} from '@/instrumentation.js';
+} from '@/instrumentation.mjs';
 
 export async function POST(req) {
   let client;
