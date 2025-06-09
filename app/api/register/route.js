@@ -255,7 +255,7 @@ export async function POST(req) {
     // Validate input using Yup schema
     try {
       await registrationSchema.validate(
-        { username, email, phone, password, dateOfBirth },
+        { username, email, phone, password, confirmPassword, dateOfBirth },
         { abortEarly: false },
       );
     } catch (validationError) {
