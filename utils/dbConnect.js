@@ -151,9 +151,9 @@ process.on('SIGTERM', () => {
   process.exit(0);
 });
 
-export default {
-  getClient,
-};
+// export default {
+//   getClient,
+// };
 
 /**************** *********************/
 

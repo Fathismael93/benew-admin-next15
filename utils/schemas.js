@@ -126,10 +126,6 @@ export const registrationSchema = yup.object().shape({
     .required('Please confirm your password')
     .oneOf([yup.ref('password')], 'Passwords must match'),
 
-  terms: yup
-    .boolean()
-    .oneOf([true], 'You must accept the terms and conditions'),
-
   dateOfBirth: yup
     .date()
     .max(new Date(), 'Date of birth cannot be in the future')
@@ -139,4 +135,8 @@ export const registrationSchema = yup.object().shape({
       'You must be at least 13 years old',
       (value) => !value || new Date().getFullYear() - value.getFullYear() >= 13,
     ),
+
+  terms: yup
+    .boolean()
+    .oneOf([true], 'You must accept the terms and conditions'),
 });
