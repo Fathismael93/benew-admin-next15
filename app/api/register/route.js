@@ -253,27 +253,43 @@ export async function POST(req) {
     console.log('📝 Registration attempt:', userDataForLogging);
 
     // Validate input using Yup schema
-    try {
-      await registrationSchema.validate(
-        { username, email, phone, password, confirmPassword, dateOfBirth },
+    await registrationSchema
+      .validate(
+        {
+          username,
+          email,
+          phone,
+          password,
+          confirmPassword,
+          dateOfBirth,
+          terms,
+        },
         { abortEarly: false },
-      );
-    } catch (validationError) {
-      const errorCategory = categorizeError(validationError);
-
-      console.error('❌ Validation Error:', {
-        category: errorCategory,
-        failed_fields: validationError.inner?.map((err) => err.path) || [],
-        total_errors: validationError.inner?.length || 0,
-        user_input: userDataForLogging,
+      )
+      .then(() => {
+        console.log('✅ Input validation successful');
+      })
+      .catch((validationError) => {
+        console.error('❌ Validation Error:', validationError);
       });
 
-      const errors = {};
-      validationError.inner.forEach((error) => {
-        errors[error.path] = error.message;
-      });
-      return NextResponse.json({ errors }, { status: 400 });
-    }
+    // try {
+    // } catch (validationError) {
+    //   const errorCategory = categorizeError(validationError);
+
+    //   console.error('❌ Validation Error:', {
+    //     category: errorCategory,
+    //     failed_fields: validationError.inner?.map((err) => err.path) || [],
+    //     total_errors: validationError.inner?.length || 0,
+    //     user_input: userDataForLogging,
+    //   });
+
+    //   const errors = {};
+    //   validationError.inner.forEach((error) => {
+    //     errors[error.path] = error.message;
+    //   });
+    //   return NextResponse.json({ errors }, { status: 400 });
+    // }
 
     // Obtenir le client de base de données
     try {
