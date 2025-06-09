@@ -53,7 +53,6 @@ export async function POST(req) {
     const insertUserQuery = `
       INSERT INTO admin.users (user_name, user_email, user_password, user_phone, user_birthdate)
       VALUES ($1, $2, $3, $4, $5)
-      ON CONFLICT (user_email) DO NOTHING
       RETURNING user_id, user_name, user_email, user_phone, user_birthdate, user_image, user_added, user_updated
     `;
 
