@@ -145,6 +145,7 @@ const nextConfig = {
     ],
     optimizeCss: true,
     gzipSize: true,
+    // Supprimer instrumentationHook qui cause des problèmes
   },
 
   // Configuration du compilateur pour la production
@@ -158,7 +159,7 @@ const nextConfig = {
     reactRemoveProperties:
       process.env.NODE_ENV === 'production'
         ? {
-            properties: ['^data-testid$'],
+            properties: [data - testid],
           }
         : false,
   },
@@ -169,12 +170,6 @@ const nextConfig = {
   // Configuration des en-têtes HTTP
   async headers() {
     return [
-      // En-têtes de sécurité globaux (commentés pour éviter les conflits avec les API)
-      // {
-      //   source: '/((?!api).*)',
-      //   headers: securityHeaders,
-      // },
-
       // Configuration CORS et cache pour les API publiques (templates, applications)
       {
         source: '/api/dashboard/templates/:path*',
@@ -440,7 +435,7 @@ const nextConfig = {
 
       // Fichiers statiques (fonts, etc.)
       {
-        source: '/:path*\\.(woff|woff2|eot|ttf|otf)$',
+        source: '/:path*\\.(woff|woff2|eot|ttf|otf)',
         headers: [
           {
             key: 'Cache-Control',
@@ -621,6 +616,9 @@ const sentryWebpackPluginOptions = {
   deploy: {
     env: process.env.NODE_ENV,
   },
+
+  // Configuration automatique améliorée
+  automaticVercelMonitors: false,
 };
 
 // Export avec Sentry et l'analyseur de bundle

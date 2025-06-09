@@ -1,11 +1,14 @@
 /* eslint-disable no-unused-vars */
-// instrumentation.js
+// instrumentation.mjs
 import { EventEmitter } from 'events';
 
 // Augmenter la limite d'écouteurs d'événements pour éviter l'avertissement
 if (typeof EventEmitter !== 'undefined') {
   EventEmitter.defaultMaxListeners = 25;
 }
+
+// Variable pour stocker l'instance Sentry
+let sentryInstance = null;
 
 // ----- FONCTIONS CENTRALISÉES D'ANONYMISATION ET DE FILTRAGE -----
 
@@ -326,48 +329,70 @@ function filterRequestBody(body) {
   return body;
 }
 
+// Fonction pour initialiser Sentry avec gestion d'erreur
+async function initializeSentry() {
+  if (sentryInstance) return sentryInstance;
+
+  try {
+    const Sentry = await import('@sentry/nextjs');
+    sentryInstance = Sentry;
+    return Sentry;
+  } catch (error) {
+    console.warn('Sentry not available:', error.message);
+    return null;
+  }
+}
+
 // Fonction centralisée pour capturer les exceptions Sentry
 async function captureException(error, options = {}) {
   try {
-    const Sentry = await import('@sentry/nextjs');
-    return Sentry.captureException(error, options);
+    const Sentry = await initializeSentry();
+    if (Sentry) {
+      return Sentry.captureException(error, options);
+    }
   } catch (importError) {
     console.error(
-      'Failed to import Sentry for exception capture:',
-      importError,
+      'Failed to capture exception with Sentry:',
+      importError.message,
     );
-    // Fallback: log l'erreur au moins
-    console.error('Uncaptured exception:', error);
   }
+  // Fallback: log l'erreur au moins
+  console.error('Uncaptured exception:', error);
 }
 
 // Fonction centralisée pour définir le contexte Sentry
 async function setContext(key, context) {
   try {
-    const Sentry = await import('@sentry/nextjs');
-    return Sentry.setContext(key, context);
+    const Sentry = await initializeSentry();
+    if (Sentry) {
+      return Sentry.setContext(key, context);
+    }
   } catch (importError) {
-    console.error('Failed to import Sentry for context:', importError);
+    console.error('Failed to set Sentry context:', importError.message);
   }
 }
 
 // Fonction centralisée pour définir l'utilisateur Sentry
 async function setUser(user) {
   try {
-    const Sentry = await import('@sentry/nextjs');
-    return Sentry.setUser(user);
+    const Sentry = await initializeSentry();
+    if (Sentry) {
+      return Sentry.setUser(user);
+    }
   } catch (importError) {
-    console.error('Failed to import Sentry for user:', importError);
+    console.error('Failed to set Sentry user:', importError.message);
   }
 }
 
 // Fonction centralisée pour ajouter des breadcrumbs
 async function addBreadcrumb(breadcrumb) {
   try {
-    const Sentry = await import('@sentry/nextjs');
-    return Sentry.addBreadcrumb(breadcrumb);
+    const Sentry = await initializeSentry();
+    if (Sentry) {
+      return Sentry.addBreadcrumb(breadcrumb);
+    }
   } catch (importError) {
-    console.error('Failed to import Sentry for breadcrumb:', importError);
+    console.error('Failed to add Sentry breadcrumb:', importError.message);
   }
 }
 
@@ -392,7 +417,11 @@ export async function register() {
 
   if (sentryDSN && isValidDSN(sentryDSN)) {
     try {
-      const Sentry = await import('@sentry/nextjs');
+      const Sentry = await initializeSentry();
+      if (!Sentry) {
+        console.warn('⚠️ Sentry module not available');
+        return;
+      }
 
       Sentry.init({
         dsn: sentryDSN,
@@ -647,7 +676,8 @@ export async function register() {
 // Instrumentation pour les erreurs de requête spécifiques au dashboard
 export async function onRequestError({ error, request }) {
   try {
-    const Sentry = await import('@sentry/nextjs');
+    const Sentry = await initializeSentry();
+    if (!Sentry) return;
 
     // Contexte enrichi spécifique à votre application dashboard
     const context = {
