@@ -9,6 +9,7 @@ const RegistrationPage = () => {
   const [formData, setFormData] = useState({
     username: '',
     email: '',
+    phone,
     password: '',
     confirmPassword: '',
     dateOfBirth: '',
@@ -53,11 +54,11 @@ const RegistrationPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    console.log('Password: ');
-    console.log(formData.password);
+    // console.log('Password: ');
+    // console.log(formData.password);
 
-    console.log('Confirmation Password: ');
-    console.log(formData.confirmPassword);
+    // console.log('Confirmation Password: ');
+    // console.log(formData.confirmPassword);
 
     try {
       await registrationSchema.validate(formData, { abortEarly: false });
@@ -120,6 +121,18 @@ const RegistrationPage = () => {
             value={formData.email}
           />
           {errors.email && <div className="error">{errors.email}</div>}
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="phone">Phone</label>
+          <input
+            id="phone"
+            name="phone"
+            type="tel"
+            onChange={handleChange}
+            value={formData.phone}
+          />
+          {errors.phone && <div className="error">{errors.phone}</div>}
         </div>
 
         <div className="form-group">

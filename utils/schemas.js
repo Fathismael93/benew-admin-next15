@@ -1,5 +1,8 @@
 import * as yup from 'yup';
 
+// Valide les numéros de téléphone internationaux
+const PHONE = /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,4}[-\s.]?[0-9]{1,9}$/;
+
 export const addArticleSchema = yup.object().shape({
   title: yup
     .string()
@@ -71,6 +74,20 @@ export const registrationSchema = yup.object().shape({
     })
     .transform((value) => value?.toLowerCase().trim()),
 
+  phone: yup
+    .string()
+    .trim()
+    .required('Phone number is required')
+    .matches(PHONE, 'Invalid phone number format')
+    .test(
+      'is-valid-phone',
+      'Phone number must be valid',
+      (value) =>
+        value &&
+        value.replace(/\D/g, '').length >= 6 &&
+        value.replace(/\D/g, '').length <= 15,
+    ),
+
   password: yup
     .string()
     .required('Password is required')
@@ -122,20 +139,4 @@ export const registrationSchema = yup.object().shape({
       'You must be at least 13 years old',
       (value) => !value || new Date().getFullYear() - value.getFullYear() >= 13,
     ),
-});
-
-// Optional: Export a lighter version for simple checks
-export const quickValidationSchema = yup.object().shape({
-  username: yup
-    .string()
-    .required('Username is required')
-    .min(3, 'Username must be at least 3 characters'),
-  email: yup
-    .string()
-    .required('Email is required')
-    .email('Invalid email format'),
-  password: yup
-    .string()
-    .required('Password is required')
-    .min(8, 'Password must be at least 8 characters'),
 });
