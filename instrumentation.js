@@ -326,6 +326,65 @@ function filterRequestBody(body) {
   return body;
 }
 
+// Fonction centralisée pour capturer les exceptions Sentry
+async function captureException(error, options = {}) {
+  try {
+    const Sentry = await import('@sentry/nextjs');
+    return Sentry.captureException(error, options);
+  } catch (importError) {
+    console.error(
+      'Failed to import Sentry for exception capture:',
+      importError,
+    );
+    // Fallback: log l'erreur au moins
+    console.error('Uncaptured exception:', error);
+  }
+}
+
+// Fonction centralisée pour définir le contexte Sentry
+async function setContext(key, context) {
+  try {
+    const Sentry = await import('@sentry/nextjs');
+    return Sentry.setContext(key, context);
+  } catch (importError) {
+    console.error('Failed to import Sentry for context:', importError);
+  }
+}
+
+// Fonction centralisée pour définir l'utilisateur Sentry
+async function setUser(user) {
+  try {
+    const Sentry = await import('@sentry/nextjs');
+    return Sentry.setUser(user);
+  } catch (importError) {
+    console.error('Failed to import Sentry for user:', importError);
+  }
+}
+
+// Fonction centralisée pour ajouter des breadcrumbs
+async function addBreadcrumb(breadcrumb) {
+  try {
+    const Sentry = await import('@sentry/nextjs');
+    return Sentry.addBreadcrumb(breadcrumb);
+  } catch (importError) {
+    console.error('Failed to import Sentry for breadcrumb:', importError);
+  }
+}
+
+// Exporter les fonctions utilitaires pour utilisation dans les APIs
+export {
+  containsSensitiveData,
+  categorizeError,
+  anonymizeUserData,
+  anonymizeHeaders,
+  anonymizeUrl,
+  filterRequestBody,
+  captureException,
+  setContext,
+  setUser,
+  addBreadcrumb,
+};
+
 export async function register() {
   const sentryDSN = process.env.NEXT_PUBLIC_SENTRY_DSN;
   const environment = process.env.NODE_ENV || 'development';
