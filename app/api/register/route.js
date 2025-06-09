@@ -395,6 +395,8 @@ export async function POST(req) {
       );
     }
 
+    console.log('Hashed password:', hashedPassword);
+
     // Insert new user
     let result;
     try {
