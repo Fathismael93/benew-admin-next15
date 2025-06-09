@@ -260,9 +260,9 @@ export async function POST(req) {
 
     console.log('📝 Registration attempt:', userDataForLogging);
 
-    // Validate input using Yup schema
-    await registrationSchema
-      .validate(
+    try {
+      // Validate input using Yup schema
+      await registrationSchema.validate(
         {
           username,
           email,
@@ -273,31 +273,23 @@ export async function POST(req) {
           terms,
         },
         { abortEarly: false },
-      )
-      .then(() => {
-        console.log('✅ Input validation successful');
-      })
-      .catch((validationError) => {
-        console.error('❌ Validation Error:', validationError);
+      );
+    } catch (validationError) {
+      const errorCategory = categorizeError(validationError);
+
+      console.error('❌ Validation Error:', {
+        category: errorCategory,
+        failed_fields: validationError.inner?.map((err) => err.path) || [],
+        total_errors: validationError.inner?.length || 0,
+        user_input: userDataForLogging,
       });
 
-    // try {
-    // } catch (validationError) {
-    //   const errorCategory = categorizeError(validationError);
-
-    //   console.error('❌ Validation Error:', {
-    //     category: errorCategory,
-    //     failed_fields: validationError.inner?.map((err) => err.path) || [],
-    //     total_errors: validationError.inner?.length || 0,
-    //     user_input: userDataForLogging,
-    //   });
-
-    //   const errors = {};
-    //   validationError.inner.forEach((error) => {
-    //     errors[error.path] = error.message;
-    //   });
-    //   return NextResponse.json({ errors }, { status: 400 });
-    // }
+      const errors = {};
+      validationError.inner.forEach((error) => {
+        errors[error.path] = error.message;
+      });
+      return NextResponse.json({ errors }, { status: 400 });
+    }
 
     // Obtenir le client de base de données
     try {
@@ -395,8 +387,6 @@ export async function POST(req) {
       );
     }
 
-    console.log('Hashed password:', hashedPassword);
-
     // Insert new user
     let result;
     try {
@@ -406,21 +396,13 @@ export async function POST(req) {
         RETURNING user_id, user_name, user_email, user_phone, user_birthdate, user_image, user_added, user_updated
       `;
 
-      await client
-        .query(insertUserQuery, [
-          username,
-          email.toLowerCase(),
-          hashedPassword,
-          phone || null,
-          dateOfBirth || null,
-        ])
-        .then((res) => {
-          result = res;
-        })
-        .catch((insertError) => {
-          console.error('❌ User Insertion Error:', insertError);
-        });
-
+      result = await client.query(insertUserQuery, [
+        username,
+        email.toLowerCase(),
+        hashedPassword,
+        phone || null,
+        dateOfBirth || null,
+      ]);
       console.log('✅ User inserted successfully');
     } catch (insertError) {
       const errorCategory = categorizeError(insertError);
