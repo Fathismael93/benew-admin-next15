@@ -18,7 +18,7 @@ const handler = NextAuth({
           client = await getClient();
 
           const query =
-            'SELECT user_id, user_name, user_email, user_password FROM users WHERE user_email = $1';
+            'SELECT user_id, user_name, user_email, user_phone, user_birthdate, user_image, user_password FROM admin.users WHERE user_email = $1';
 
           const result = await client.query(query, [
             credentials.email.toLowerCase(),
