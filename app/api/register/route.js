@@ -406,13 +406,21 @@ export async function POST(req) {
         RETURNING user_id, user_name, user_email, user_phone, user_birthdate, user_image, user_added, user_updated
       `;
 
-      result = await client.query(insertUserQuery, [
-        username,
-        email.toLowerCase(),
-        hashedPassword,
-        phone || null,
-        dateOfBirth || null,
-      ]);
+      await client
+        .query(insertUserQuery, [
+          username,
+          email.toLowerCase(),
+          hashedPassword,
+          phone || null,
+          dateOfBirth || null,
+        ])
+        .then((res) => {
+          result = res;
+        })
+        .catch((insertError) => {
+          console.error('❌ User Insertion Error:', insertError);
+        });
+
       console.log('✅ User inserted successfully');
     } catch (insertError) {
       const errorCategory = categorizeError(insertError);
