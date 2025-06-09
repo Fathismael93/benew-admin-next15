@@ -54,9 +54,6 @@ const RegistrationPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    console.log('Form DATA: ');
-    console.log(formData);
-
     try {
       await registrationSchema.validate(formData, { abortEarly: false });
       setErrors({});

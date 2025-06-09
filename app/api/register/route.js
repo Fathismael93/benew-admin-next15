@@ -298,7 +298,8 @@ export async function POST(req) {
     // Check if user already exists
     let userExistsResult;
     try {
-      const userExistsQuery = 'SELECT user_id FROM users WHERE user_email = $1';
+      const userExistsQuery =
+        'SELECT user_id FROM admin.users WHERE user_email = $1';
       userExistsResult = await client.query(userExistsQuery, [
         email.toLowerCase(),
       ]);
@@ -374,7 +375,7 @@ export async function POST(req) {
     let result;
     try {
       const insertUserQuery = `
-        INSERT INTO users (user_name, user_email, user_password, user_phone, user_birthdate)
+        INSERT INTO admin.users (user_name, user_email, user_password, user_phone, user_birthdate)
         VALUES ($1, $2, $3, $4, $5)
         RETURNING user_id, user_name, user_email, user_phone, user_birthdate, user_image, user_added, user_updated
       `;
