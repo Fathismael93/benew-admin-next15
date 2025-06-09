@@ -1,6 +1,5 @@
 import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { createHash } from 'crypto';
 
 // SUPPRIMER COMPLÈTEMENT SENTRY POUR L'INSTANT
 // import { withSentryConfig } from '@sentry/nextjs';
