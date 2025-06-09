@@ -202,6 +202,26 @@ const nextConfig = {
 
   // Configuration Webpack simplifiée
   webpack: (config, { dev, isServer }) => {
+    // Fix pour l'erreur "self is not defined"
+    if (isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        crypto: false,
+      };
+
+      // Définir les globals manquants pour l'environnement serveur
+      config.plugins.push(
+        new config.webpack.DefinePlugin({
+          'typeof window': JSON.stringify('undefined'),
+          'typeof self': JSON.stringify('undefined'),
+          'typeof document': JSON.stringify('undefined'),
+        }),
+      );
+    }
+
     // Optimisations basiques pour la production
     if (!dev) {
       config.optimization = {
@@ -240,7 +260,13 @@ const nextConfig = {
 
     // Optimisation pour les bibliothèques externes
     if (isServer) {
-      config.externals = [...config.externals, 'pg-native'];
+      config.externals = [
+        ...config.externals,
+        'pg-native',
+        // Exclure les bibliothèques qui utilisent des APIs browser
+        '@sentry/browser',
+        '@sentry/tracing',
+      ];
     }
 
     return config;
