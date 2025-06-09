@@ -229,7 +229,15 @@ export async function POST(req) {
       );
     }
 
-    const { username, email, phone, password, dateOfBirth } = body;
+    const {
+      username,
+      email,
+      phone,
+      password,
+      confirmPassword,
+      dateOfBirth,
+      terms,
+    } = body;
 
     // Vérifier si le corps de la requête contient des données sensibles
     const bodyString = JSON.stringify(body);
