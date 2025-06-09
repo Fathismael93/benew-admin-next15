@@ -5,7 +5,10 @@ import { createHash } from 'crypto';
 import { withSentryConfig } from '@sentry/nextjs';
 import withBundleAnalyzer from '@next/bundle-analyzer';
 
-// Au début du fichier
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Validation des variables d'environnement
 const validateEnv = () => {
   const requiredVars = [
     'NEXT_PUBLIC_SITE_URL',
@@ -32,80 +35,12 @@ const validateEnv = () => {
   }
 };
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Appeler cette fonction au début
+// Appeler la validation
 validateEnv();
 
 const bundleAnalyzer = withBundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
 });
-
-// En-têtes de sécurité renforcés
-const securityHeaders = [
-  {
-    key: 'Strict-Transport-Security',
-    value: 'max-age=63072000; includeSubDomains; preload',
-  },
-  {
-    key: 'X-Frame-Options',
-    value: 'DENY',
-  },
-  {
-    key: 'X-Content-Type-Options',
-    value: 'nosniff',
-  },
-  {
-    key: 'Referrer-Policy',
-    value: 'strict-origin-when-cross-origin',
-  },
-  {
-    key: 'X-DNS-Prefetch-Control',
-    value: 'on',
-  },
-  {
-    key: 'X-XSS-Protection',
-    value: '1; mode=block',
-  },
-  {
-    key: 'Permissions-Policy',
-    value:
-      'camera=(), microphone=(), geolocation=(self), payment=(self), usb=(), interest-cohort=()',
-  },
-  {
-    key: 'Cross-Origin-Opener-Policy',
-    value: 'same-origin',
-  },
-  {
-    key: 'Cross-Origin-Embedder-Policy',
-    value: 'credentialless',
-  },
-  {
-    key: 'Cross-Origin-Resource-Policy',
-    value: 'same-site',
-  },
-  // CSP renforcée pour votre application
-  {
-    key: 'Content-Security-Policy',
-    value: `
-      default-src 'self';
-      script-src 'self' 'unsafe-inline' ${process.env.NODE_ENV === 'development' ? "'unsafe-eval'" : ''} https://cdnjs.cloudflare.com https://js.sentry-cdn.com;
-      style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com;
-      img-src 'self' data: blob: https://res.cloudinary.com https://*.sentry.io;
-      font-src 'self' https://cdnjs.cloudflare.com;
-      connect-src 'self' https://res.cloudinary.com https://api.cloudinary.com https://sentry.io https://*.ingest.sentry.io https://*.sentry.io;
-      media-src 'self' https://res.cloudinary.com;
-      object-src 'none';
-      base-uri 'self';
-      form-action 'self';
-      frame-ancestors 'none';
-      upgrade-insecure-requests;
-    `
-      .replace(/\s+/g, ' ')
-      .trim(),
-  },
-];
 
 const nextConfig = {
   // Désactiver l'en-tête powered-by pour la sécurité
@@ -145,7 +80,6 @@ const nextConfig = {
     ],
     optimizeCss: true,
     gzipSize: true,
-    // Supprimer instrumentationHook qui cause des problèmes
   },
 
   // Configuration du compilateur pour la production
@@ -159,7 +93,7 @@ const nextConfig = {
     reactRemoveProperties:
       process.env.NODE_ENV === 'production'
         ? {
-            properties: [data - testid],
+            properties: ['^data-testid$'],
           }
         : false,
   },
@@ -170,7 +104,7 @@ const nextConfig = {
   // Configuration des en-têtes HTTP
   async headers() {
     return [
-      // Configuration CORS et cache pour les API publiques (templates, applications)
+      // Configuration CORS et cache pour les API publiques
       {
         source: '/api/dashboard/templates/:path*',
         headers: [
@@ -193,7 +127,6 @@ const nextConfig = {
         ],
       },
 
-      // Configuration pour les API d'applications
       {
         source: '/api/dashboard/applications/:path*',
         headers: [
@@ -216,7 +149,6 @@ const nextConfig = {
         ],
       },
 
-      // Configuration pour les API de blog
       {
         source: '/api/dashboard/blog/:path*',
         headers: [
@@ -239,7 +171,7 @@ const nextConfig = {
         ],
       },
 
-      // APIs sensibles (auth, orders, users) - pas de cache
+      // APIs sensibles - pas de cache
       {
         source: '/api/auth/:path*',
         headers: [
@@ -270,68 +202,9 @@ const nextConfig = {
           },
         ],
       },
+
       {
-        source: '/api/dashboard/orders/:path*',
-        headers: [
-          {
-            key: 'Access-Control-Allow-Origin',
-            value: process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
-          },
-          {
-            key: 'Access-Control-Allow-Methods',
-            value: 'GET, POST, PUT, DELETE, OPTIONS',
-          },
-          {
-            key: 'Access-Control-Allow-Headers',
-            value: 'Content-Type, Authorization, X-Requested-With',
-          },
-          {
-            key: 'Cache-Control',
-            value:
-              'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
-          },
-          {
-            key: 'Pragma',
-            value: 'no-cache',
-          },
-          {
-            key: 'Expires',
-            value: '0',
-          },
-        ],
-      },
-      {
-        source: '/api/dashboard/users/:path*',
-        headers: [
-          {
-            key: 'Access-Control-Allow-Origin',
-            value: process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
-          },
-          {
-            key: 'Access-Control-Allow-Methods',
-            value: 'GET, POST, PUT, DELETE, OPTIONS',
-          },
-          {
-            key: 'Access-Control-Allow-Headers',
-            value: 'Content-Type, Authorization, X-Requested-With',
-          },
-          {
-            key: 'Cache-Control',
-            value:
-              'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
-          },
-          {
-            key: 'Pragma',
-            value: 'no-cache',
-          },
-          {
-            key: 'Expires',
-            value: '0',
-          },
-        ],
-      },
-      {
-        source: '/api/dashboard/platforms/:path*',
+        source: '/api/dashboard/(orders|users|platforms)/:path*',
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
@@ -361,7 +234,7 @@ const nextConfig = {
         ],
       },
 
-      // API d'inscription - sécurité renforcée
+      // API d'inscription
       {
         source: '/api/register',
         headers: [
@@ -411,7 +284,7 @@ const nextConfig = {
         ],
       },
 
-      // Ressources statiques Next.js - cache agressif
+      // Ressources statiques - cache agressif
       {
         source: '/_next/static/:path*',
         headers: [
@@ -422,7 +295,6 @@ const nextConfig = {
         ],
       },
 
-      // Images statiques - cache optimisé
       {
         source: '/images/:path*',
         headers: [
@@ -433,9 +305,8 @@ const nextConfig = {
         ],
       },
 
-      // Fichiers statiques (fonts, etc.)
       {
-        source: '/:path*\\.(woff|woff2|eot|ttf|otf)',
+        source: '/:path*\\.(woff|woff2|eot|ttf|otf)$',
         headers: [
           {
             key: 'Cache-Control',
@@ -459,7 +330,6 @@ const nextConfig = {
         destination: '/',
         permanent: true,
       },
-      // Rediriger les anciens chemins API vers les nouveaux
       {
         source: '/api/templates/:path*',
         destination: '/api/dashboard/templates/:path*',
@@ -473,7 +343,7 @@ const nextConfig = {
     PROJECT_ROOT: __dirname,
   },
 
-  // Configuration publique (accessible côté client)
+  // Configuration publique
   publicRuntimeConfig: {
     SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
     CLOUDINARY_CLOUD_NAME: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
@@ -482,7 +352,7 @@ const nextConfig = {
 
   // Configuration Webpack optimisée
   webpack: (config, { dev, isServer, buildId }) => {
-    // Optimisations webpack pour la production
+    // Optimisations pour la production
     if (!dev) {
       config.optimization = {
         ...config.optimization,
@@ -537,7 +407,7 @@ const nextConfig = {
         },
       };
 
-      // Configuration du cache pour de meilleures performances de build
+      // Configuration du cache pour de meilleures performances
       config.cache = {
         type: 'filesystem',
         buildDependencies: {
@@ -546,17 +416,15 @@ const nextConfig = {
         cacheDirectory: path.resolve(__dirname, '.next/cache/webpack'),
       };
 
-      // Réduire les logs en production
       config.infrastructureLogging = {
         level: 'error',
       };
 
-      // Optimisations supplémentaires pour la production
       config.optimization.usedExports = true;
       config.optimization.sideEffects = false;
     }
 
-    // Alias pour améliorer les performances de résolution
+    // Alias pour améliorer les performances
     config.resolve.alias = {
       ...config.resolve.alias,
       '@': path.resolve(__dirname),
@@ -570,7 +438,7 @@ const nextConfig = {
     return config;
   },
 
-  // Gestion stricte des erreurs en production
+  // Gestion des erreurs
   typescript: {
     ignoreBuildErrors: false,
   },
@@ -578,7 +446,7 @@ const nextConfig = {
     ignoreDuringBuilds: false,
   },
 
-  // Configuration de la sortie pour de meilleures performances
+  // Configuration de sortie
   output: process.env.NODE_ENV === 'production' ? 'standalone' : undefined,
 
   // Optimisation des logs
@@ -589,39 +457,33 @@ const nextConfig = {
   },
 };
 
-// Configuration Sentry optimisée
+// Configuration Sentry simplifiée
 const sentryWebpackPluginOptions = {
   org: process.env.SENTRY_ORG || 'your-org',
   project: process.env.SENTRY_PROJECT || 'admin-dashboard',
   authToken: process.env.SENTRY_AUTH_TOKEN,
 
-  // Optimisations pour la production
   silent: process.env.NODE_ENV === 'production',
   hideSourceMaps: process.env.NODE_ENV === 'production',
   widenClientFileUpload: true,
   transpileClientSDK: true,
   tunnelRoute: '/monitoring',
 
-  // Configuration pour les builds
   dryRun:
     process.env.NODE_ENV !== 'production' || !process.env.SENTRY_AUTH_TOKEN,
   debug: process.env.NODE_ENV === 'development',
 
-  // Optimisation des uploads
   include: '.next',
   ignore: ['node_modules', '*.map'],
 
-  // Configuration des releases
   release: process.env.SENTRY_RELEASE || process.env.VERCEL_GIT_COMMIT_SHA,
   deploy: {
     env: process.env.NODE_ENV,
   },
 
-  // Configuration automatique améliorée
   automaticVercelMonitors: false,
 };
 
-// Export avec Sentry et l'analyseur de bundle
 export default withSentryConfig(
   bundleAnalyzer(nextConfig),
   sentryWebpackPluginOptions,
