@@ -54,11 +54,8 @@ const RegistrationPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    console.log('Password: ');
-    console.log(formData.password);
-
-    console.log('Confirmation Password: ');
-    console.log(formData.confirmPassword);
+    console.log('Form DATA: ');
+    console.log(formData);
 
     try {
       await registrationSchema.validate(formData, { abortEarly: false });
