@@ -3,14 +3,14 @@ import axios from 'axios';
 import ListTemplates from '@/ui/pages/templates/ListTemplates';
 
 async function getTemplates() {
-  let templates;
+  let templates = [];
 
-  await axios
-    .get('https://benew-admin-next15.vercel.app/api/dashboard/templates')
-    .then((response) => {
-      templates = response.data.templates;
-    })
-    .catch((error) => console.log(error));
+  // await axios
+  //   .get('https://benew-admin-next15.vercel.app/api/dashboard/templates')
+  //   .then((response) => {
+  //     templates = response.data.templates;
+  //   })
+  //   .catch((error) => console.log(error));
 
   return templates;
 }

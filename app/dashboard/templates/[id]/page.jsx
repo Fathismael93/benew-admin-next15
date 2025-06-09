@@ -4,15 +4,15 @@ import axios from 'axios';
 import EditTemplate from '@/ui/pages/templates/EditTemplate';
 
 async function getTemplate(id) {
-  let template;
-  try {
-    const response = await axios.get(
-      `https://benew-admin-next15.vercel.app/api/dashboard/templates/${id}`,
-    );
-    template = response.data.template;
-  } catch (error) {
-    console.error('Error fetching template:', error);
-  }
+  let template = [];
+  // try {
+  //   const response = await axios.get(
+  //     `https://benew-admin-next15.vercel.app/api/dashboard/templates/${id}`,
+  //   );
+  //   template = response.data.template;
+  // } catch (error) {
+  //   console.error('Error fetching template:', error);
+  // }
   return template;
 }
 
