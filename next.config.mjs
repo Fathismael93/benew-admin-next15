@@ -500,23 +500,33 @@ const nextConfig = {
   },
 };
 
-// Options de configuration Sentry
+// Configuration Sentry optimisée
 const sentryWebpackPluginOptions = {
-  // Pour les nouvelles versions de Sentry, utilisez authToken au lieu de silent
-  silent: true,
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
+  org: process.env.SENTRY_ORG || 'your-org',
+  project: process.env.SENTRY_PROJECT || 'admin-dashboard',
   authToken: process.env.SENTRY_AUTH_TOKEN,
 
-  // Seulement upload les source maps en production
-  disableServerWebpackPlugin: false,
-  disableClientWebpackPlugin: false,
+  // Optimisations pour la production
+  silent: process.env.NODE_ENV === 'production',
+  hideSourceMaps: process.env.NODE_ENV === 'production',
   widenClientFileUpload: true,
   transpileClientSDK: true,
   tunnelRoute: '/monitoring',
-  hideSourceMaps: true,
-  disableLogger: true,
-  automaticVercelMonitors: true,
+
+  // Configuration pour les builds
+  dryRun:
+    process.env.NODE_ENV !== 'production' || !process.env.SENTRY_AUTH_TOKEN,
+  debug: process.env.NODE_ENV === 'development',
+
+  // Optimisation des uploads
+  include: '.next',
+  ignore: ['node_modules', '*.map'],
+
+  // Configuration des releases
+  release: process.env.SENTRY_RELEASE || process.env.VERCEL_GIT_COMMIT_SHA,
+  deploy: {
+    env: process.env.NODE_ENV,
+  },
 };
 
 // Appliquer les configurations dans l'ordre : bundleAnalyzer puis Sentry
