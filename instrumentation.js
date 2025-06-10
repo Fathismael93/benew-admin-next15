@@ -18,10 +18,7 @@ Sentry.init({
   environment: process.env.NODE_ENV,
 
   // Server-side specific configuration
-  integrations: [
-    Sentry.httpIntegration(),
-    Sentry.prismaIntegration(), // Si vous utilisez Prisma
-  ],
+  integrations: [Sentry.httpContextIntegration()],
 
   // Custom error filtering for server-side
   beforeSend(event) {
