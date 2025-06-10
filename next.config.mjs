@@ -1,5 +1,6 @@
 import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { createHash } from 'crypto';
 
 // CONFIGURATION MINIMALE POUR FAIRE FONCTIONNER LE BUILD
 import withBundleAnalyzer from '@next/bundle-analyzer';
@@ -424,7 +425,7 @@ const nextConfig = {
                 );
               },
               name(module) {
-                const hash = require('crypto').createHash('sha1');
+                const hash = createHash('sha1');
                 hash.update(module.identifier());
                 return hash.digest('hex').substring(0, 8);
               },
