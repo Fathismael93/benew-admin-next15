@@ -358,6 +358,18 @@ const nextConfig = {
     ];
   },
 
+  // Configuration du runtime côté serveur
+  serverRuntimeConfig: {
+    PROJECT_ROOT: __dirname,
+  },
+
+  // Configuration publique (accessible côté client)
+  publicRuntimeConfig: {
+    SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+    CLOUDINARY_CLOUD_NAME: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+    CLOUDINARY_API_KEY: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
+  },
+
   // Configuration des redirections
   async redirects() {
     return [
