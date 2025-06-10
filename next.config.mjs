@@ -162,7 +162,7 @@ const nextConfig = {
   },
 
   // Timeout pour la génération de pages statiques
-  // staticPageGenerationTimeout: 180,
+  staticPageGenerationTimeout: 180,
 
   async headers() {
     return [
