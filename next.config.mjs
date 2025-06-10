@@ -141,7 +141,6 @@ const nextConfig = {
       'recharts',
       'html-react-parser',
     ],
-    // optimizeCss: true,
     gzipSize: true,
   },
 
@@ -164,10 +163,18 @@ const nextConfig = {
   // Timeout pour la génération de pages statiques
   staticPageGenerationTimeout: 180,
 
+  // Configuration des en-têtes HTTP
   async headers() {
     return [
+      // En-têtes de sécurité globaux (commentés pour éviter les conflits avec les API)
+      // {
+      //   source: '/((?!api).*)',
+      //   headers: securityHeaders,
+      // },
+
+      // Configuration CORS et cache pour les API publiques (templates, applications)
       {
-        source: '/api/dashboard/(templates|applications|blog)/:path*',
+        source: '/api/dashboard/templates/:path*',
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
@@ -179,28 +186,168 @@ const nextConfig = {
           },
           {
             key: 'Access-Control-Allow-Headers',
-            value: 'Content-Type, Authorization',
+            value: 'Content-Type, Authorization, X-Requested-With',
           },
-          { key: 'Cache-Control', value: 'public, max-age=300' },
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=300, stale-while-revalidate=600',
+          },
         ],
       },
+
+      // Configuration pour les API d'applications
       {
-        source: '/api/(auth|register)/:path*',
+        source: '/api/dashboard/applications/:path*',
+        headers: [
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: process.env.NEXT_PUBLIC_SITE_URL || '*',
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, POST, PUT, DELETE, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization, X-Requested-With',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=300, stale-while-revalidate=600',
+          },
+        ],
+      },
+
+      // Configuration pour les API de blog
+      {
+        source: '/api/dashboard/blog/:path*',
+        headers: [
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: process.env.NEXT_PUBLIC_SITE_URL || '*',
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, POST, PUT, DELETE, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization, X-Requested-With',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=180, stale-while-revalidate=360',
+          },
+        ],
+      },
+
+      // APIs sensibles (auth, orders, users) - pas de cache
+      {
+        source: '/api/(auth|dashboard/(orders|users|platforms))/:path*',
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
             value: process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
           },
-          { key: 'Access-Control-Allow-Methods', value: 'POST, OPTIONS' },
-          { key: 'Access-Control-Allow-Headers', value: 'Content-Type' },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, POST, PUT, DELETE, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization, X-Requested-With',
+          },
+          {
+            key: 'Cache-Control',
+            value:
+              'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+          {
+            key: 'Expires',
+            value: '0',
+          },
+        ],
+      },
+
+      // API d'inscription - sécurité renforcée
+      {
+        source: '/api/register',
+        headers: [
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'POST, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, X-Requested-With',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'no-store, no-cache, must-revalidate',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+        ],
+      },
+
+      // APIs de signature Cloudinary
+      {
+        source: '/api/dashboard/:path*/sign-image',
+        headers: [
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'POST, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization',
+          },
           {
             key: 'Cache-Control',
             value: 'no-store, no-cache, must-revalidate',
           },
         ],
       },
+
+      // Ressources statiques Next.js - cache agressif
       {
         source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+
+      // Images statiques - cache optimisé
+      {
+        source: '/images/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, stale-while-revalidate=3600',
+          },
+        ],
+      },
+
+      // Fichiers statiques (fonts, etc.)
+      {
+        source: '/:path*\\.(woff|woff2|eot|ttf|otf)$',
         headers: [
           {
             key: 'Cache-Control',
