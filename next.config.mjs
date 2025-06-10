@@ -119,12 +119,32 @@ const nextConfig = {
       },
     ],
     formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 86400, // 1 jour
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    dangerouslyAllowSVG: false,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
 
+  // Fonctionnalités expérimentales pour les performances
   experimental: {
-    // Configuration minimale
+    optimizePackageImports: [
+      'react-icons',
+      'axios',
+      'bcryptjs',
+      'next-cloudinary',
+      'yup',
+      '@tiptap/react',
+      '@tiptap/core',
+      '@tiptap/starter-kit',
+      'recharts',
+      'html-react-parser',
+    ],
+    optimizeCss: true,
+    gzipSize: true,
   },
 
+  // Configuration du compilateur pour la production
   compiler: {
     removeConsole:
       process.env.NODE_ENV === 'production'
@@ -132,7 +152,16 @@ const nextConfig = {
             exclude: ['error', 'warn'],
           }
         : false,
+    reactRemoveProperties:
+      process.env.NODE_ENV === 'production'
+        ? {
+            properties: ['^data-testid$'],
+          }
+        : false,
   },
+
+  // Timeout pour la génération de pages statiques
+  staticPageGenerationTimeout: 180,
 
   async headers() {
     return [
