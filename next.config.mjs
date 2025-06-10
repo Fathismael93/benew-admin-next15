@@ -5,12 +5,106 @@ import { fileURLToPath } from 'url';
 import withBundleAnalyzer from '@next/bundle-analyzer';
 import { withSentryConfig } from '@sentry/nextjs';
 
+//Add commentMore actions
+const validateEnv = () => {
+  const requiredVars = [
+    'NEXT_PUBLIC_SITE_URL',
+    'NEXTAUTH_SECRET',
+    'NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME',
+    'NEXT_PUBLIC_CLOUDINARY_API_KEY',
+    'CLOUDINARY_API_SECRET',
+    'USER_NAME',
+    'HOST_NAME',
+    'DB_NAME',
+    'DB_PASSWORD',
+    'PORT_NUMBER',
+  ];
+
+  const missingVars = requiredVars.filter((varName) => !process.env[varName]);
+
+  if (missingVars.length > 0) {
+    console.warn(`⚠️ Missing environment variables: ${missingVars.join(', ')}`);
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        `Production build failed: Missing required environment variables: ${missingVars.join(', ')}`,
+      );
+    }
+  }
+};
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+validateEnv();
 
 const bundleAnalyzer = withBundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
 });
+
+// En-têtes de sécurité renforcés
+const securityHeaders = [
+  {
+    key: 'Strict-Transport-Security',
+    value: 'max-age=63072000; includeSubDomains; preload',
+  },
+  {
+    key: 'X-Frame-Options',
+    value: 'DENY',
+  },
+  {
+    key: 'X-Content-Type-Options',
+    value: 'nosniff',
+  },
+  {
+    key: 'Referrer-Policy',
+    value: 'strict-origin-when-cross-origin',
+  },
+  {
+    key: 'X-DNS-Prefetch-Control',
+    value: 'on',
+  },
+  {
+    key: 'X-XSS-Protection',
+    value: '1; mode=block',
+  },
+  {
+    key: 'Permissions-Policy',
+    value:
+      'camera=(), microphone=(), geolocation=(self), payment=(self), usb=(), interest-cohort=()',
+  },
+  {
+    key: 'Cross-Origin-Opener-Policy',
+    value: 'same-origin',
+  },
+  {
+    key: 'Cross-Origin-Embedder-Policy',
+    value: 'credentialless',
+  },
+  {
+    key: 'Cross-Origin-Resource-Policy',
+    value: 'same-site',
+  },
+  // CSP renforcée pour votre application
+  {
+    key: 'Content-Security-Policy',
+    value: `
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' ${process.env.NODE_ENV === 'development' ? "'unsafe-eval'" : ''} https://cdnjs.cloudflare.com https://js.sentry-cdn.com;
+      style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com;
+      img-src 'self' data: blob: https://res.cloudinary.com https://*.sentry.io;
+      font-src 'self' https://cdnjs.cloudflare.com;
+      connect-src 'self' https://res.cloudinary.com https://api.cloudinary.com https://sentry.io https://*.ingest.sentry.io https://*.sentry.io;
+      media-src 'self' https://res.cloudinary.com;
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self';
+      frame-ancestors 'none';
+      upgrade-insecure-requests;
+    `
+      .replace(/\s+/g, ' ')
+      .trim(),
+  },
+];
 
 const nextConfig = {
   poweredByHeader: false,
