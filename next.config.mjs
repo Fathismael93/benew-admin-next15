@@ -141,8 +141,8 @@ const nextConfig = {
       'recharts',
       'html-react-parser',
     ],
-    optimizeCss: true,
-    gzipSize: true,
+    // optimizeCss: true,
+    // gzipSize: true,
   },
 
   // Configuration du compilateur pour la production
