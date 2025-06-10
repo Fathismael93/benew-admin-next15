@@ -114,16 +114,6 @@ const nextConfig = {
   },
 
   output: process.env.NODE_ENV === 'production' ? 'standalone' : undefined,
-
-  // Configuration Sentry
-  sentry: {
-    // Supprime les logs Sentry pendant le build
-    silent: true,
-    // Désactive l'upload automatique des source maps en développement
-    hideSourceMaps: process.env.NODE_ENV === 'production',
-    // Désactive le tunnel Sentry si vous n'en avez pas besoin
-    tunnelRoute: '/monitoring',
-  },
 };
 
 // Options de configuration Sentry
