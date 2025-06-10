@@ -392,15 +392,90 @@ const nextConfig = {
     ];
   },
 
-  webpack: (config, { isServer }) => {
-    // Configuration minimale pour éviter les erreurs
+  // Configuration Webpack optimisée
+  webpack: (config, { dev, isServer, buildId }) => {
+    // Optimisations webpack pour la production
+    if (!dev) {
+      config.optimization = {
+        ...config.optimization,
+        moduleIds: 'deterministic',
+        runtimeChunk: 'single',
+        splitChunks: {
+          chunks: 'all',
+          minSize: 20000,
+          maxSize: 244000,
+          minChunks: 1,
+          maxAsyncRequests: 30,
+          maxInitialRequests: 30,
+          automaticNameDelimiter: '~',
+          cacheGroups: {
+            framework: {
+              chunks: 'all',
+              name: 'framework',
+              test: /(?<!node_modules.*)[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types|use-subscription)[\\/]/,
+              priority: 40,
+              enforce: true,
+            },
+            lib: {
+              test(module) {
+                return (
+                  module.size() > 160000 &&
+                  /node_modules[/\\]/.test(module.identifier())
+                );
+              },
+              name(module) {
+                const hash = require('crypto').createHash('sha1');
+                hash.update(module.identifier());
+                return hash.digest('hex').substring(0, 8);
+              },
+              priority: 30,
+              minChunks: 1,
+              reuseExistingChunk: true,
+            },
+            commons: {
+              name: 'commons',
+              minChunks: 2,
+              priority: 20,
+            },
+            shared: {
+              name(module, chunks) {
+                return `shared-${chunks.map((c) => c.name).join('~')}.${buildId}`;
+              },
+              priority: 10,
+              minChunks: 2,
+              reuseExistingChunk: true,
+            },
+          },
+        },
+      };
+
+      // Configuration du cache pour de meilleures performances de build
+      config.cache = {
+        type: 'filesystem',
+        buildDependencies: {
+          config: [__dirname],
+        },
+        cacheDirectory: path.resolve(__dirname, '.next/cache/webpack'),
+      };
+
+      // Réduire les logs en production
+      config.infrastructureLogging = {
+        level: 'error',
+      };
+
+      // Optimisations supplémentaires pour la production
+      config.optimization.usedExports = true;
+      config.optimization.sideEffects = false;
+    }
+
+    // Alias pour améliorer les performances de résolution
     config.resolve.alias = {
       ...config.resolve.alias,
       '@': path.resolve(__dirname),
     };
 
+    // Optimisation pour les bibliothèques externes
     if (isServer) {
-      // Uniquement les externals essentiels
       config.externals = [...config.externals, 'pg-native'];
     }
 
