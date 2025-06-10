@@ -17,7 +17,6 @@ const nextConfig = {
 
   // AJOUTS CRITIQUES POUR LA PRODUCTION
   reactStrictMode: true,
-  swcMinify: true,
   compress: true,
 
   images: {
@@ -41,7 +40,6 @@ const nextConfig = {
   experimental: {
     // AJOUTS pour les performances
     optimizeCss: true,
-    serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs'],
   },
 
   compiler: {
