@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url';
 
 // CONFIGURATION MINIMALE POUR FAIRE FONCTIONNER LE BUILD
 import withBundleAnalyzer from '@next/bundle-analyzer';
+import { withSentryConfig } from '@sentry/nextjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -113,6 +114,39 @@ const nextConfig = {
   },
 
   output: process.env.NODE_ENV === 'production' ? 'standalone' : undefined,
+
+  // Configuration Sentry
+  sentry: {
+    // Supprime les logs Sentry pendant le build
+    silent: true,
+    // Désactive l'upload automatique des source maps en développement
+    hideSourceMaps: process.env.NODE_ENV === 'production',
+    // Désactive le tunnel Sentry si vous n'en avez pas besoin
+    tunnelRoute: '/monitoring',
+  },
 };
 
-export default bundleAnalyzer(nextConfig);
+// Options de configuration Sentry
+const sentryWebpackPluginOptions = {
+  // Pour les nouvelles versions de Sentry, utilisez authToken au lieu de silent
+  silent: true,
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  // Seulement upload les source maps en production
+  disableServerWebpackPlugin: false,
+  disableClientWebpackPlugin: false,
+  widenClientFileUpload: true,
+  transpileClientSDK: true,
+  tunnelRoute: '/monitoring',
+  hideSourceMaps: true,
+  disableLogger: true,
+  automaticVercelMonitors: true,
+};
+
+// Appliquer les configurations dans l'ordre : bundleAnalyzer puis Sentry
+export default withSentryConfig(
+  bundleAnalyzer(nextConfig),
+  sentryWebpackPluginOptions,
+);
