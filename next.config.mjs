@@ -166,22 +166,13 @@ const nextConfig = {
     ];
   },
 
-  // REWRITES POUR MONITORING ET HEALTH
-  async rewrites() {
-    return [
-      { source: '/monitoring', destination: '/api/monitoring' },
-      { source: '/health', destination: '/api/health' },
-    ];
-  },
-
   webpack: (config, { isServer, dev, buildId }) => {
     // Configuration minimale pour éviter les erreurs
     config.resolve.alias = {
       ...config.resolve.alias,
       '@': path.resolve(__dirname),
       // ALIAS OPTIMISÉS AJOUTÉS
-      '@/components': path.resolve(__dirname, 'components'),
-      '@/lib': path.resolve(__dirname, 'lib'),
+      '@/ui': path.resolve(__dirname, 'ui'),
       '@/utils': path.resolve(__dirname, 'utils'),
     };
 
@@ -229,17 +220,6 @@ const nextConfig = {
   // AJOUTS CRITIQUES POUR LA PRODUCTION
   async generateBuildId() {
     return process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || null;
-  },
-
-  // Configuration Sentry
-  sentry: {
-    silent: process.env.NODE_ENV !== 'development',
-    hideSourceMaps: process.env.NODE_ENV === 'production',
-    widenClientFileUpload: true,
-    transpileClientSDK: true,
-    tunnelRoute: '/monitoring',
-    disableLogger: process.env.NODE_ENV === 'production',
-    automaticVercelMonitors: true,
   },
 };
 
