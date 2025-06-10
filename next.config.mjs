@@ -141,7 +141,7 @@ const nextConfig = {
       'recharts',
       'html-react-parser',
     ],
-    // optimizeCss: true,
+    optimizeCss: true,
     // gzipSize: true,
   },
 
