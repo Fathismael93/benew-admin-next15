@@ -17,9 +17,6 @@ Sentry.init({
   // Environment configuration
   environment: process.env.NODE_ENV,
 
-  // Server-side specific configuration
-  integrations: [Sentry.httpContextIntegration()],
-
   // Custom error filtering for server-side
   beforeSend(event) {
     // Filter out common non-critical errors
