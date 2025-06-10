@@ -491,6 +491,13 @@ const nextConfig = {
   },
 
   output: process.env.NODE_ENV === 'production' ? 'standalone' : undefined,
+
+  // Optimisation des logs
+  logging: {
+    fetches: {
+      fullUrl: process.env.NODE_ENV === 'development',
+    },
+  },
 };
 
 // Options de configuration Sentry
