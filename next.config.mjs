@@ -358,8 +358,26 @@ const nextConfig = {
     ];
   },
 
+  // Configuration des redirections
   async redirects() {
-    return [{ source: '/home', destination: '/', permanent: true }];
+    return [
+      {
+        source: '/404',
+        destination: '/',
+        permanent: false,
+      },
+      {
+        source: '/home',
+        destination: '/',
+        permanent: true,
+      },
+      // Rediriger les anciens chemins API vers les nouveaux
+      {
+        source: '/api/templates/:path*',
+        destination: '/api/dashboard/templates/:path*',
+        permanent: true,
+      },
+    ];
   },
 
   webpack: (config, { isServer }) => {
