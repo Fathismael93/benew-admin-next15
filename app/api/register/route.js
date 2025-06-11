@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // api/register/route.js
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';

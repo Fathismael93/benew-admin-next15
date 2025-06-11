@@ -1,7 +1,6 @@
-import React from 'react';
 import EditApplication from '@/ui/pages/applications/EditApplication';
-import axios from 'axios';
 
+// eslint-disable-next-line no-unused-vars
 async function getSingleApplication(id) {
   let application = [];
 

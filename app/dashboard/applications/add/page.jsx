@@ -1,6 +1,4 @@
-import React from 'react';
 import AddApplication from '@/ui/pages/applications/AddApplication';
-import axios from 'axios';
 
 async function getTemplates() {
   let templates = [];

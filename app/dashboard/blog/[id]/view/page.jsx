@@ -1,4 +1,5 @@
-import axios from 'axios';
+/* eslint-disable no-unused-vars */
+
 import { articleIDSchema } from '@/utils/schemas';
 import SingleArticle from '@/ui/pages/blog/SingleArticle';
 

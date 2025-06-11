@@ -1,8 +1,6 @@
 // app/dashboard/platforms/page.js (Server Component)
 
-import React from 'react';
 import PlatformsList from '@/ui/pages/platforms/PlatformsList';
-import axios from 'axios';
 
 async function getPlatforms() {
   let platforms = [];

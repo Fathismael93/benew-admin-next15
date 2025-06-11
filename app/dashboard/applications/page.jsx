@@ -1,8 +1,6 @@
 // app/dashboard/applications/page.js (Server Component)
 
-import React from 'react';
 import ApplicationsList from '@/ui/pages/applications/ApplicationsList';
-import axios from 'axios';
 
 async function getApplications() {
   let applications = [];

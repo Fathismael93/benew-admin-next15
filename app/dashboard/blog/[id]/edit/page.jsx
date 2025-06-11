@@ -1,4 +1,4 @@
-import axios from 'axios';
+// eslint-disable-next-line no-unused-vars
 import { articleIDSchema } from '@/utils/schemas';
 import EditArticle from '@/ui/pages/blog/EditArticle';
 

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { NextResponse } from 'next/server';
 import { getClient } from '@backend/dbConnect';
 

@@ -1,4 +1,3 @@
-import axios from 'axios';
 import ListArticles from '@/ui/pages/blog/ListArticles';
 
 async function getPosts() {
