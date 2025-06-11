@@ -1,204 +1,25 @@
-/* eslint-disable no-unused-vars */
 // api/register/route.js
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { getClient } from '@backend/dbConnect';
 import { registrationSchema } from '@utils/schemas/registrationSchema';
 import { applyRateLimit } from '@backend/rateLimiter';
+import {
+  captureException,
+  captureMessage,
+  captureDatabaseError,
+  captureValidationError,
+} from '@/monitoring/sentry';
+import {
+  categorizeError,
+  anonymizeUserData,
+  generateRequestId,
+  extractRealIp,
+  anonymizeIp,
+} from '@/utils/helpers';
 
-// ----- FONCTIONS UTILITAIRES SEULEMENT -----
-
-// Fonction pour détecter les données sensibles
-function containsSensitiveData(str) {
-  if (!str || typeof str !== 'string') return false;
-
-  const patterns = [
-    /password/i,
-    /mot\s*de\s*passe/i,
-    /nextauth[_-]?secret/i,
-    /jwt[_-]?token/i,
-    /access[_-]?token/i,
-    /refresh[_-]?token/i,
-    /session[_-]?token/i,
-    /api[_-]?key/i,
-    /secret[_-]?key/i,
-    /cloudinary[_-]?api[_-]?secret/i,
-    /db[_-]?password/i,
-    /database[_-]?password/i,
-    /sentry[_-]?auth[_-]?token/i,
-    /credit\s*card/i,
-    /carte\s*de\s*credit/i,
-    /payment[_-]?method/i,
-    /card[_-]?number/i,
-    /cvv/i,
-    /expiry/i,
-    /\b(?:\d{4}[ -]?){3}\d{4}\b/,
-    /\b(?:\d{3}[ -]?){2}\d{4}\b/,
-    /\b\d{3}[ -]?\d{2}[ -]?\d{4}\b/,
-    /user[_-]?password/i,
-    /email[_-]?verification/i,
-    /reset[_-]?token/i,
-    /verification[_-]?code/i,
-    /platform[_-]?number/i,
-    /application[_-]?price/i,
-    /order[_-]?payment/i,
-  ];
-
-  return patterns.some((pattern) => pattern.test(str));
-}
-
-// Classification des erreurs
-function categorizeError(error) {
-  if (!error) return 'unknown';
-
-  const message = error.message || '';
-  const name = error.name || '';
-  const stack = error.stack || '';
-  const combinedText = (message + name + stack).toLowerCase();
-
-  if (/postgres|pg|database|db|connection|timeout|pool/i.test(combinedText)) {
-    return 'database';
-  }
-
-  if (
-    /nextauth|auth|permission|token|unauthorized|forbidden|session/i.test(
-      combinedText,
-    )
-  ) {
-    return 'authentication';
-  }
-
-  if (/cloudinary|image|upload|transform|media/i.test(combinedText)) {
-    return 'media_upload';
-  }
-
-  if (/network|fetch|http|request|response|api|axios/i.test(combinedText)) {
-    return 'network';
-  }
-
-  if (/validation|schema|required|invalid|yup/i.test(combinedText)) {
-    return 'validation';
-  }
-
-  if (/tiptap|editor|prosemirror/i.test(combinedText)) {
-    return 'editor';
-  }
-
-  if (
-    /template|application|article|blog|platform|order|user/i.test(combinedText)
-  ) {
-    return 'business_logic';
-  }
-
-  if (/rate.?limit|too.?many.?requests|429/i.test(combinedText)) {
-    return 'rate_limiting';
-  }
-
-  return 'application';
-}
-
-// Anonymisation des données utilisateur
-function anonymizeUserData(userData) {
-  if (!userData) return userData;
-
-  const anonymizedData = { ...userData };
-
-  // Supprimer les informations très sensibles
-  delete anonymizedData.ip_address;
-  delete anonymizedData.user_password;
-  delete anonymizedData.session_token;
-
-  // Anonymiser le nom d'utilisateur
-  if (anonymizedData.username || anonymizedData.user_name) {
-    const username = anonymizedData.username || anonymizedData.user_name;
-    anonymizedData.username =
-      username.length > 2
-        ? username[0] + '***' + username.slice(-1)
-        : '[USERNAME]';
-    delete anonymizedData.user_name;
-  }
-
-  // Anonymiser l'email
-  if (anonymizedData.email || anonymizedData.user_email) {
-    const email = anonymizedData.email || anonymizedData.user_email;
-    const atIndex = email.indexOf('@');
-    if (atIndex > 0) {
-      const domain = email.slice(atIndex);
-      anonymizedData.email = `${email[0]}***${domain}`;
-    } else {
-      anonymizedData.email = '[FILTERED_EMAIL]';
-    }
-    delete anonymizedData.user_email;
-  }
-
-  // Anonymiser l'ID utilisateur
-  if (anonymizedData.id || anonymizedData.user_id) {
-    const id = String(anonymizedData.id || anonymizedData.user_id);
-    anonymizedData.id =
-      id.length > 2 ? id.substring(0, 1) + '***' + id.slice(-1) : '[USER_ID]';
-    delete anonymizedData.user_id;
-  }
-
-  // Anonymiser le téléphone
-  if (anonymizedData.phone || anonymizedData.user_phone) {
-    const phone = anonymizedData.phone || anonymizedData.user_phone;
-    anonymizedData.phone =
-      phone.length > 4
-        ? phone.substring(0, 2) + '***' + phone.slice(-2)
-        : '[PHONE]';
-    delete anonymizedData.user_phone;
-  }
-
-  return anonymizedData;
-}
-
-// Filtrage du corps des requêtes
-function filterRequestBody(body) {
-  if (!body) return body;
-
-  if (containsSensitiveData(body)) {
-    try {
-      if (typeof body === 'string') {
-        const parsedBody = JSON.parse(body);
-        const sensitiveFields = [
-          'password',
-          'confirmPassword',
-          'user_password',
-          'api_key',
-          'secret',
-          'token',
-          'auth',
-          'cloudinary_secret',
-          'db_password',
-          'platform_number',
-          'payment_info',
-          'card_number',
-          'cvv',
-          'expiry',
-        ];
-
-        const filteredBody = { ...parsedBody };
-        sensitiveFields.forEach((field) => {
-          if (filteredBody[field]) {
-            filteredBody[field] = '[FILTERED]';
-          }
-        });
-
-        return {
-          filtered: '[CONTIENT DES DONNÉES SENSIBLES]',
-          bodySize: JSON.stringify(parsedBody).length,
-          sanitizedPreview:
-            JSON.stringify(filteredBody).substring(0, 200) + '...',
-        };
-      }
-    } catch (e) {
-      // Parsing JSON échoué
-    }
-    return '[DONNÉES FILTRÉES]';
-  }
-
-  return body;
-}
+// ----- FONCTIONS UTILITAIRES IMPORTÉES -----
+// Note: Les fonctions utilitaires sont maintenant centralisées dans instrumentation.js
 
 // ----- CONFIGURATION DU RATE LIMITING POUR L'INSCRIPTION -----
 
@@ -215,11 +36,7 @@ const registrationRateLimit = applyRateLimit('AUTH_ENDPOINTS', {
 
   // Fonction personnalisée pour générer la clé (basée sur IP + email)
   keyGenerator: (req) => {
-    const ip =
-      req.headers.get('x-forwarded-for')?.split(',')[0] ||
-      req.headers.get('x-real-ip') ||
-      req.headers.get('cf-connecting-ip') ||
-      '0.0.0.0';
+    const ip = extractRealIp(req);
 
     // Essayer d'extraire l'email du body pour une limitation plus précise
     try {
@@ -242,13 +59,33 @@ const registrationRateLimit = applyRateLimit('AUTH_ENDPOINTS', {
   },
 });
 
-// ----- API ROUTE PRINCIPALE AVEC RATE LIMITING -----
+// ----- API ROUTE PRINCIPALE AVEC RATE LIMITING ET MONITORING SENTRY -----
 
 export async function POST(req) {
   let client;
   const startTime = Date.now();
+  const requestId = generateRequestId();
 
-  console.log('🚀 Registration API called at:', new Date().toISOString());
+  console.log(
+    '🚀 Registration API called at:',
+    new Date().toISOString(),
+    '| Request ID:',
+    requestId,
+  );
+
+  // Capturer le début du processus d'inscription
+  captureMessage('Registration process started', {
+    level: 'info',
+    tags: {
+      component: 'registration',
+      action: 'process_start',
+      api_endpoint: '/api/register',
+    },
+    extra: {
+      requestId,
+      timestamp: new Date().toISOString(),
+    },
+  });
 
   try {
     // ===== ÉTAPE 1: APPLIQUER LE RATE LIMITING =====
@@ -259,6 +96,23 @@ export async function POST(req) {
     // Si le rate limiter retourne une réponse, cela signifie que la limite est dépassée
     if (rateLimitResponse) {
       console.warn('⚠️ Registration rate limit exceeded');
+
+      // Capturer l'événement de rate limiting avec Sentry
+      captureMessage('Registration rate limit exceeded', {
+        level: 'warning',
+        tags: {
+          component: 'registration',
+          action: 'rate_limit_exceeded',
+          error_category: 'rate_limiting',
+        },
+        extra: {
+          requestId,
+          ip: anonymizeIp(extractRealIp(req)),
+          userAgent:
+            req.headers.get('user-agent')?.substring(0, 100) || 'unknown',
+        },
+      });
+
       return rateLimitResponse; // Retourner directement la réponse 429
     }
 
@@ -274,9 +128,25 @@ export async function POST(req) {
       console.error('❌ JSON Parse Error:', {
         category: errorCategory,
         message: parseError.message,
+        requestId,
         headers: {
           'content-type': req.headers.get('content-type'),
           'user-agent': req.headers.get('user-agent'),
+        },
+      });
+
+      // Capturer l'erreur de parsing avec Sentry
+      captureException(parseError, {
+        level: 'error',
+        tags: {
+          component: 'registration',
+          action: 'json_parse_error',
+          error_category: errorCategory,
+        },
+        extra: {
+          requestId,
+          contentType: req.headers.get('content-type'),
+          userAgent: req.headers.get('user-agent')?.substring(0, 100),
         },
       });
 
@@ -295,17 +165,6 @@ export async function POST(req) {
       dateOfBirth,
       terms,
     } = body;
-
-    // Vérifier si le corps de la requête contient des données sensibles
-    const bodyString = JSON.stringify(body);
-    if (containsSensitiveData(bodyString)) {
-      console.log(
-        '⚠️ Registration attempt detected with sensitive data patterns',
-      );
-    }
-
-    // Filtrer les données sensibles du corps de la requête
-    const filteredBody = filterRequestBody(bodyString);
 
     // Log sécurisé utilisant les fonctions d'anonymisation
     const userDataForLogging = anonymizeUserData({
@@ -340,6 +199,22 @@ export async function POST(req) {
         failed_fields: validationError.inner?.map((err) => err.path) || [],
         total_errors: validationError.inner?.length || 0,
         user_input: userDataForLogging,
+        requestId,
+      });
+
+      // Capturer l'erreur de validation avec Sentry
+      captureValidationError(validationError, {
+        tags: {
+          component: 'registration',
+          action: 'validation_failed',
+          form: 'registration_form',
+        },
+        extra: {
+          requestId,
+          failedFields: validationError.inner?.map((err) => err.path) || [],
+          totalErrors: validationError.inner?.length || 0,
+          userContext: userDataForLogging,
+        },
       });
 
       const errors = {};
@@ -361,6 +236,21 @@ export async function POST(req) {
         message: dbConnectionError.message,
         timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
         user_context: userDataForLogging,
+        requestId,
+      });
+
+      // Capturer l'erreur de connexion DB avec Sentry
+      captureDatabaseError(dbConnectionError, {
+        tags: {
+          component: 'registration',
+          action: 'db_connection_failed',
+          operation: 'connection',
+        },
+        extra: {
+          requestId,
+          timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
+          userContext: userDataForLogging,
+        },
       });
 
       return NextResponse.json(
@@ -387,6 +277,22 @@ export async function POST(req) {
         query: 'user_existence_check',
         table: 'users',
         user_context: userDataForLogging,
+        requestId,
+      });
+
+      // Capturer l'erreur de vérification utilisateur avec Sentry
+      captureDatabaseError(userCheckError, {
+        tags: {
+          component: 'registration',
+          action: 'user_check_failed',
+          operation: 'SELECT',
+        },
+        extra: {
+          requestId,
+          table: 'admin.users',
+          queryType: 'user_existence_check',
+          userContext: userDataForLogging,
+        },
       });
 
       if (client) await client.cleanup();
@@ -402,6 +308,20 @@ export async function POST(req) {
         userDataForLogging,
       );
 
+      // Capturer la tentative d'inscription avec email existant
+      captureMessage('Registration attempt with existing email', {
+        level: 'warning',
+        tags: {
+          component: 'registration',
+          action: 'duplicate_email_attempt',
+          error_category: 'business_logic',
+        },
+        extra: {
+          requestId,
+          userContext: userDataForLogging,
+        },
+      });
+
       if (client) await client.cleanup();
       return NextResponse.json(
         { error: 'A user with this email already exists' },
@@ -412,11 +332,6 @@ export async function POST(req) {
     // ===== ÉTAPE 6: HACHAGE DU MOT DE PASSE =====
     let hashedPassword;
     try {
-      // Vérifier si le mot de passe contient des données sensibles (patterns suspects)
-      if (containsSensitiveData(password)) {
-        console.warn('⚠️ Password contains potentially sensitive patterns');
-      }
-
       const salt = await bcrypt.genSalt(10);
       hashedPassword = await bcrypt.hash(password, salt);
 
@@ -436,6 +351,24 @@ export async function POST(req) {
         salt_rounds: 10,
         bcrypt_version: 'bcryptjs',
         user_context: userDataForLogging,
+        requestId,
+      });
+
+      // Capturer l'erreur de hachage avec Sentry
+      captureException(hashError, {
+        level: 'error',
+        tags: {
+          component: 'registration',
+          action: 'password_hashing_failed',
+          error_category: 'authentication',
+        },
+        extra: {
+          requestId,
+          algorithm: 'bcrypt',
+          saltRounds: 10,
+          bcryptVersion: 'bcryptjs',
+          userContext: userDataForLogging,
+        },
       });
 
       if (client) await client.cleanup();
@@ -465,28 +398,30 @@ export async function POST(req) {
     } catch (insertError) {
       const errorCategory = categorizeError(insertError);
 
-      // Analyser le type d'erreur PostgreSQL
-      let errorDetails = {
-        postgres_code: insertError.code,
-        postgres_detail: insertError.detail,
-        constraint_name: insertError.constraint,
-      };
-
-      // Filtrer les détails sensibles
-      if (containsSensitiveData(JSON.stringify(errorDetails))) {
-        errorDetails = {
-          ...errorDetails,
-          postgres_detail: '[FILTERED - Contains sensitive data]',
-        };
-      }
-
       console.error('❌ User Insertion Error:', {
         category: errorCategory,
         postgres_error_code: insertError.code || 'unknown',
         operation: 'INSERT INTO users',
         table: 'users',
-        error_details: errorDetails,
         user_context: userDataForLogging,
+        requestId,
+      });
+
+      // Capturer l'erreur d'insertion avec Sentry
+      captureDatabaseError(insertError, {
+        tags: {
+          component: 'registration',
+          action: 'user_insertion_failed',
+          operation: 'INSERT',
+        },
+        extra: {
+          requestId,
+          table: 'admin.users',
+          postgresCode: insertError.code,
+          postgresDetail: insertError.detail ? '[Filtered]' : undefined,
+          constraintName: insertError.constraint,
+          userContext: userDataForLogging,
+        },
       });
 
       if (client) await client.cleanup();
@@ -516,6 +451,25 @@ export async function POST(req) {
       database_operations: 3, // connection + check + insert
       success: true,
       rate_limiting_applied: true,
+      requestId,
+    });
+
+    // Capturer le succès de l'inscription avec Sentry
+    captureMessage('User registration completed successfully', {
+      level: 'info',
+      tags: {
+        component: 'registration',
+        action: 'registration_success',
+        success: 'true',
+      },
+      extra: {
+        requestId,
+        userId: newUser.user_id,
+        responseTimeMs: responseTime,
+        databaseOperations: 3,
+        rateLimitingApplied: true,
+        userContext: anonymizeUserData(newUser),
+      },
     });
 
     if (client) await client.cleanup();
@@ -537,19 +491,35 @@ export async function POST(req) {
     const errorCategory = categorizeError(error);
     const responseTime = Date.now() - startTime;
 
-    // Vérifier si l'erreur contient des données sensibles
-    const errorMessage = containsSensitiveData(error.message)
-      ? '[FILTERED - Error contains sensitive data]'
-      : error.message;
-
     console.error('💥 Global Registration Error:', {
       category: errorCategory,
       response_time_ms: responseTime,
       reached_global_handler: true,
       error_name: error.name,
-      error_message: errorMessage,
+      error_message: error.message,
       stack_available: !!error.stack,
       rate_limiting_context: true,
+      requestId,
+    });
+
+    // Capturer l'erreur globale avec Sentry
+    captureException(error, {
+      level: 'error',
+      tags: {
+        component: 'registration',
+        action: 'global_error_handler',
+        error_category: errorCategory,
+        critical: 'true',
+      },
+      extra: {
+        requestId,
+        responseTimeMs: responseTime,
+        reachedGlobalHandler: true,
+        errorName: error.name,
+        stackAvailable: !!error.stack,
+        rateLimitingContext: true,
+        process: 'user_registration',
+      },
     });
 
     if (client) await client.cleanup();
