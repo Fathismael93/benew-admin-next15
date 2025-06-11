@@ -1,8 +1,6 @@
-/* eslint-disable no-unused-vars */
-
-import { articleIDSchema } from '@/utils/schemas';
 import EditArticle from '@/ui/pages/blog/EditArticle';
 
+// eslint-disable-next-line no-unused-vars
 async function getSinglePost(id) {
   let data = [];
   try {

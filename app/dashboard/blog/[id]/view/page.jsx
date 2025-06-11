@@ -1,6 +1,5 @@
 /* eslint-disable no-unused-vars */
 
-import { articleIDSchema } from '@/utils/schemas';
 import SingleArticle from '@/ui/pages/blog/SingleArticle';
 
 async function getSinglePost(id) {

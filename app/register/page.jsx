@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import '@/ui/styling/register/register.css';
-import { registrationSchema } from '@/utils/schemas';
+import { registrationSchema } from '@utils/schemas/registrationSchema';
 
 const RegistrationPage = () => {
   const [formData, setFormData] = useState({
