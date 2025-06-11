@@ -1,7 +1,63 @@
 {
   "compilerOptions": {
+    // Sets a base directory from which to resolve bare specifier module names.
+    "baseUrl": ".",
+
+    //A series of entries which re-map imports to lookup locations relative to the baseUrl if set,
+    // or to the tsconfig file itself otherwise.
     "paths": {
-      "@/*": ["./*"]
-    }
-  }
+      "@app/*": ["./app/*"],
+      "@api/*": ["./app/api/*"],
+      "@dashboard/*": ["./app/dashboard/*"],
+      "@backend/*": ["./backend/*"],
+      "@ui/*": ["./ui/*"],
+      "@components/*": ["./ui/components/dashboard/*"],
+      "@pages/*": ["./ui/pages/*"],
+      "@styling/*": ["./ui/styling/*"],
+      "@utils/*": ["./utils/*"],
+      "@providers/*": ["./providers/*"],
+      "@monitoring/*": ["./monitoring/*"]
+    },
+
+    // Controls how JSX constructs are emitted in JavaScript files.
+    "jsx": "react-jsx",
+
+    // Declares the module specifier to be used for importing the jsx
+    // and jsxs factory functions when using jsx as "react-jsx" or "react-jsxdev"
+    "jsxImportSource": "react",
+
+    // The target setting changes which JS features are downleveled and which are left intact.
+    "target": "ES2022",
+
+    // Sets the module system for the program.
+    "module": "ESNext",
+
+    // Specify the module resolution strategy:
+    "moduleResolution": "bundler",
+
+    // Allow default imports from modules with no default export.
+    // This does not affect code emit, just type checking.
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+
+    // Skip type checking of declaration files.
+    "skipLibCheck": true,
+
+    // When this option is set, TypeScript will issue an error if a program tries to include a file
+    // by a casing different from the casing on disk.
+    "forceConsistentCasingInFileNames": true,
+
+    // Allows importing modules with a .json extension, which is a common practice in node projects.
+    "resolveJsonModule": true,
+    "isolatedModules": true
+  },
+  "include": [
+    "**/*.js",
+    "**/*.jsx",
+    "**/*.ts",
+    "**/*.tsx",
+    "next-env.d.ts",
+    "utils/env-config.mjs"
+  ],
+  "exclude": ["node_modules", ".next", "out", "build"]
 }
