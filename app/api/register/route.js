@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { getClient } from '@backend/dbConnect';
 import { registrationSchema } from '@utils/schemas/registrationSchema';
+import { applyRateLimit } from '@backend/rateLimiter';
 
 // ----- FONCTIONS UTILITAIRES SEULEMENT -----
 
@@ -199,7 +200,49 @@ function filterRequestBody(body) {
   return body;
 }
 
-// ----- API ROUTE PRINCIPALE (SANS SENTRY) -----
+// ----- CONFIGURATION DU RATE LIMITING POUR L'INSCRIPTION -----
+
+// Créer le middleware de rate limiting spécifique pour l'inscription
+const registrationRateLimit = applyRateLimit('AUTH_ENDPOINTS', {
+  // Configuration personnalisée pour l'inscription
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 tentatives d'inscription par 15 minutes
+  message:
+    "Trop de tentatives d'inscription récentes. Veuillez réessayer dans quelques minutes.",
+  skipSuccessfulRequests: true, // Ne pas compter les inscriptions réussies
+  skipFailedRequests: false, // Compter les échecs d'inscription
+  prefix: 'register', // Préfixe spécifique pour l'inscription
+
+  // Fonction personnalisée pour générer la clé (basée sur IP + email)
+  keyGenerator: (req) => {
+    const ip =
+      req.headers.get('x-forwarded-for')?.split(',')[0] ||
+      req.headers.get('x-real-ip') ||
+      req.headers.get('cf-connecting-ip') ||
+      '0.0.0.0';
+
+    // Essayer d'extraire l'email du body pour une limitation plus précise
+    try {
+      if (req.body) {
+        const body =
+          typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+        if (body.email) {
+          // Hasher l'email pour la confidentialité
+          const emailHash = Buffer.from(body.email.toLowerCase())
+            .toString('base64')
+            .substring(0, 8);
+          return `register:email:${emailHash}:ip:${ip}`;
+        }
+      }
+    } catch (e) {
+      // Fallback vers IP seulement si parsing échoue
+    }
+
+    return `register:ip:${ip}`;
+  },
+});
+
+// ----- API ROUTE PRINCIPALE AVEC RATE LIMITING -----
 
 export async function POST(req) {
   let client;
@@ -208,7 +251,20 @@ export async function POST(req) {
   console.log('🚀 Registration API called at:', new Date().toISOString());
 
   try {
-    // Parse the request body
+    // ===== ÉTAPE 1: APPLIQUER LE RATE LIMITING =====
+    console.log('🛡️ Applying rate limiting for registration...');
+
+    const rateLimitResponse = await registrationRateLimit(req);
+
+    // Si le rate limiter retourne une réponse, cela signifie que la limite est dépassée
+    if (rateLimitResponse) {
+      console.warn('⚠️ Registration rate limit exceeded');
+      return rateLimitResponse; // Retourner directement la réponse 429
+    }
+
+    console.log('✅ Rate limiting passed');
+
+    // ===== ÉTAPE 2: PARSING DU BODY =====
     let body;
     try {
       body = await req.json();
@@ -261,6 +317,7 @@ export async function POST(req) {
 
     console.log('📝 Registration attempt:', userDataForLogging);
 
+    // ===== ÉTAPE 3: VALIDATION =====
     try {
       // Validate input using Yup schema
       await registrationSchema.validate(
@@ -292,7 +349,7 @@ export async function POST(req) {
       return NextResponse.json({ errors }, { status: 400 });
     }
 
-    // Obtenir le client de base de données
+    // ===== ÉTAPE 4: CONNEXION BASE DE DONNÉES =====
     try {
       client = await getClient();
       console.log('✅ Database connection successful');
@@ -312,7 +369,7 @@ export async function POST(req) {
       );
     }
 
-    // Check if user already exists
+    // ===== ÉTAPE 5: VÉRIFICATION EXISTENCE UTILISATEUR =====
     let userExistsResult;
     try {
       const userExistsQuery =
@@ -352,7 +409,7 @@ export async function POST(req) {
       );
     }
 
-    // Hash password
+    // ===== ÉTAPE 6: HACHAGE DU MOT DE PASSE =====
     let hashedPassword;
     try {
       // Vérifier si le mot de passe contient des données sensibles (patterns suspects)
@@ -388,7 +445,7 @@ export async function POST(req) {
       );
     }
 
-    // Insert new user
+    // ===== ÉTAPE 7: INSERTION NOUVEL UTILISATEUR =====
     let result;
     try {
       const insertUserQuery = `
@@ -449,7 +506,7 @@ export async function POST(req) {
       );
     }
 
-    // Success - Log et nettoyer
+    // ===== ÉTAPE 8: SUCCÈS - LOG ET NETTOYAGE =====
     const newUser = result.rows[0];
     const responseTime = Date.now() - startTime;
 
@@ -458,6 +515,7 @@ export async function POST(req) {
       response_time_ms: responseTime,
       database_operations: 3, // connection + check + insert
       success: true,
+      rate_limiting_applied: true,
     });
 
     if (client) await client.cleanup();
@@ -475,7 +533,7 @@ export async function POST(req) {
       { status: 201 },
     );
   } catch (error) {
-    // Gestion globale des erreurs non anticipées
+    // ===== GESTION GLOBALE DES ERREURS =====
     const errorCategory = categorizeError(error);
     const responseTime = Date.now() - startTime;
 
@@ -491,6 +549,7 @@ export async function POST(req) {
       error_name: error.name,
       error_message: errorMessage,
       stack_available: !!error.stack,
+      rate_limiting_context: true,
     });
 
     if (client) await client.cleanup();
