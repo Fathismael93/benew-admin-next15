@@ -3,7 +3,7 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { getClient } from '@backend/dbConnect';
-import { registrationSchema } from '@utils/schemas';
+import { registrationSchema } from '@utils/schemas/registrationSchema';
 
 // ----- FONCTIONS UTILITAIRES SEULEMENT -----
 

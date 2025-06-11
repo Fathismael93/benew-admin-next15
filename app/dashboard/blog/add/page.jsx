@@ -5,8 +5,8 @@ import { redirect } from 'next/navigation';
 import { CldUploadWidget, CldImage } from 'next-cloudinary';
 import axios from 'axios';
 import styles from '@/ui/styling/dashboard/blog/add/add.module.css';
-import { addArticleSchema } from '@/utils/schemas.js';
 import TiptapEditor from '@/ui/components/dashboard/editor';
+import { addArticleSchema } from '@utils/schemas/addArticleSchema';
 
 const CreatePostPage = () => {
   const [title, setTitle] = useState('');
