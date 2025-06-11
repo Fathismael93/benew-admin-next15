@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { articleIDSchema } from '@/utils/schemas';
-import { getClient } from '@/utils/dbConnect';
+import { articleIDSchema } from '@utils/schemas';
+import { getClient } from '@backend/dbConnect';
 
 export const dynamic = 'force-dynamic';
 

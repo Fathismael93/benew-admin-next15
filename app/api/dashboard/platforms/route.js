@@ -1,7 +1,7 @@
 // app/api/dashboard/platforms/route.js
 
 import { NextResponse } from 'next/server';
-import { getClient } from '@/utils/dbConnect';
+import { getClient } from '@backend/dbConnect';
 
 export async function GET() {
   console.log('We are in the GET REQUEST API of platforms');

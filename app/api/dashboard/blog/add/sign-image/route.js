@@ -1,6 +1,6 @@
 import cloudinary from '@/utils/cloudinary';
 import { NextResponse } from 'next/server';
-import { limitRequest } from '@/utils/rateLimiter';
+import { limitRequest } from '@backend/rateLimiter';
 
 export const POST = async (req) => {
   try {

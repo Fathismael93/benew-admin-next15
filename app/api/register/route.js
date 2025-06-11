@@ -1,8 +1,8 @@
 // api/register/route.js
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { getClient } from '@/utils/dbConnect';
-import { registrationSchema } from '@/utils/schemas';
+import { getClient } from '@backend/dbConnect';
+import { registrationSchema } from '@utils/schemas';
 
 // ----- FONCTIONS UTILITAIRES SEULEMENT -----
 

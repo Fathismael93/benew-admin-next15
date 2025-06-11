@@ -1,6 +1,6 @@
 // app/api/templates/route.js
 import { NextResponse } from 'next/server';
-import { getClient } from '@/utils/dbConnect';
+import { getClient } from '@backend/dbConnect';
 
 export async function POST(request) {
   console.log('we are in the POST REQUEST of the templates api');

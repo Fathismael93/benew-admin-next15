@@ -1,7 +1,7 @@
 // app/api/dashboard/platforms/delete/route.js
 
 import { NextResponse } from 'next/server';
-import { getClient } from '@/utils/dbConnect';
+import { getClient } from '@backend/dbConnect';
 
 export async function DELETE(req) {
   const { searchParams } = new URL(req.url);

@@ -1,7 +1,7 @@
 // app/api/dashboard/platforms/add/route.js
 
 import { NextResponse } from 'next/server';
-import { getClient } from '@/utils/dbConnect';
+import { getClient } from '@backend/dbConnect';
 
 export async function POST(req) {
   let client;

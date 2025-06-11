@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getClient } from '@/utils/dbConnect';
-import cloudinary from '@/utils/cloudinary';
+import { getClient } from '@backend/dbConnect';
+import cloudinary from '@backend/cloudinary';
 
 export const dynamic = 'force-dynamic';
 
 export async function DELETE(req, { params }) {
+  let client;
   console.log('WE are in the DELETE REQUEST OF SINGLE ARTICLE API');
   const { id } = await params;
 
@@ -22,7 +23,7 @@ export async function DELETE(req, { params }) {
   const imageID = body.imageID;
 
   try {
-    const client = await getClient();
+    client = await getClient();
     const result = await client.query(
       'DELETE FROM articles WHERE article_id=$1',
       [id],

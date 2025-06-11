@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getClient } from '@/utils/dbConnect';
+import { getClient } from '@backend/dbConnect';
 
 export async function PUT(req, { params }) {
   const { id } = await params;
