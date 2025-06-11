@@ -1,5 +1,3 @@
-import React from 'react';
-import axios from 'axios';
 import ListUsers from '@/ui/pages/users/ListUsers';
 
 async function getUsers() {

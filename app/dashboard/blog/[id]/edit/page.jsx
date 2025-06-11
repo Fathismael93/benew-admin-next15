@@ -1,4 +1,5 @@
-// eslint-disable-next-line no-unused-vars
+/* eslint-disable no-unused-vars */
+
 import { articleIDSchema } from '@/utils/schemas';
 import EditArticle from '@/ui/pages/blog/EditArticle';
 

@@ -1,5 +1,3 @@
-import React from 'react';
-import axios from 'axios';
 import ListTemplates from '@/ui/pages/templates/ListTemplates';
 
 async function getTemplates() {

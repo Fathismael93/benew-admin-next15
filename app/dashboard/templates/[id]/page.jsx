@@ -1,6 +1,5 @@
+/* eslint-disable no-unused-vars */
 // app/dashboard/templates/[id]/page.js
-import React from 'react';
-import axios from 'axios';
 import EditTemplate from '@/ui/pages/templates/EditTemplate';
 
 async function getTemplate(id) {
