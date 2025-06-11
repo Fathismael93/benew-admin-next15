@@ -1,10 +1,13 @@
 /**
  * Système de rate limiting avancé pour Next.js
  * Inspiré d'integratedRateLimit.js avec analyse comportementale et sécurité renforcée
+ * Sans dépendances externes - Version avec monitoring Sentry et logging Winston
  */
 
-import { LRUCache } from 'lru-cache';
+import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
+import logger from '@/utils/logger';
+import { captureException, captureMessage } from '@/monitoring/sentry';
 
 /**
  * Types de préréglages pour différents endpoints
@@ -64,50 +67,35 @@ export const VIOLATION_LEVELS = {
     blockDuration: 0, // Pas de blocage supplémentaire
     severity: 'low',
     logLevel: 'info',
+    sentryLevel: 'info',
   },
   MEDIUM: {
     threshold: 2, // Double de la limite
     blockDuration: 5 * 60 * 1000, // 5 minutes
     severity: 'medium',
     logLevel: 'warning',
+    sentryLevel: 'warning',
   },
   HIGH: {
     threshold: 5, // 5x la limite
     blockDuration: 30 * 60 * 1000, // 30 minutes
     severity: 'high',
     logLevel: 'warning',
+    sentryLevel: 'warning',
   },
   SEVERE: {
     threshold: 10, // 10x la limite
     blockDuration: 24 * 60 * 60 * 1000, // 24 heures
     severity: 'severe',
     logLevel: 'error',
+    sentryLevel: 'error',
   },
 };
 
-// Configuration du cache principal avec LRU
-const rateLimiterOptions = {
-  max: 1000, // Nombre maximum d'entrées
-  maxSize: 10000, // Taille maximale
-  sizeCalculation: (value) => JSON.stringify(value).length,
-  ttl: 1000 * 60 * 15, // TTL de 15 minutes
-  allowStale: false,
-  updateAgeOnGet: false,
-  updateAgeOnHas: false,
-};
-
-// Caches spécialisés
-const requestCache = new LRUCache(rateLimiterOptions);
-const blockedIPs = new LRUCache({
-  ...rateLimiterOptions,
-  max: 500,
-  ttl: 1000 * 60 * 60 * 24, // TTL de 24 heures pour les blocages
-});
-const suspiciousBehavior = new LRUCache({
-  ...rateLimiterOptions,
-  max: 500,
-  ttl: 1000 * 60 * 60 * 2, // TTL de 2 heures pour le comportement suspect
-});
+// Stockage en mémoire simple (Map natives)
+const requestCache = new Map();
+const blockedIPs = new Map();
+const suspiciousBehavior = new Map();
 
 // Liste blanche des IPs exemptées
 const IP_WHITELIST = new Set([
@@ -211,6 +199,39 @@ function generateKey(req, prefix = 'api', options = {}) {
 
   // Par défaut, utiliser l'IP
   return `${prefix}:ip:${ip}`;
+}
+
+/**
+ * Classification des erreurs par catégorie pour rate limiting
+ * @param {Error} error - L'erreur à classifier
+ * @returns {string} Catégorie de l'erreur
+ */
+function categorizeRateLimitError(error) {
+  if (!error) return 'unknown';
+
+  const message = error.message || '';
+  const name = error.name || '';
+  const combinedText = (message + name).toLowerCase();
+
+  if (/rate.?limit|too.?many.?requests|429/i.test(combinedText)) {
+    return 'rate_limiting';
+  }
+
+  if (/network|fetch|http|request|response|api|axios/i.test(combinedText)) {
+    return 'network';
+  }
+
+  if (
+    /auth|permission|token|unauthorized|forbidden|session/i.test(combinedText)
+  ) {
+    return 'authentication';
+  }
+
+  if (/validation|schema|required|invalid|yup/i.test(combinedText)) {
+    return 'validation';
+  }
+
+  return 'rate_limiting';
 }
 
 /**
@@ -329,12 +350,12 @@ function trackBehavior(key, req, violations = 0, isError = false) {
 }
 
 /**
- * Fonction principale de rate limiting
+ * Middleware de rate limiting natif pour Next.js (comme integratedRateLimit.js)
  * @param {string|Object} presetOrOptions - Préréglage ou options personnalisées
  * @param {Object} additionalOptions - Options supplémentaires
- * @returns {Function} Fonction de rate limiting
+ * @returns {Function} Middleware Next.js qui retourne NextResponse ou null
  */
-export function limitRequest(
+export function applyRateLimit(
   presetOrOptions = 'PUBLIC_API',
   additionalOptions = {},
 ) {
@@ -353,16 +374,21 @@ export function limitRequest(
     };
   }
 
-  // Retourner la fonction de rate limiting
-  return function checkRateLimit(req, options = {}) {
-    try {
-      const ip = extractRealIp(req);
-      const path = req.url || req.nextUrl?.pathname || '';
-      const method = req.method || 'GET';
+  // Middleware Next.js
+  return async function (req) {
+    const path = req.url || req.nextUrl?.pathname || '';
+    const ip = extractRealIp(req);
 
+    try {
       // 1. Vérifier si l'IP est en liste blanche
       if (IP_WHITELIST.has(ip)) {
-        return { allowed: true, reason: 'whitelisted' };
+        logger.debug('Request allowed from whitelisted IP', {
+          ip: anonymizeIp(ip),
+          path,
+          component: 'rateLimit',
+          action: 'whitelist_pass',
+        });
+        return null; // Autoriser sans limite
       }
 
       // 2. Vérifier si l'IP est bloquée
@@ -370,36 +396,73 @@ export function limitRequest(
       if (blockInfo && blockInfo.until > Date.now()) {
         const eventId = uuidv4();
 
-        console.warn('Request from blocked IP rejected', {
+        logger.warn('Request from blocked IP rejected', {
           eventId,
           ip: anonymizeIp(ip),
           path,
-          method,
+          component: 'rateLimit',
           until: new Date(blockInfo.until).toISOString(),
           reason: blockInfo.reason,
         });
 
-        return {
-          allowed: false,
-          reason: 'blocked',
-          retryAfter: Math.ceil((blockInfo.until - Date.now()) / 1000),
-          message: blockInfo.message || config.message,
-          eventId,
-        };
+        // Capture dans Sentry pour les blocages
+        captureMessage('Request from blocked IP rejected', {
+          level: 'warning',
+          tags: {
+            component: 'rateLimit',
+            action: 'blocked_ip_rejection',
+          },
+          extra: {
+            eventId,
+            ip: anonymizeIp(ip),
+            path,
+            blockReason: blockInfo.reason,
+            blockUntil: new Date(blockInfo.until).toISOString(),
+          },
+        });
+
+        // Créer et retourner la réponse d'erreur
+        return NextResponse.json(
+          {
+            status: 429,
+            error: 'Too Many Requests',
+            message: blockInfo.message || config.message,
+            retryAfter: Math.ceil((blockInfo.until - Date.now()) / 1000),
+            reference: eventId,
+          },
+          {
+            status: 429,
+            headers: {
+              'Retry-After': Math.ceil(
+                (blockInfo.until - Date.now()) / 1000,
+              ).toString(),
+            },
+          },
+        );
       }
 
-      // 3. Gérer le skip si nécessaire
-      if (options.skip && typeof options.skip === 'function') {
-        if (options.skip(req)) {
-          return { allowed: true, reason: 'skipped' };
+      // 3. Gérer le skip (bypass) si nécessaire
+      if (
+        additionalOptions.skip &&
+        typeof additionalOptions.skip === 'function'
+      ) {
+        if (additionalOptions.skip(req)) {
+          logger.debug('Request skipped by custom skip function', {
+            ip: anonymizeIp(ip),
+            path,
+            component: 'rateLimit',
+            action: 'custom_skip',
+          });
+          return null; // Skip le rate limiting
         }
       }
 
       // 4. Générer une clé unique pour cette requête
-      const keyPrefix =
-        options.prefix ||
-        (typeof presetOrOptions === 'string' ? presetOrOptions : 'custom');
-      const key = generateKey(req, keyPrefix, options);
+      const key = generateKey(
+        req,
+        additionalOptions.prefix ||
+          (typeof presetOrOptions === 'string' ? presetOrOptions : 'custom'),
+      );
 
       // 5. Récupérer les données de requête existantes
       const now = Date.now();
@@ -447,12 +510,12 @@ export function limitRequest(
         // Générer un ID d'événement pour le suivi
         const eventId = uuidv4();
 
-        // Logger la violation
+        // Logger la violation avec Winston
         const logData = {
           eventId,
           ip: anonymizeIp(ip),
           path,
-          method,
+          component: 'rateLimit',
           userAgent:
             req.headers?.get?.('user-agent')?.substring(0, 100) || 'unknown',
           requests: currentRequests,
@@ -465,7 +528,38 @@ export function limitRequest(
           detectionPoints: behavior.detectionPoints,
         };
 
-        console.warn('Rate limit exceeded', logData);
+        logger[violationLevel.logLevel]('Rate limit exceeded', logData);
+
+        // Envoyer à Sentry pour les violations plus graves
+        if (violationLevel.severity !== 'low') {
+          captureMessage(
+            `Rate limit violation detected: ${violationLevel.severity}`,
+            {
+              level: violationLevel.sentryLevel,
+              tags: {
+                component: 'rateLimit',
+                violationLevel: violationLevel.severity,
+                suspicious: behavior.isSuspicious.toString(),
+                error_category: 'rate_limiting',
+              },
+              extra: {
+                eventId,
+                ip: anonymizeIp(ip),
+                path,
+                requests: currentRequests,
+                limit: config.max,
+                violationRatio,
+                blockDuration,
+                detectionPoints: behavior.detectionPoints,
+                threatLevel: behavior.threatLevel,
+                preset:
+                  typeof presetOrOptions === 'string'
+                    ? presetOrOptions
+                    : 'custom',
+              },
+            },
+          );
+        }
 
         // Bloquer les IPs pour les violations graves
         if (violationLevel.severity === 'severe' && behavior.threatLevel >= 8) {
@@ -476,14 +570,32 @@ export function limitRequest(
               'Limite de requêtes largement dépassée. Votre accès est temporairement restreint.',
           });
 
-          console.error(
+          logger.error(
             'Added IP to temporary blacklist due to severe violations',
             {
               ip: anonymizeIp(ip),
               eventId,
+              component: 'rateLimit',
               action: 'blacklist_add',
+              reason: 'severe_violation_with_suspicious_behavior',
             },
           );
+
+          captureMessage('IP blacklisted due to severe rate limit violations', {
+            level: 'error',
+            tags: {
+              component: 'rateLimit',
+              action: 'blacklist_add',
+              error_category: 'rate_limiting',
+            },
+            extra: {
+              eventId,
+              ip: anonymizeIp(ip),
+              threatLevel: behavior.threatLevel,
+              detectionPoints: behavior.detectionPoints,
+              violationLevel: violationLevel.severity,
+            },
+          });
         }
 
         // Calculer le temps avant réinitialisation
@@ -500,20 +612,25 @@ export function limitRequest(
             'Limite de requêtes largement dépassée. Votre accès est temporairement restreint.';
         }
 
-        return {
-          allowed: false,
-          reason: 'rate_limited',
-          retryAfter,
-          message,
-          eventId,
-          violationLevel: violationLevel.severity,
-          headers: {
-            'X-RateLimit-Limit': config.max.toString(),
-            'X-RateLimit-Remaining': '0',
-            'X-RateLimit-Reset': Math.ceil(blockUntil / 1000).toString(),
-            'Retry-After': retryAfter.toString(),
+        // Créer et retourner la réponse NextResponse
+        return NextResponse.json(
+          {
+            status: 429,
+            error: 'Too Many Requests',
+            message,
+            retryAfter,
+            reference: eventId,
           },
-        };
+          {
+            status: 429,
+            headers: {
+              'Retry-After': retryAfter.toString(),
+              'X-RateLimit-Limit': config.max.toString(),
+              'X-RateLimit-Remaining': '0',
+              'X-RateLimit-Reset': Math.ceil(blockUntil / 1000).toString(),
+            },
+          },
+        );
       }
 
       // 7. Si la limite n'est pas dépassée, enregistrer cette requête
@@ -523,65 +640,117 @@ export function limitRequest(
       // 8. Mettre à jour le suivi du comportement (sans violation)
       trackBehavior(key, req, 0, false);
 
-      // 9. Retourner le succès avec les headers informatifs
-      return {
-        allowed: true,
-        reason: 'success',
-        headers: {
-          'X-RateLimit-Limit': config.max.toString(),
-          'X-RateLimit-Remaining': Math.max(
-            0,
-            config.max - currentRequests - 1,
-          ).toString(),
-          'X-RateLimit-Reset': Math.ceil(
-            (now + config.windowMs) / 1000,
-          ).toString(),
-        },
-      };
+      // 9. Log du succès pour le debug
+      logger.debug('Request allowed within rate limits', {
+        ip: anonymizeIp(ip),
+        path,
+        component: 'rateLimit',
+        currentRequests: currentRequests + 1,
+        limit: config.max,
+        remaining: Math.max(0, config.max - currentRequests - 1),
+      });
+
+      // 10. Laisser passer la requête
+      return null;
     } catch (error) {
-      // Logging robuste des erreurs
-      console.error('Unexpected error in rate limit middleware', {
+      // Classification et logging de l'erreur
+      const errorCategory = categorizeRateLimitError(error);
+
+      logger.error('Unexpected error in rate limit middleware', {
         error: error.message,
         stack: error.stack,
-        path: req.url || req.nextUrl?.pathname,
+        path,
+        component: 'rateLimit',
+        errorCategory,
+        ip: anonymizeIp(ip),
+      });
+
+      // Capture d'exception avec Sentry
+      captureException(error, {
+        level: 'error',
+        tags: {
+          component: 'rateLimit',
+          error_category: errorCategory,
+          type: 'critical_middleware_failure',
+        },
+        extra: {
+          path,
+          preset:
+            typeof presetOrOptions === 'string' ? presetOrOptions : 'custom',
+          ip: anonymizeIp(ip),
+        },
       });
 
       // En cas d'erreur, laisser passer la requête (fail open)
-      return { allowed: true, reason: 'error', error: error.message };
+      return null;
     }
   };
 }
 
 /**
- * Middleware spécialisé pour les API Routes Next.js
- * @param {string|Object} presetOrOptions - Configuration
- * @returns {Function} Middleware Next.js
+ * Fonction utilitaire pour les cas simples (compatibilité descendante)
+ * @param {string|Object} presetOrOptions - Préréglage ou options personnalisées
+ * @param {Object} additionalOptions - Options supplémentaires
+ * @returns {Function} Fonction de rate limiting qui retourne un objet de statut
  */
-export function rateLimitMiddleware(presetOrOptions = 'PUBLIC_API') {
-  const checkLimit = limitRequest(presetOrOptions);
+export function limitRequest(
+  presetOrOptions = 'PUBLIC_API',
+  additionalOptions = {},
+) {
+  // Utiliser applyRateLimit en interne mais retourner un objet de statut
+  const rateLimitMiddleware = applyRateLimit(
+    presetOrOptions,
+    additionalOptions,
+  );
 
-  return async function middleware(req) {
-    const result = checkLimit(req);
+  return function checkRateLimit(req, options = {}) {
+    // Exécuter le middleware de rate limiting
+    const response = rateLimitMiddleware(req);
 
-    if (!result.allowed) {
-      const response = {
-        status: 429,
-        error: 'Too Many Requests',
-        message: result.message,
-        retryAfter: result.retryAfter,
-        reference: result.eventId,
-      };
-
-      return new Response(JSON.stringify(response), {
-        status: 429,
+    if (response === null) {
+      // Aucune limitation, autoriser
+      return {
+        allowed: true,
+        reason: 'success',
         headers: {
-          'Content-Type': 'application/json',
-          ...result.headers,
+          'X-RateLimit-Limit': (
+            RATE_LIMIT_PRESETS[presetOrOptions] || RATE_LIMIT_PRESETS.PUBLIC_API
+          ).max.toString(),
+          'X-RateLimit-Remaining': 'calculated',
+          'X-RateLimit-Reset': Math.ceil(
+            (Date.now() +
+              (
+                RATE_LIMIT_PRESETS[presetOrOptions] ||
+                RATE_LIMIT_PRESETS.PUBLIC_API
+              ).windowMs) /
+              1000,
+          ).toString(),
         },
+      };
+    } else if (response instanceof Promise) {
+      // Le middleware est async, attendre le résultat
+      return response.then((result) => {
+        if (result === null) {
+          return { allowed: true, reason: 'success' };
+        } else {
+          // Extraire les informations de la NextResponse
+          return {
+            allowed: false,
+            reason: 'rate_limited',
+            message: 'Rate limit exceeded',
+            // Note: Les headers et autres détails sont dans la NextResponse
+          };
+        }
       });
+    } else {
+      // Rate limit dépassé, NextResponse retournée
+      return {
+        allowed: false,
+        reason: 'rate_limited',
+        message: 'Rate limit exceeded',
+        // Note: Les headers et autres détails sont dans la NextResponse
+      };
     }
-
-    return null; // Laisser passer la requête
   };
 }
 
@@ -591,9 +760,22 @@ export function rateLimitMiddleware(presetOrOptions = 'PUBLIC_API') {
  */
 export function addToWhitelist(ip) {
   IP_WHITELIST.add(ip);
-  console.info('Added IP to rate limit whitelist', {
+
+  logger.info('Added IP to rate limit whitelist', {
     ip: anonymizeIp(ip),
+    component: 'rateLimit',
     action: 'whitelist_add',
+  });
+
+  captureMessage('IP added to rate limit whitelist', {
+    level: 'info',
+    tags: {
+      component: 'rateLimit',
+      action: 'whitelist_add',
+    },
+    extra: {
+      ip: anonymizeIp(ip),
+    },
   });
 }
 
@@ -612,23 +794,61 @@ export function addToBlacklist(ip, duration = 0) {
     message: 'Votre accès a été temporairement restreint.',
   });
 
-  console.info('Added IP to rate limit blacklist', {
+  const logData = {
     ip: anonymizeIp(ip),
+    component: 'rateLimit',
     action: 'blacklist_add',
     duration: duration ? `${duration / 1000}s` : 'permanent',
+    until: new Date(until).toISOString(),
+  };
+
+  logger.info('Added IP to rate limit blacklist', logData);
+
+  // Envoyer une alerte Sentry pour la mise en liste noire manuelle
+  captureMessage('IP manually blacklisted in rate limiter', {
+    level: 'warning',
+    tags: {
+      component: 'rateLimit',
+      action: 'manual_blacklist',
+    },
+    extra: {
+      ip: anonymizeIp(ip),
+      duration: duration ? `${duration / 1000}s` : 'permanent',
+      until: new Date(until).toISOString(),
+    },
   });
 }
 
 /**
  * Réinitialise toutes les données de comportement et limites
+ * pour le diagnostic ou le nettoyage
  */
 export function resetAllData() {
+  const beforeStats = {
+    requestCache: requestCache.size,
+    blockedIPs: blockedIPs.size,
+    suspiciousBehavior: suspiciousBehavior.size,
+  };
+
   requestCache.clear();
   blockedIPs.clear();
   suspiciousBehavior.clear();
 
-  console.info('Reset all rate limit behavior tracking data', {
+  logger.info('Reset all rate limit behavior tracking data', {
+    component: 'rateLimit',
     action: 'reset_all',
+    beforeStats,
+  });
+
+  captureMessage('Rate limit data reset', {
+    level: 'info',
+    tags: {
+      component: 'rateLimit',
+      action: 'reset_all',
+    },
+    extra: {
+      beforeStats,
+    },
   });
 }
 
@@ -642,24 +862,20 @@ export function getRateLimitStats() {
     suspiciousBehaviors: suspiciousBehavior.size,
     blockedIPs: blockedIPs.size,
     whitelistedIPs: IP_WHITELIST.size,
-    cacheInfo: {
-      requests: {
-        size: requestCache.size,
-        maxSize: requestCache.maxSize,
-      },
-      blocked: {
-        size: blockedIPs.size,
-        maxSize: blockedIPs.maxSize,
-      },
-      suspicious: {
-        size: suspiciousBehavior.size,
-        maxSize: suspiciousBehavior.maxSize,
-      },
+    memoryUsage: {
+      requests: requestCache.size,
+      blocked: blockedIPs.size,
+      suspicious: suspiciousBehavior.size,
     },
     timestamp: new Date().toISOString(),
   };
 
-  console.info('Rate limit statistics', stats);
+  logger.info('Rate limit statistics', {
+    component: 'rateLimit',
+    action: 'stats',
+    ...stats,
+  });
+
   return stats;
 }
 
@@ -683,12 +899,56 @@ if (
           }
         }
 
+        // Nettoyer les données de comportement trop anciennes (24 heures)
+        for (const [key, data] of suspiciousBehavior.entries()) {
+          if (now - data.lastSeen > 24 * 60 * 60 * 1000) {
+            suspiciousBehavior.delete(key);
+            cleaned++;
+          }
+        }
+
+        // Nettoyer le cache de requêtes (garder seulement les 10000 plus récentes)
+        if (requestCache.size > 10000) {
+          const keys = Array.from(requestCache.keys());
+          const keysToRemove = keys.slice(0, keys.length - 10000);
+          keysToRemove.forEach((key) => requestCache.delete(key));
+          cleaned += keysToRemove.length;
+        }
+
         if (cleaned > 0) {
-          console.info(`Cleaned up ${cleaned} expired blocked IPs`);
+          logger.info('Periodic cleanup completed', {
+            component: 'rateLimit',
+            action: 'periodic_cleanup',
+            itemsCleaned: cleaned,
+            remainingItems: {
+              requests: requestCache.size,
+              blocked: blockedIPs.size,
+              suspicious: suspiciousBehavior.size,
+            },
+          });
         }
       } catch (error) {
-        console.error('Error during rate limit cleanup', {
+        logger.error('Error during rate limit cleanup', {
           error: error.message,
+          stack: error.stack,
+          component: 'rateLimit',
+          action: 'cleanup_error',
+        });
+
+        captureException(error, {
+          level: 'error',
+          tags: {
+            component: 'rateLimit',
+            action: 'cleanup_error',
+            error_category: 'rate_limiting',
+          },
+          extra: {
+            cachesSizes: {
+              requests: requestCache.size,
+              blocked: blockedIPs.size,
+              suspicious: suspiciousBehavior.size,
+            },
+          },
         });
       }
     },
@@ -699,16 +959,95 @@ if (
   if (cleanupInterval.unref) {
     cleanupInterval.unref();
   }
+
+  // Rapports statistiques périodiques (toutes les heures en développement)
+  const statsInterval = setInterval(
+    () => {
+      const stats = getRateLimitStats();
+
+      captureMessage('Rate limit statistics (hourly)', {
+        level: 'info',
+        tags: {
+          component: 'rateLimit',
+          action: 'stats_reporting',
+        },
+        extra: stats,
+      });
+    },
+    60 * 60 * 1000,
+  );
+
+  // Éviter de bloquer la fermeture du processus Node.js
+  if (statsInterval.unref) {
+    statsInterval.unref();
+  }
 }
+
+/**
+ * Capture les erreurs de rate limiting avec contexte spécifique
+ * @param {Error} error - L'erreur de rate limiting
+ * @param {Object} context - Contexte de la requête
+ */
+export const captureRateLimitError = (error, context = {}) => {
+  const rateLimitContext = {
+    tags: {
+      error_category: 'rate_limiting',
+      component: 'rateLimit',
+      ...context.tags,
+    },
+    extra: {
+      preset: context.preset || 'unknown',
+      violationLevel: context.violationLevel || 'unknown',
+      ip: context.ip ? anonymizeIp(context.ip) : 'unknown',
+      endpoint: context.endpoint || 'unknown',
+      ...context.extra,
+    },
+    level: 'warning',
+  };
+
+  // Filtrer les informations sensibles du rate limiting
+  if (rateLimitContext.extra.requestData) {
+    // Masquer les détails de requête potentiellement sensibles
+    rateLimitContext.extra.requestData = '[Filtered Request Data]';
+  }
+
+  captureException(error, rateLimitContext);
+};
+
+/**
+ * Capture les événements de rate limiting avec contexte spécifique
+ * @param {string} message - Le message à capturer
+ * @param {Object} context - Contexte de l'événement
+ */
+export const captureRateLimitEvent = (message, context = {}) => {
+  const rateLimitContext = {
+    tags: {
+      component: 'rateLimit',
+      action: context.action || 'unknown',
+      ...context.tags,
+    },
+    extra: {
+      preset: context.preset || 'unknown',
+      ip: context.ip ? anonymizeIp(context.ip) : 'unknown',
+      endpoint: context.endpoint || 'unknown',
+      ...context.extra,
+    },
+    level: context.level || 'info',
+  };
+
+  captureMessage(message, rateLimitContext);
+};
 
 // Export par défaut pour la compatibilité
 export default {
-  limitRequest,
-  rateLimitMiddleware,
+  applyRateLimit, // Fonction principale comme integratedRateLimit.js
+  limitRequest, // Fonction utilitaire pour compatibilité
   addToWhitelist,
   addToBlacklist,
   resetAllData,
   getRateLimitStats,
+  captureRateLimitError,
+  captureRateLimitEvent,
   RATE_LIMIT_PRESETS,
   VIOLATION_LEVELS,
 };
