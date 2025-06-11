@@ -3,10 +3,10 @@
  * Optimisé pour dashboard d'administration e-commerce avec Next.js 15, NextAuth, PostgreSQL et Cloudinary
  */
 
+import { captureException } from '@monitoring/sentry';
 import { LRUCache } from 'lru-cache';
 import { compress, decompress } from 'lz-string';
-import { captureException } from '@/monitoring/sentry';
-import { memoizeWithTTL } from '@/utils/performance';
+import { memoizeWithTTL } from './performance';
 
 // Configuration du cache pour les différentes entités du dashboard admin
 export const CACHE_CONFIGS = {

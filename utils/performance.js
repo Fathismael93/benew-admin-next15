@@ -3,7 +3,8 @@
  * Version optimisée pour Next.js 15, NextAuth, PostgreSQL, Cloudinary et Sentry
  * Adapté spécifiquement pour un projet e-commerce avec dashboard admin
  */
-import { captureException } from '@/monitoring/sentry';
+
+import { captureException } from '@monitoring/sentry';
 
 // Vérification d'environnement pour SSR (Server-Side Rendering)
 const isBrowser = typeof window !== 'undefined';
