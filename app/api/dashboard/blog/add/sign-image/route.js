@@ -1,4 +1,4 @@
-import cloudinary from '@/utils/cloudinary';
+import cloudinary from '@backend/cloudinary';
 import { NextResponse } from 'next/server';
 import { limitRequest } from '@backend/rateLimiter';
 
