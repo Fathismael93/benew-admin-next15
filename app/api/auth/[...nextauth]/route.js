@@ -128,7 +128,7 @@ const authOptions = {
           const rateLimitCheck = await checkAuthRateLimit({
             headers: req?.headers || {},
             body: { email: sanitizedCredentials.email },
-            connection: req?.connection || {},
+            // connection: req?.connection || {},
             url: '/api/auth/callback/credentials',
           });
 
