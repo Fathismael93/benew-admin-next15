@@ -124,23 +124,55 @@ const authOptions = {
             return null;
           }
 
-          console.log('req', req);
-          console.log('req.headers', req?.headers);
+          // Fonction pour vérifier le rate limiting
+          const checkAuthRateLimit = async (req) => {
+            try {
+              const rateLimitResponse = await rateLimitMiddleware(req);
+
+              if (rateLimitResponse !== null) {
+                // Rate limit dépassé
+                const rateLimitData = await rateLimitResponse.json();
+
+                logger.warn('Authentication rate limit exceeded', {
+                  ip: req.headers?.['x-forwarded-for'] || 'unknown',
+                  retryAfter: rateLimitData.retryAfter,
+                  reference: rateLimitData.reference,
+                  component: 'auth_rate_limit',
+                });
+
+                return {
+                  isBlocked: true,
+                  response: rateLimitResponse,
+                  retryAfter: rateLimitData.retryAfter,
+                  reference: rateLimitData.reference,
+                };
+              }
+
+              return { isBlocked: false };
+            } catch (error) {
+              logger.error('Error checking auth rate limit', {
+                error: error.message,
+                component: 'auth_rate_limit',
+              });
+
+              captureRateLimitError(error, {
+                preset: 'AUTH_ENDPOINTS',
+                endpoint: '/api/auth/callback/credentials',
+                action: 'rate_limit_check',
+              });
+
+              // En cas d'erreur, laisser passer (fail open)
+              return { isBlocked: false };
+            }
+          };
 
           // 4. Rate limiting avec votre système avancé
           const rateLimitCheck = await checkAuthRateLimit({
             headers: req?.headers || {},
             body: { email: sanitizedCredentials.email },
+            connection: req?.connection || {},
             url: '/api/auth/callback/credentials',
-          })
-            .then((result) => {
-              console.log('Rate limit check result:', result);
-            })
-            .catch((error) => {
-              logger.error('Error checking rate limit');
-            });
-
-          console.log('Rate limit check result:', rateLimitCheck);
+          });
 
           if (rateLimitCheck.isBlocked) {
             logger.warn('Authentication rate limit exceeded', {
@@ -197,48 +229,6 @@ const authOptions = {
               return `auth:ip:${ip}`;
             },
           });
-
-          // Fonction pour vérifier le rate limiting
-          const checkAuthRateLimit = async (req) => {
-            try {
-              const rateLimitResponse = await rateLimitMiddleware(req);
-
-              if (rateLimitResponse !== null) {
-                // Rate limit dépassé
-                const rateLimitData = await rateLimitResponse.json();
-
-                logger.warn('Authentication rate limit exceeded', {
-                  ip: req.headers?.['x-forwarded-for'] || 'unknown',
-                  retryAfter: rateLimitData.retryAfter,
-                  reference: rateLimitData.reference,
-                  component: 'auth_rate_limit',
-                });
-
-                return {
-                  isBlocked: true,
-                  response: rateLimitResponse,
-                  retryAfter: rateLimitData.retryAfter,
-                  reference: rateLimitData.reference,
-                };
-              }
-
-              return { isBlocked: false };
-            } catch (error) {
-              logger.error('Error checking auth rate limit', {
-                error: error.message,
-                component: 'auth_rate_limit',
-              });
-
-              captureRateLimitError(error, {
-                preset: 'AUTH_ENDPOINTS',
-                endpoint: '/api/auth/callback/credentials',
-                action: 'rate_limit_check',
-              });
-
-              // En cas d'erreur, laisser passer (fail open)
-              return { isBlocked: false };
-            }
-          };
 
           // 5. Détection d'activité suspecte
           const isSuspicious = detectSuspiciousLoginActivity(
