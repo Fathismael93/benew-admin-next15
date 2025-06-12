@@ -124,11 +124,15 @@ const authOptions = {
             return null;
           }
 
+          console.log('req', req);
+          console.log('req.headers', req?.headers);
+          console.log('req.connection', req?.connection);
+
           // 4. Rate limiting avec votre système avancé
           const rateLimitCheck = await checkAuthRateLimit({
             headers: req?.headers || {},
             body: { email: sanitizedCredentials.email },
-            // connection: req?.connection || {},
+            connection: req?.connection || {},
             url: '/api/auth/callback/credentials',
           });
 
