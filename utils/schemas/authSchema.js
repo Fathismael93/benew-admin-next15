@@ -21,8 +21,8 @@ export const registrationSchema = yup.object().shape({
     .min(3, 'Username must be at least 3 characters')
     .max(50, 'Username must not exceed 50 characters')
     .matches(
-      /^[a-zA-Z0-9._-]+$/,
-      'Username can only contain letters, numbers, and ._-',
+      /^[a-zA-Z0-9._\s-]+$/,
+      'Username can only contain letters, numbers, spaces, and ._-',
     )
     .matches(/^[a-zA-Z]/, 'Username must start with a letter')
     .test(
