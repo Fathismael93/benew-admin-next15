@@ -84,6 +84,8 @@ const authOptions = {
             password: credentials.password,
           });
 
+          console.log('Sanitized credentials:', sanitizedCredentials);
+
           logger.debug('Credentials sanitized', {
             ip: clientIP,
             email: sanitizedCredentials.email.substring(0, 3) + '***',
@@ -306,7 +308,11 @@ const authOptions = {
             return null;
           }
 
+          console.log('User found:', userRows);
+
           const user = userRows[0];
+
+          console.log('User details:', user);
 
           // 8. Vérification du mot de passe
           let isPasswordValid;
