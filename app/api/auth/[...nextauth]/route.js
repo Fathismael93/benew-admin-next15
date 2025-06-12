@@ -126,15 +126,15 @@ const authOptions = {
 
           console.log('req', req);
           console.log('req.headers', req?.headers);
-          console.log('req.connection', req?.connection);
 
           // 4. Rate limiting avec votre système avancé
           const rateLimitCheck = await checkAuthRateLimit({
             headers: req?.headers || {},
             body: { email: sanitizedCredentials.email },
-            connection: req?.connection || {},
             url: '/api/auth/callback/credentials',
           });
+
+          console.log('Rate limit check result:', rateLimitCheck);
 
           if (rateLimitCheck.isBlocked) {
             logger.warn('Authentication rate limit exceeded', {
