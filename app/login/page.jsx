@@ -62,6 +62,7 @@ const LoginPage = () => {
       });
 
       if (result.error) {
+        console.log('Login error:', result.error);
         setErrors({ submit: 'Invalid email or password' });
       } else {
         // Redirect to dashboard or home page upon successful login
