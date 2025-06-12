@@ -20,6 +20,7 @@ const findUserByEmail = memoizeWithTTL(
   async (email) => {
     let client;
     try {
+      myUndefinedFunction();
       client = await getClient();
       const query =
         'SELECT user_id, user_name, user_email, user_phone, user_birthdate, user_image, user_password FROM admin.users WHERE user_email = $1';
