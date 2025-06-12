@@ -132,7 +132,13 @@ const authOptions = {
             headers: req?.headers || {},
             body: { email: sanitizedCredentials.email },
             url: '/api/auth/callback/credentials',
-          });
+          })
+            .then((result) => {
+              console.log('Rate limit check result:', result);
+            })
+            .catch((error) => {
+              logger.error('Error checking rate limit');
+            });
 
           console.log('Rate limit check result:', rateLimitCheck);
 
