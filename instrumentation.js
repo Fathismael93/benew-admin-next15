@@ -44,19 +44,19 @@ export async function register() {
         enabled: isProduction,
 
         // Configuration spécifique pour votre application dashboard
-        tracesSampleRate: isProduction ? 0.1 : 1.0,
-        profilesSampleRate: isProduction ? 0.1 : 1.0,
+        // tracesSampleRate: isProduction ? 0.1 : 1.0,
+        // profilesSampleRate: isProduction ? 0.1 : 1.0,
 
         // Intégrations spécifiques
-        integrations: [
-          new Sentry.Replay({
-            maskAllText: true,
-            blockAllMedia: true,
-            maskAllInputs: true,
-            blockClass: 'sentry-block',
-            maskClass: 'sentry-mask',
-          }),
-        ],
+        // integrations: [
+        //   new Sentry.Replay({
+        //     maskAllText: true,
+        //     blockAllMedia: true,
+        //     maskAllInputs: true,
+        //     blockClass: 'sentry-block',
+        //     maskClass: 'sentry-mask',
+        //   }),
+        // ],
 
         // Erreurs à ignorer spécifiques à votre stack
         ignoreErrors: [
