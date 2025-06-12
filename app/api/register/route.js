@@ -3,7 +3,7 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { getClient } from '@backend/dbConnect';
-import { registrationSchema } from '@utils/schemas/registrationSchema';
+import { registrationSchema } from '@utils/schemas/authSchema';
 import { applyRateLimit } from '@backend/rateLimiter';
 import {
   captureException,
