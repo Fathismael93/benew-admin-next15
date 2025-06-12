@@ -68,6 +68,7 @@ const authOptions = {
         });
 
         try {
+          console.log('Received credentials:', credentials);
           // 1. Validation de base des credentials
           if (!credentials?.email || !credentials?.password) {
             logger.warn('Login attempt with missing credentials', {
