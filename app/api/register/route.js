@@ -18,6 +18,8 @@ import {
   extractRealIp,
   anonymizeIp,
 } from '@/utils/helpers';
+import logger from '@utils/logger';
+import { sanitizeRegistrationInputsStrict } from '@utils/sanitizers/sanitizeRegistrationInputs';
 
 // ----- FONCTIONS UTILITAIRES IMPORTÉES -----
 // Note: Les fonctions utilitaires sont maintenant centralisées dans instrumentation.js
@@ -126,13 +128,15 @@ export async function POST(req) {
     } catch (parseError) {
       const errorCategory = categorizeError(parseError);
 
-      console.error('❌ JSON Parse Error:', {
+      logger.error('JSON Parse Error during registration', {
         category: errorCategory,
         message: parseError.message,
         requestId,
+        component: 'registration',
+        action: 'json_parse_error',
         headers: {
           'content-type': req.headers.get('content-type'),
-          'user-agent': req.headers.get('user-agent'),
+          'user-agent': req.headers.get('user-agent')?.substring(0, 100),
         },
       });
 
@@ -167,40 +171,87 @@ export async function POST(req) {
       terms,
     } = body;
 
-    // Log sécurisé utilisant les fonctions d'anonymisation
-    const userDataForLogging = anonymizeUserData({
+    // ===== ÉTAPE 2.5: SANITIZATION DES INPUTS =====
+    logger.debug('Sanitizing registration inputs', {
+      requestId,
+      component: 'registration',
+      action: 'input_sanitization',
+    });
+
+    const sanitizedInputs = sanitizeRegistrationInputsStrict({
       username,
       email,
       phone,
+      password,
+      confirmPassword,
       dateOfBirth,
+      terms,
     });
 
-    console.log('📝 Registration attempt:', userDataForLogging);
+    // Utiliser les données sanitizées pour la suite du processus
+    const {
+      username: sanitizedUsername,
+      email: sanitizedEmail,
+      phone: sanitizedPhone,
+      password: sanitizedPassword,
+      confirmPassword: sanitizedConfirmPassword,
+      dateOfBirth: sanitizedDateOfBirth,
+      terms: sanitizedTerms,
+    } = sanitizedInputs;
+
+    logger.debug('Input sanitization completed', {
+      requestId,
+      component: 'registration',
+      action: 'input_sanitization_completed',
+    });
+
+    // Log sécurisé utilisant les fonctions d'anonymisation avec les données sanitizées
+    const userDataForLogging = anonymizeUserData({
+      username: sanitizedUsername,
+      email: sanitizedEmail,
+      phone: sanitizedPhone,
+      dateOfBirth: sanitizedDateOfBirth,
+    });
+
+    logger.info('Registration attempt with sanitized data', {
+      requestId,
+      component: 'registration',
+      action: 'registration_attempt',
+      userContext: userDataForLogging,
+    });
 
     // ===== ÉTAPE 3: VALIDATION =====
     try {
-      // Validate input using Yup schema
+      // Validate input using Yup schema avec les données sanitizées
       await registrationSchema.validate(
         {
-          username,
-          email,
-          phone,
-          password,
-          confirmPassword,
-          dateOfBirth,
-          terms,
+          username: sanitizedUsername,
+          email: sanitizedEmail,
+          phone: sanitizedPhone,
+          password: sanitizedPassword,
+          confirmPassword: sanitizedConfirmPassword,
+          dateOfBirth: sanitizedDateOfBirth,
+          terms: sanitizedTerms,
         },
         { abortEarly: false },
       );
+
+      logger.debug('Input validation passed', {
+        requestId,
+        component: 'registration',
+        action: 'validation_success',
+      });
     } catch (validationError) {
       const errorCategory = categorizeError(validationError);
 
-      console.error('❌ Validation Error:', {
+      logger.error('Validation Error during registration', {
         category: errorCategory,
         failed_fields: validationError.inner?.map((err) => err.path) || [],
         total_errors: validationError.inner?.length || 0,
         user_input: userDataForLogging,
         requestId,
+        component: 'registration',
+        action: 'validation_failed',
       });
 
       // Capturer l'erreur de validation avec Sentry
@@ -228,16 +279,22 @@ export async function POST(req) {
     // ===== ÉTAPE 4: CONNEXION BASE DE DONNÉES =====
     try {
       client = await getClient();
-      console.log('✅ Database connection successful');
+      logger.debug('Database connection successful', {
+        requestId,
+        component: 'registration',
+        action: 'db_connection_success',
+      });
     } catch (dbConnectionError) {
       const errorCategory = categorizeError(dbConnectionError);
 
-      console.error('❌ Database Connection Error:', {
+      logger.error('Database Connection Error during registration', {
         category: errorCategory,
         message: dbConnectionError.message,
         timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
         user_context: userDataForLogging,
         requestId,
+        component: 'registration',
+        action: 'db_connection_failed',
       });
 
       // Capturer l'erreur de connexion DB avec Sentry
@@ -266,19 +323,25 @@ export async function POST(req) {
       const userExistsQuery =
         'SELECT user_id FROM admin.users WHERE user_email = $1';
       userExistsResult = await client.query(userExistsQuery, [
-        email.toLowerCase(),
+        sanitizedEmail.toLowerCase(),
       ]);
-      console.log('✅ User existence check completed');
+      logger.debug('User existence check completed', {
+        requestId,
+        component: 'registration',
+        action: 'user_check_completed',
+      });
     } catch (userCheckError) {
       const errorCategory = categorizeError(userCheckError);
 
-      console.error('❌ User Check Error:', {
+      logger.error('User Check Error during registration', {
         category: errorCategory,
         message: userCheckError.message,
         query: 'user_existence_check',
         table: 'users',
         user_context: userDataForLogging,
         requestId,
+        component: 'registration',
+        action: 'user_check_failed',
       });
 
       // Capturer l'erreur de vérification utilisateur avec Sentry
@@ -304,10 +367,12 @@ export async function POST(req) {
     }
 
     if (userExistsResult.rows.length > 0) {
-      console.log(
-        '⚠️ User registration attempt with existing email:',
-        userDataForLogging,
-      );
+      logger.warn('User registration attempt with existing email', {
+        user_context: userDataForLogging,
+        requestId,
+        component: 'registration',
+        action: 'duplicate_email_attempt',
+      });
 
       // Capturer la tentative d'inscription avec email existant
       captureMessage('Registration attempt with existing email', {
@@ -334,18 +399,24 @@ export async function POST(req) {
     let hashedPassword;
     try {
       const salt = await bcrypt.genSalt(10);
-      hashedPassword = await bcrypt.hash(password, salt);
+      hashedPassword = await bcrypt.hash(sanitizedPassword, salt);
 
       // Vérifier que le hachage a réussi
       if (!hashedPassword) {
         throw new Error('Password hashing returned empty result');
       }
 
-      console.log('✅ Password hashed successfully');
+      logger.debug('Password hashed successfully', {
+        requestId,
+        component: 'registration',
+        action: 'password_hashing_success',
+        algorithm: 'bcrypt',
+        salt_rounds: 10,
+      });
     } catch (hashError) {
       const errorCategory = categorizeError(hashError);
 
-      console.error('❌ Password Hashing Error:', {
+      logger.error('Password Hashing Error during registration', {
         category: errorCategory,
         message: hashError.message,
         algorithm: 'bcrypt',
@@ -353,6 +424,8 @@ export async function POST(req) {
         bcrypt_version: 'bcryptjs',
         user_context: userDataForLogging,
         requestId,
+        component: 'registration',
+        action: 'password_hashing_failed',
       });
 
       // Capturer l'erreur de hachage avec Sentry
@@ -389,23 +462,30 @@ export async function POST(req) {
       `;
 
       result = await client.query(insertUserQuery, [
-        username,
-        email.toLowerCase(),
+        sanitizedUsername,
+        sanitizedEmail.toLowerCase(),
         hashedPassword,
-        phone || null,
-        dateOfBirth || null,
+        sanitizedPhone || null,
+        sanitizedDateOfBirth || null,
       ]);
-      console.log('✅ User inserted successfully');
+      logger.debug('User inserted successfully', {
+        requestId,
+        component: 'registration',
+        action: 'user_insertion_success',
+        table: 'admin.users',
+      });
     } catch (insertError) {
       const errorCategory = categorizeError(insertError);
 
-      console.error('❌ User Insertion Error:', {
+      logger.error('User Insertion Error during registration', {
         category: errorCategory,
         postgres_error_code: insertError.code || 'unknown',
         operation: 'INSERT INTO users',
         table: 'users',
         user_context: userDataForLogging,
         requestId,
+        component: 'registration',
+        action: 'user_insertion_failed',
       });
 
       // Capturer l'erreur d'insertion avec Sentry
@@ -446,13 +526,16 @@ export async function POST(req) {
     const newUser = result.rows[0];
     const responseTime = Date.now() - startTime;
 
-    console.log('🎉 User registration successful:', {
+    logger.info('User registration successful', {
       user: anonymizeUserData(newUser),
       response_time_ms: responseTime,
       database_operations: 3, // connection + check + insert
       success: true,
       rate_limiting_applied: true,
       requestId,
+      component: 'registration',
+      action: 'registration_success',
+      sanitization_applied: true,
     });
 
     // Capturer le succès de l'inscription avec Sentry
@@ -492,7 +575,7 @@ export async function POST(req) {
     const errorCategory = categorizeError(error);
     const responseTime = Date.now() - startTime;
 
-    console.error('💥 Global Registration Error:', {
+    logger.error('Global Registration Error', {
       category: errorCategory,
       response_time_ms: responseTime,
       reached_global_handler: true,
@@ -501,6 +584,8 @@ export async function POST(req) {
       stack_available: !!error.stack,
       rate_limiting_context: true,
       requestId,
+      component: 'registration',
+      action: 'global_error_handler',
     });
 
     // Capturer l'erreur globale avec Sentry
