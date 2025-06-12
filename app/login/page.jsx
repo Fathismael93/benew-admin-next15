@@ -55,6 +55,8 @@ const LoginPage = () => {
         return;
       }
 
+      console.log('Submitting login:', formData);
+
       const result = await signIn('credentials', {
         redirect: false,
         email: formData.email,
