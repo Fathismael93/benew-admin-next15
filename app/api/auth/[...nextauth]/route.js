@@ -20,6 +20,7 @@ const findUserByEmail = memoizeWithTTL(
   async (email) => {
     let client;
     try {
+      console.log('Searching for user with email:', email);
       client = await getClient();
       console.log('client:', client);
       const query =
@@ -55,6 +56,7 @@ const authOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials, req) {
+        console.log('credentials:', credentials);
         const startTime = Date.now();
         const clientIP =
           req?.headers?.['x-forwarded-for'] ||
