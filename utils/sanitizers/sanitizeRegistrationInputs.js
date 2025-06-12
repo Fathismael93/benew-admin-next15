@@ -4,37 +4,6 @@
  * @returns {Object} - Les données sanitizées
  */
 export const sanitizeRegistrationInputs = (formData) => {
-  // Fonction utilitaire pour supprimer les caractères HTML dangereux
-  const escapeHtml = (text) => {
-    if (typeof text !== 'string') return text;
-
-    const map = {
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#x27;',
-      '/': '&#x2F;',
-    };
-
-    return text.replace(/[&<>"'/]/g, (s) => map[s]);
-  };
-
-  // Fonction pour supprimer les caractères de contrôle et espaces multiples
-  const cleanString = (str) => {
-    if (typeof str !== 'string') return str;
-
-    return (
-      str
-        // Supprime les caractères de contrôle (sauf \n, \r, \t)
-        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
-        // Supprime les espaces multiples
-        .replace(/\s+/g, ' ')
-        // Trim les espaces en début et fin
-        .trim()
-    );
-  };
-
   // Fonction pour nettoyer le numéro de téléphone
   const sanitizePhone = (phone) => {
     if (typeof phone !== 'string') return phone;
