@@ -7,7 +7,7 @@ export async function GET() {
   try {
     try {
       const result = await client.query(
-        'SELECT template_id, template_name, template_image, template_has_web, template_has_mobile FROM templates ORDER BY template_added DESC',
+        'SELECT template_id, template_name, template_image, template_has_web, template_has_mobile, template_added, sales_count, is_active, updated_at FROM catalog.templates ORDER BY template_added DESC',
       );
 
       console.log('result: ');
