@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CldImage, CldUploadWidget } from 'next-cloudinary';
 import axios from 'axios';
@@ -9,12 +9,13 @@ import styles from '@/ui/styling/dashboard/applications/add/addApplication.modul
 function AddApplication({ templates }) {
   const [name, setName] = useState('');
   const [link, setLink] = useState('');
+  const [admin, setAdmin] = useState('');
   const [description, setDescription] = useState('');
   const [fee, setFee] = useState(0);
   const [rent, setRent] = useState(0);
   const [category, setCategory] = useState('');
   const [imageUrls, setImageUrls] = useState([]); // Changed to array
-  const [type, setType] = useState('');
+  const [level, setLevel] = useState(''); // Changed from type to level
   const [templateId, setTemplateId] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const router = useRouter();
@@ -29,6 +30,11 @@ function AddApplication({ templates }) {
 
     if (!link || link.length < 3) {
       setErrorMessage('Link is missing');
+      return;
+    }
+
+    if (!admin || admin.length < 3) {
+      setErrorMessage('Admin link is missing');
       return;
     }
 
@@ -53,9 +59,9 @@ function AddApplication({ templates }) {
       return;
     }
 
-    // Then add the validation in handleSubmit
-    if (!type || type.length < 2) {
-      setErrorMessage('Application type is missing');
+    // Updated validation for level instead of type
+    if (!level || level < 1 || level > 4) {
+      setErrorMessage('Application level must be between 1 and 4');
       return;
     }
 
@@ -64,19 +70,20 @@ function AddApplication({ templates }) {
       return;
     }
 
-    // Update the axios post request to include the type
+    // Update the axios post request to include the level
     const response = await axios.post(
       '/api/dashboard/applications/add',
       JSON.stringify({
         name,
         link,
+        admin,
         description: description || null,
         category,
         fee,
         rent,
         imageUrls,
         templateId: parseInt(templateId, 10),
-        type, // Add the type field
+        level: parseInt(level, 10), // Changed from type to level and ensure it's a number
       }),
       {
         headers: { 'Content-Type': 'application/json' },
@@ -120,16 +127,24 @@ function AddApplication({ templates }) {
             onChange={(e) => setLink(e.target.value)}
           />
           <input
+            type="text"
+            name="admin"
+            placeholder="Lien admin"
+            onChange={(e) => setAdmin(e.target.value)}
+          />
+          <input
             type="number"
             name="rent"
             placeholder="Location par mois"
             onChange={(e) => setRent(e.target.value)}
           />
           <input
-            type="text"
-            name="type"
-            placeholder="Type d'application"
-            onChange={(e) => setType(e.target.value)}
+            type="number"
+            name="level"
+            min="1"
+            max="4"
+            placeholder="Niveau d'application (1-4)"
+            onChange={(e) => setLevel(e.target.value)}
           />
           <select
             className={styles.templateSelect}
