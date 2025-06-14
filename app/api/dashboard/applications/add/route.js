@@ -89,7 +89,7 @@ export async function POST(req) {
     const addApplication = await client.query(
       'INSERT INTO catalog.applications ' +
         '(application_name, application_link, application_admin_link, application_description, application_category, application_fee, application_rent, application_images, application_template_id, application_level) ' +
-        'VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
+        'VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
       [
         name,
         link,
