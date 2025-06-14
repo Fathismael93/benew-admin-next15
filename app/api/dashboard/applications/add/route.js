@@ -8,13 +8,14 @@ export async function POST(req) {
     const {
       name,
       link,
+      admin,
       description,
       category,
       fee,
       rent,
       imageUrls, // Changed to array
       templateId,
-      type, // Add type here
+      level, // Add type here
     } = formData;
 
     if (!name || name.length < 3) {
@@ -28,6 +29,13 @@ export async function POST(req) {
       return NextResponse.json({
         success: false,
         message: 'Link is missing',
+      });
+    }
+
+    if (!admin || admin.length < 3) {
+      return NextResponse.json({
+        success: false,
+        message: 'Admin link is missing',
       });
     }
 
@@ -61,10 +69,10 @@ export async function POST(req) {
     }
 
     // Add validation for type
-    if (!type || type.length < 2) {
+    if (!level || level < 1 || level > 4) {
       return NextResponse.json({
         success: false,
-        message: 'Application type is missing',
+        message: 'Application level must be between 1 and 4',
       });
     }
 
@@ -79,19 +87,20 @@ export async function POST(req) {
 
     // Update the INSERT query to include application_type
     const addApplication = await client.query(
-      'INSERT INTO applications ' +
-        '(application_name, application_link, application_description, application_category, application_fee, application_rent, application_images, application_template_id, application_type) ' +
+      'INSERT INTO catalog.applications ' +
+        '(application_name, application_link, application_admin_link, application_description, application_category, application_fee, application_rent, application_images, application_template_id, application_level) ' +
         'VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
       [
         name,
         link,
+        admin,
         description,
         category,
         fee,
         rent,
         imageUrls,
         templateId,
-        type,
+        level,
       ], // Add type here
     );
 
