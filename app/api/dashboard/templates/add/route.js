@@ -24,7 +24,7 @@ export async function POST(request) {
 
     // Insert new template into database
     const queryText = `
-      INSERT INTO templates (
+      INSERT INTO catalog.templates (
         template_name,
         template_image,
         template_has_web,
