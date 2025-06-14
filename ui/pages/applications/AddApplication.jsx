@@ -82,7 +82,7 @@ function AddApplication({ templates }) {
         fee,
         rent,
         imageUrls,
-        templateId: parseInt(templateId, 10),
+        templateId,
         level: parseInt(level, 10), // Changed from type to level and ensure it's a number
       }),
       {
