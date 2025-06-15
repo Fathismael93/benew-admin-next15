@@ -1,130 +1,195 @@
-.container {
-    background-color: var(--bgSoft);
-    padding: 30px;
-    border-radius: 10px;
-    max-width: 700px;
-    margin: 40px auto;
+/* Ajoutez ces styles à votre fichier editTemplate.module.css existant */
+
+/* Styles pour les informations du template */
+.templateInfo {
+  background-color: var(--bg);
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 25px;
+  border: 1px solid #2e374a;
+}
+
+.infoTitle {
+  color: var(--text);
+  margin-bottom: 15px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 15px;
+}
+
+.infoItem {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.infoLabel {
+  color: var(--textSoft);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+
+.infoValue {
+  color: var(--text);
+  font-size: 14px;
+  font-family: 'Courier New', monospace;
+  background-color: var(--bgSoft);
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #2e374a;
+}
+
+.salesCount {
+  color: var(--text);
+  font-size: 18px;
+  font-weight: bold;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  padding: 8px 12px;
+  border-radius: 4px;
+  background-color: var(--bgSoft);
+  border: 1px solid #2e374a;
+}
+
+/* Styles pour la section status */
+.statusSection {
+  margin: 10px 0;
+}
+
+.statusCheckbox {
+  position: relative;
+}
+
+.statusInput {
+  display: none !important;
+}
+
+.statusLabel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  border: 2px solid transparent;
+}
+
+.activeLabel {
+  background: linear-gradient(
+    135deg,
+    rgba(34, 197, 94, 0.1),
+    rgba(16, 185, 129, 0.1)
+  );
+  color: #22c55e;
+  border-color: #22c55e;
+}
+
+.activeLabel:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(34, 197, 94, 0.2),
+    rgba(16, 185, 129, 0.2)
+  );
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+}
+
+.inactiveLabel {
+  background: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.1),
+    rgba(220, 38, 38, 0.1)
+  );
+  color: #ef4444;
+  border-color: #ef4444;
+}
+
+.inactiveLabel:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.2),
+    rgba(220, 38, 38, 0.2)
+  );
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.statusIndicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  position: relative;
+  display: inline-block;
+}
+
+.activeIndicator {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  box-shadow:
+    0 0 0 2px rgba(34, 197, 94, 0.3),
+    inset 0 1px 2px rgba(255, 255, 255, 0.3);
+  animation: pulse-green 2s infinite;
+}
+
+.inactiveIndicator {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow:
+    0 0 0 2px rgba(239, 68, 68, 0.3),
+    inset 0 1px 2px rgba(255, 255, 255, 0.3);
+  animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-green {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px rgba(34, 197, 94, 0.3),
+      inset 0 1px 2px rgba(255, 255, 255, 0.3);
   }
-  
-  .title {
-    margin-bottom: 30px;
-    color: var(--text);
-    text-align: center;
-    font-size: 24px;
+  50% {
+    box-shadow:
+      0 0 0 4px rgba(34, 197, 94, 0.2),
+      inset 0 1px 2px rgba(255, 255, 255, 0.3);
   }
-  
-  .form {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
+}
+
+@keyframes pulse-red {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px rgba(239, 68, 68, 0.3),
+      inset 0 1px 2px rgba(255, 255, 255, 0.3);
   }
-  
-  .formGroup {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+  50% {
+    box-shadow:
+      0 0 0 4px rgba(239, 68, 68, 0.2),
+      inset 0 1px 2px rgba(255, 255, 255, 0.3);
   }
-  
-  .formGroup label {
-    color: var(--textSoft);
-    font-size: 14px;
+}
+
+/* Responsive design pour les petits écrans */
+@media (max-width: 768px) {
+  .infoGrid {
+    grid-template-columns: 1fr;
   }
-  
-  .input {
-    padding: 15px;
-    background-color: var(--bg);
-    color: var(--text);
-    border: 1px solid #2e374a;
-    border-radius: 5px;
-    font-size: 14px;
-  }
-  
-  .input:focus {
-    outline: none;
-    border-color: #3b82f6;
-  }
-  
+
   .checkboxGroup {
-    display: flex;
-    gap: 20px;
-    margin: 5px 0;
-  }
-  
-  .checkbox {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  
-  .checkbox input[type="checkbox"] {
-    accent-color: #3b82f6;
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
-  }
-  
-  .imageUpload {
-    display: flex;
     flex-direction: column;
     gap: 15px;
   }
-  
-  .uploadButton {
-    background-color: #2e374a;
-    color: var(--text);
-    padding: 12px 20px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: all 0.3s;
+
+  .statusLabel {
+    justify-content: center;
+    text-align: center;
   }
-  
-  .uploadButton:hover {
-    background-color: #3e4a61;
-  }
-  
-  .imagePreview {
-    margin-top: 10px;
-    border: 1px dashed #2e374a;
-    border-radius: 5px;
-    padding: 10px;
-    background-color: var(--bg);
-    width: fit-content;
-  }
-  
-  .submitButton {
-    background-color: #10b981;
-    color: white;
-    padding: 15px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: background-color 0.3s;
-    margin-top: 10px;
-  }
-  
-  .submitButton:hover {
-    background-color: #059669;
-  }
-  
-  .submitButton:disabled {
-    background-color: #6ee7b7;
-    cursor: not-allowed;
-  }
-  
-  .error {
-    background-color: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
-    padding: 15px;
-    border-radius: 5px;
-    border: 1px solid rgba(239, 68, 68, 0.2);
-  }
-  
-  .success {
-    background-color: rgba(34, 197, 94, 0.1);
-    color: #22c55e;
-    padding: 15px;
-    border-radius: 5px;
-    border: 1px solid rgba(34, 197, 94, 0.2);
-  }
+}

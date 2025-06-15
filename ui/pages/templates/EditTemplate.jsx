@@ -9,6 +9,7 @@ const EditTemplate = ({ template }) => {
   const [templateName, setTemplateName] = useState(template.template_name);
   const [hasWeb, setHasWeb] = useState(template.template_has_web);
   const [hasMobile, setHasMobile] = useState(template.template_has_mobile);
+  const [isActive, setIsActive] = useState(template.is_active);
   const [publicId, setPublicId] = useState(template.template_image);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -25,6 +26,16 @@ const EditTemplate = ({ template }) => {
   const handleUploadError = (error) => {
     setError('Failed to upload image. Please try again.');
     console.error('Upload error:', error);
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -57,6 +68,7 @@ const EditTemplate = ({ template }) => {
             templateImageId: publicId,
             templateHasWeb: hasWeb,
             templateHasMobile: hasMobile,
+            isActive: isActive,
             oldImageId: template.template_image,
           }),
         },
@@ -84,6 +96,33 @@ const EditTemplate = ({ template }) => {
     <div className={styles.container}>
       <h1 className={styles.title}>Edit Template</h1>
 
+      {/* Informations du template */}
+      <div className={styles.templateInfo}>
+        <h3 className={styles.infoTitle}>Template Information</h3>
+        <div className={styles.infoGrid}>
+          <div className={styles.infoItem}>
+            <span className={styles.infoLabel}>Template ID:</span>
+            <span className={styles.infoValue}>{template.template_id}</span>
+          </div>
+          <div className={styles.infoItem}>
+            <span className={styles.infoLabel}>Sales Count:</span>
+            <span className={styles.salesCount}>{template.sales_count}</span>
+          </div>
+          <div className={styles.infoItem}>
+            <span className={styles.infoLabel}>Created:</span>
+            <span className={styles.infoValue}>
+              {formatDate(template.template_added)}
+            </span>
+          </div>
+          <div className={styles.infoItem}>
+            <span className={styles.infoLabel}>Last Updated:</span>
+            <span className={styles.infoValue}>
+              {formatDate(template.updated_at)}
+            </span>
+          </div>
+        </div>
+      </div>
+
       <form className={styles.form} onSubmit={handleSubmit}>
         {error && <div className={styles.error}>{error}</div>}
         {success && <div className={styles.success}>{success}</div>}
@@ -101,25 +140,46 @@ const EditTemplate = ({ template }) => {
           />
         </div>
 
-        <div className={styles.checkboxGroup}>
-          <div className={styles.checkbox}>
-            <input
-              type="checkbox"
-              id="hasWeb"
-              checked={hasWeb}
-              onChange={(e) => setHasWeb(e.target.checked)}
-            />
-            <label htmlFor="hasWeb">Web</label>
-          </div>
+        <div className={styles.statusSection}>
+          <div className={styles.checkboxGroup}>
+            <div className={styles.checkbox}>
+              <input
+                type="checkbox"
+                id="hasWeb"
+                checked={hasWeb}
+                onChange={(e) => setHasWeb(e.target.checked)}
+              />
+              <label htmlFor="hasWeb">Web</label>
+            </div>
 
-          <div className={styles.checkbox}>
-            <input
-              type="checkbox"
-              id="hasMobile"
-              checked={hasMobile}
-              onChange={(e) => setHasMobile(e.target.checked)}
-            />
-            <label htmlFor="hasMobile">Mobile</label>
+            <div className={styles.checkbox}>
+              <input
+                type="checkbox"
+                id="hasMobile"
+                checked={hasMobile}
+                onChange={(e) => setHasMobile(e.target.checked)}
+              />
+              <label htmlFor="hasMobile">Mobile</label>
+            </div>
+
+            <div className={`${styles.checkbox} ${styles.statusCheckbox}`}>
+              <input
+                type="checkbox"
+                id="isActive"
+                checked={isActive}
+                onChange={(e) => setIsActive(e.target.checked)}
+                className={styles.statusInput}
+              />
+              <label
+                htmlFor="isActive"
+                className={`${styles.statusLabel} ${isActive ? styles.activeLabel : styles.inactiveLabel}`}
+              >
+                <span
+                  className={`${styles.statusIndicator} ${isActive ? styles.activeIndicator : styles.inactiveIndicator}`}
+                ></span>
+                {isActive ? 'Active' : 'Inactive'}
+              </label>
+            </div>
           </div>
         </div>
 
