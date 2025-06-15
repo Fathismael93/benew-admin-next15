@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { CldUploadWidget } from 'next-cloudinary';
 import { CldImage } from 'next-cloudinary';
 import styles from '@/ui/styling/dashboard/templates/addTemplate/addTemplate.module.css';
+import { sanitizeTemplateInputs } from '@/utils/sanitizers/sanitizeTemplateInputs';
+import { templateAddingSchema } from '@/utils/schemas/templateSchema';
 
 const AddTemplatePage = () => {
   const [templateName, setTemplateName] = useState('');
@@ -14,6 +16,7 @@ const AddTemplatePage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [validationErrors, setValidationErrors] = useState({});
   const router = useRouter();
 
   const handleUploadSuccess = (result) => {
@@ -21,6 +24,14 @@ const AddTemplatePage = () => {
     setPublicId(uploadInfo.public_id);
     setSuccess('Image uploaded successfully!');
     setTimeout(() => setSuccess(''), 3000);
+
+    // Clear validation error for image if it exists
+    if (validationErrors.templateImageId) {
+      setValidationErrors((prev) => ({
+        ...prev,
+        templateImageId: '',
+      }));
+    }
   };
 
   const handleUploadError = (error) => {
@@ -28,22 +39,37 @@ const AddTemplatePage = () => {
     console.error('Upload error:', error);
   };
 
+  const clearFieldError = (fieldName) => {
+    if (validationErrors[fieldName]) {
+      setValidationErrors((prev) => ({
+        ...prev,
+        [fieldName]: '',
+      }));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setValidationErrors({});
 
-    if (!templateName.trim()) {
-      setError('Template name is required');
-      return;
-    }
-
-    if (!publicId) {
-      setError('Please upload an image for the template');
-      return;
-    }
+    // Préparer les données du formulaire
+    const formData = {
+      templateName,
+      templateImageId: publicId,
+      templateHasWeb: hasWeb,
+      templateHasMobile: hasMobile,
+    };
 
     try {
+      // 1. Sanitization des inputs (version de base, pas stricte)
+      const sanitizedData = sanitizeTemplateInputs(formData);
+
+      // 2. Validation avec Yup
+      await templateAddingSchema.validate(sanitizedData, { abortEarly: false });
+
+      // 3. Si validation réussie, procéder à l'envoi
       setIsLoading(true);
 
       const response = await fetch('/api/dashboard/templates/add', {
@@ -51,12 +77,7 @@ const AddTemplatePage = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          templateName,
-          templateImageId: publicId,
-          templateHasWeb: hasWeb,
-          templateHasMobile: hasMobile,
-        }),
+        body: JSON.stringify(sanitizedData),
       });
 
       if (!response.ok) {
@@ -71,13 +92,25 @@ const AddTemplatePage = () => {
       setHasWeb(true);
       setHasMobile(false);
       setPublicId('');
+      setValidationErrors({});
 
       // Redirect to templates list after successful addition
       setTimeout(() => {
         router.push('/dashboard/templates');
       }, 2000);
-    } catch (err) {
-      setError(err.message || 'An error occurred');
+    } catch (validationError) {
+      if (validationError.name === 'ValidationError') {
+        // Erreurs de validation Yup
+        const newErrors = {};
+        validationError.inner.forEach((error) => {
+          newErrors[error.path] = error.message;
+        });
+        setValidationErrors(newErrors);
+        setError('Please correct the errors below');
+      } else {
+        // Autres erreurs (API, réseau, etc.)
+        setError(validationError.message || 'An error occurred');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -97,11 +130,19 @@ const AddTemplatePage = () => {
             type="text"
             id="templateName"
             value={templateName}
-            onChange={(e) => setTemplateName(e.target.value)}
+            onChange={(e) => {
+              setTemplateName(e.target.value);
+              clearFieldError('templateName');
+            }}
             placeholder="Enter template name"
-            className={styles.input}
+            className={`${styles.input} ${validationErrors.templateName ? styles.inputError : ''}`}
             required
           />
+          {validationErrors.templateName && (
+            <div className={styles.fieldError}>
+              {validationErrors.templateName}
+            </div>
+          )}
         </div>
 
         <div className={styles.checkboxGroup}>
@@ -110,7 +151,20 @@ const AddTemplatePage = () => {
               type="checkbox"
               id="hasWeb"
               checked={hasWeb}
-              onChange={(e) => setHasWeb(e.target.checked)}
+              onChange={(e) => {
+                setHasWeb(e.target.checked);
+                // Clear platform validation error when user changes selection
+                if (
+                  validationErrors.templateHasWeb ||
+                  validationErrors.templateHasMobile
+                ) {
+                  setValidationErrors((prev) => ({
+                    ...prev,
+                    templateHasWeb: '',
+                    templateHasMobile: '',
+                  }));
+                }
+              }}
             />
             <label htmlFor="hasWeb">Web</label>
           </div>
@@ -120,10 +174,32 @@ const AddTemplatePage = () => {
               type="checkbox"
               id="hasMobile"
               checked={hasMobile}
-              onChange={(e) => setHasMobile(e.target.checked)}
+              onChange={(e) => {
+                setHasMobile(e.target.checked);
+                // Clear platform validation error when user changes selection
+                if (
+                  validationErrors.templateHasWeb ||
+                  validationErrors.templateHasMobile
+                ) {
+                  setValidationErrors((prev) => ({
+                    ...prev,
+                    templateHasWeb: '',
+                    templateHasMobile: '',
+                  }));
+                }
+              }}
             />
             <label htmlFor="hasMobile">Mobile</label>
           </div>
+
+          {/* Validation error for platform selection */}
+          {(validationErrors.templateHasWeb ||
+            validationErrors.templateHasMobile) && (
+            <div className={styles.fieldError}>
+              Template must be available for at least one platform (Web or
+              Mobile)
+            </div>
+          )}
         </div>
 
         <div className={styles.imageUpload}>
@@ -142,13 +218,19 @@ const AddTemplatePage = () => {
             {({ open }) => (
               <button
                 type="button"
-                className={styles.uploadButton}
+                className={`${styles.uploadButton} ${validationErrors.templateImageId ? styles.uploadButtonError : ''}`}
                 onClick={() => open()}
               >
                 Upload Template Image
               </button>
             )}
           </CldUploadWidget>
+
+          {validationErrors.templateImageId && (
+            <div className={styles.fieldError}>
+              {validationErrors.templateImageId}
+            </div>
+          )}
 
           {publicId && (
             <div className={styles.imagePreview}>
