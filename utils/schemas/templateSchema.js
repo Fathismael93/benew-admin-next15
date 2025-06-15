@@ -94,17 +94,47 @@ export const templateUpdateSchema = yup
         'Template name cannot contain multiple consecutive spaces',
         (value) => !value || !/\s{2,}/.test(value),
       )
+      .test('reserved-words', 'This template name is not allowed', (value) => {
+        if (!value) return true; // Si pas de valeur, pas de validation
+        return ![
+          'admin',
+          'root',
+          'system',
+          'test',
+          'template',
+          'default',
+        ].includes(value.toLowerCase().trim());
+      })
       .transform((value) => value?.trim()),
 
     templateImageId: yup
       .string()
       .min(1, 'Invalid template image')
       .max(200, 'Template image ID is too long')
-      .matches(/^[a-zA-Z0-9._/-]+$/, 'Invalid template image format'),
+      .matches(/^[a-zA-Z0-9._/-]+$/, 'Invalid template image format')
+      .test(
+        'valid-cloudinary-id',
+        'Invalid Cloudinary image ID format',
+        (value) => {
+          if (!value) return true; // Si pas de valeur, pas de validation pour update
+          // Vérifier que ce n'est pas juste des caractères spéciaux
+          return /[a-zA-Z0-9]/.test(value);
+        },
+      ),
 
     templateHasWeb: yup.boolean(),
 
     templateHasMobile: yup.boolean(),
+
+    isActive: yup
+      .boolean()
+      .typeError('Active status must be a boolean value')
+      .test('valid-boolean', 'Active status must be true or false', (value) => {
+        // Accepter undefined pour les mises à jour partielles
+        if (value === undefined) return true;
+        // Vérifier que c'est bien un boolean
+        return typeof value === 'boolean';
+      }),
   })
   .test(
     'at-least-one-platform-if-provided',
@@ -120,6 +150,20 @@ export const templateUpdateSchema = yup
         );
       }
       return true; // Si aucune valeur n'est fournie, c'est OK pour une mise à jour partielle
+    },
+  )
+  .test(
+    'at-least-one-field',
+    'At least one field must be provided for update',
+    (values) => {
+      // Vérifier qu'au moins un champ est fourni pour la mise à jour
+      const providedFields = Object.keys(values).filter(
+        (key) =>
+          values[key] !== undefined &&
+          values[key] !== null &&
+          values[key] !== '',
+      );
+      return providedFields.length > 0;
     },
   );
 
