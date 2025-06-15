@@ -2,13 +2,13 @@
 import { NextResponse } from 'next/server';
 import { getClient } from '@backend/dbConnect';
 
-export async function GET(request, { params }) {
+export async function GET(req, { params }) {
   const { id } = params;
   const client = await getClient();
 
   try {
     const result = await client.query(
-      'SELECT * FROM templates WHERE template_id = $1',
+      'SELECT * FROM catalohg.templates WHERE template_id = $1',
       [id],
     );
 
