@@ -65,7 +65,7 @@
 }
 
 .infoValue {
-  color: var(--text);
+  color: white;
   font-size: 14px;
   font-family: 'Courier New', monospace;
   background-color: var(--bgSoft);
