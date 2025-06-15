@@ -15,6 +15,8 @@ import {
 import logger from '@/utils/logger';
 import isAuthenticatedUser from '@backend/authMiddleware';
 import { applyRateLimit } from '@backend/rateLimiter';
+import { sanitizeTemplateInputsStrict } from '@/utils/sanitizers/sanitizeTemplateInputs';
+import { templateAddingSchema } from '@/utils/schemas/templateSchema';
 
 // ----- CONFIGURATION DU RATE LIMITING POUR L'AJOUT DE TEMPLATES -----
 
@@ -240,37 +242,137 @@ export async function POST(request) {
       hasTemplateImageId: !!templateImageId,
     });
 
-    // ===== ÉTAPE 5: VALIDATION DES CHAMPS REQUIS =====
-    if (!templateName || !templateImageId) {
-      logger.warn('Template validation failed - missing required fields', {
+    // ===== ÉTAPE 5: SANITIZATION DES INPUTS =====
+    logger.debug('Sanitizing template inputs', {
+      requestId,
+      component: 'templates',
+      action: 'input_sanitization',
+      operation: 'add_template',
+    });
+
+    const sanitizedInputs = sanitizeTemplateInputsStrict({
+      templateName,
+      templateImageId,
+      templateHasWeb,
+      templateHasMobile,
+    });
+
+    // Utiliser les données sanitizées pour la suite du processus
+    const {
+      templateName: sanitizedTemplateName,
+      templateImageId: sanitizedTemplateImageId,
+      templateHasWeb: sanitizedTemplateHasWeb,
+      templateHasMobile: sanitizedTemplateHasMobile,
+    } = sanitizedInputs;
+
+    logger.debug('Input sanitization completed', {
+      requestId,
+      component: 'templates',
+      action: 'input_sanitization_completed',
+      operation: 'add_template',
+    });
+
+    // ===== ÉTAPE 6: VALIDATION AVEC YUP =====
+    try {
+      // Valider les données sanitizées avec le schema Yup
+      await templateAddingSchema.validate(
+        {
+          templateName: sanitizedTemplateName,
+          templateImageId: sanitizedTemplateImageId,
+          templateHasWeb: sanitizedTemplateHasWeb,
+          templateHasMobile: sanitizedTemplateHasMobile,
+        },
+        { abortEarly: false },
+      );
+
+      logger.debug('Template validation with Yup passed', {
         requestId,
         component: 'templates',
-        action: 'validation_failed',
+        action: 'yup_validation_success',
         operation: 'add_template',
-        missingFields: {
-          templateName: !templateName,
-          templateImageId: !templateImageId,
-        },
+      });
+    } catch (validationError) {
+      const errorCategory = categorizeError(validationError);
+
+      logger.error('Template Validation Error with Yup', {
+        category: errorCategory,
+        failed_fields: validationError.inner?.map((err) => err.path) || [],
+        total_errors: validationError.inner?.length || 0,
+        requestId,
+        component: 'templates',
+        action: 'yup_validation_failed',
+        operation: 'add_template',
       });
 
       // Capturer l'erreur de validation avec Sentry
-      captureMessage('Template validation failed - missing required fields', {
+      captureMessage('Template validation failed with Yup schema', {
         level: 'warning',
         tags: {
           component: 'templates',
-          action: 'validation_failed',
+          action: 'yup_validation_failed',
           error_category: 'validation',
           entity: 'template',
           operation: 'create',
         },
         extra: {
           requestId,
-          missingFields: {
-            templateName: !templateName,
-            templateImageId: !templateImageId,
-          },
+          failedFields: validationError.inner?.map((err) => err.path) || [],
+          totalErrors: validationError.inner?.length || 0,
+          validationErrors:
+            validationError.inner?.map((err) => ({
+              field: err.path,
+              message: err.message,
+            })) || [],
         },
       });
+
+      if (client) await client.cleanup();
+
+      const errors = {};
+      validationError.inner.forEach((error) => {
+        errors[error.path] = error.message;
+      });
+
+      return NextResponse.json({ errors }, { status: 400 });
+    }
+
+    // ===== ÉTAPE 7: VALIDATION DES CHAMPS REQUIS (SÉCURITÉ SUPPLÉMENTAIRE) =====
+    if (!sanitizedTemplateName || !sanitizedTemplateImageId) {
+      logger.warn(
+        'Template validation failed - missing required fields after sanitization',
+        {
+          requestId,
+          component: 'templates',
+          action: 'validation_failed',
+          operation: 'add_template',
+          missingFields: {
+            templateName: !sanitizedTemplateName,
+            templateImageId: !sanitizedTemplateImageId,
+          },
+        },
+      );
+
+      // Capturer l'erreur de validation avec Sentry
+      captureMessage(
+        'Template validation failed - missing required fields after sanitization',
+        {
+          level: 'warning',
+          tags: {
+            component: 'templates',
+            action: 'validation_failed',
+            error_category: 'validation',
+            entity: 'template',
+            operation: 'create',
+          },
+          extra: {
+            requestId,
+            missingFields: {
+              templateName: !sanitizedTemplateName,
+              templateImageId: !sanitizedTemplateImageId,
+            },
+          },
+        },
+      );
 
       if (client) await client.cleanup();
       return NextResponse.json(
@@ -286,7 +388,7 @@ export async function POST(request) {
       operation: 'add_template',
     });
 
-    // ===== ÉTAPE 6: INSERTION EN BASE DE DONNÉES =====
+    // ===== ÉTAPE 8: INSERTION EN BASE DE DONNÉES =====
     let result;
     try {
       const queryText = `
@@ -300,10 +402,12 @@ export async function POST(request) {
       `;
 
       const values = [
-        templateName,
-        templateImageId || null,
-        templateHasWeb === undefined ? true : templateHasWeb,
-        templateHasMobile === undefined ? false : templateHasMobile,
+        sanitizedTemplateName,
+        sanitizedTemplateImageId || null,
+        sanitizedTemplateHasWeb === undefined ? true : sanitizedTemplateHasWeb,
+        sanitizedTemplateHasMobile === undefined
+          ? false
+          : sanitizedTemplateHasMobile,
       ];
 
       logger.debug('Executing template insertion query', {
@@ -362,13 +466,13 @@ export async function POST(request) {
       );
     }
 
-    // ===== ÉTAPE 7: SUCCÈS - LOG ET NETTOYAGE =====
+    // ===== ÉTAPE 9: SUCCÈS - LOG ET NETTOYAGE =====
     const newTemplateId = result.rows[0].template_id;
     const responseTime = Date.now() - startTime;
 
     logger.info('Template addition successful', {
       newTemplateId,
-      templateName,
+      templateName: sanitizedTemplateName,
       response_time_ms: responseTime,
       database_operations: 2, // connection + insert
       success: true,
@@ -378,6 +482,8 @@ export async function POST(request) {
       entity: 'template',
       rateLimitingApplied: true,
       operation: 'add_template',
+      sanitizationApplied: true,
+      yupValidationApplied: true,
     });
 
     // Capturer le succès de l'ajout avec Sentry
@@ -393,11 +499,13 @@ export async function POST(request) {
       extra: {
         requestId,
         newTemplateId,
-        templateName,
+        templateName: sanitizedTemplateName,
         responseTimeMs: responseTime,
         databaseOperations: 2,
         ip: anonymizeIp(extractRealIp(request)),
         rateLimitingApplied: true,
+        sanitizationApplied: true,
+        yupValidationApplied: true,
       },
     });
 
