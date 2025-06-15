@@ -8,6 +8,11 @@ import {
   MdDelete,
   MdMonitor,
   MdPhoneIphone,
+  MdCheckCircle,
+  MdCancel,
+  MdShoppingCart,
+  MdDateRange,
+  MdUpdate,
 } from 'react-icons/md';
 import { CldImage } from 'next-cloudinary';
 
@@ -62,6 +67,15 @@ const ListTemplates = ({ data }) => {
     }
   };
 
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.top}>
@@ -84,7 +98,10 @@ const ListTemplates = ({ data }) => {
         ) : (
           <div className={styles.grid}>
             {filteredTemplates?.map((template) => (
-              <div key={template.template_id} className={styles.card}>
+              <div
+                key={template.template_id}
+                className={`${styles.card} ${template.is_active ? styles.activeCard : styles.inactiveCard}`}
+              >
                 <div className={styles.imageContainer}>
                   {template.template_image ? (
                     <CldImage
@@ -100,6 +117,13 @@ const ListTemplates = ({ data }) => {
                       <span>No Image</span>
                     </div>
                   )}
+                  {/* Status badge */}
+                  <div
+                    className={`${styles.statusBadge} ${template.is_active ? styles.activeBadge : styles.inactiveBadge}`}
+                  >
+                    {template.is_active ? <MdCheckCircle /> : <MdCancel />}
+                    <span>{template.is_active ? 'Actif' : 'Inactif'}</span>
+                  </div>
                 </div>
                 <div className={styles.cardContent}>
                   <div className={styles.informations}>
@@ -111,6 +135,32 @@ const ListTemplates = ({ data }) => {
                       {template.template_has_mobile && <MdPhoneIphone />}
                     </div>
                   </div>
+
+                  {/* Nouvelles informations */}
+                  <div className={styles.templateStats}>
+                    <div className={styles.stat}>
+                      <MdShoppingCart className={styles.statIcon} />
+                      <span className={styles.statValue}>
+                        {template.sales_count}
+                      </span>
+                      <span className={styles.statLabel}>ventes</span>
+                    </div>
+                    <div className={styles.stat}>
+                      <MdDateRange className={styles.statIcon} />
+                      <span className={styles.statValue}>
+                        {formatDate(template.template_added)}
+                      </span>
+                      <span className={styles.statLabel}>créé</span>
+                    </div>
+                    <div className={styles.stat}>
+                      <MdUpdate className={styles.statIcon} />
+                      <span className={styles.statValue}>
+                        {formatDate(template.updated_at)}
+                      </span>
+                      <span className={styles.statLabel}>mis à jour</span>
+                    </div>
+                  </div>
+
                   <div className={styles.actions}>
                     <Link href={`/dashboard/templates/${template.template_id}`}>
                       <button

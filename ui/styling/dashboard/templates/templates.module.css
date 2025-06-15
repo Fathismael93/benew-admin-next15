@@ -38,7 +38,7 @@
 /* Grid layout for templates */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 20px;
 }
 
@@ -47,13 +47,26 @@
   background-color: var(--bg);
   border-radius: 8px;
   overflow: hidden;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  border: 1px solid #2e374a;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+  border: 2px solid transparent;
 }
 
 .card:hover {
   transform: translateY(-5px);
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Styles pour les cartes actives/inactives */
+.activeCard {
+  border-color: #10b981;
+  background-color: var(--bg);
+}
+
+.inactiveCard {
+  border-color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.05);
 }
 
 .imageContainer {
@@ -86,6 +99,30 @@
   font-size: 14px;
 }
 
+/* Badge de statut */
+.statusBadge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  backdrop-filter: blur(10px);
+}
+
+.activeBadge {
+  background-color: rgba(16, 185, 129, 0.9);
+}
+
+.inactiveBadge {
+  background-color: rgba(239, 68, 68, 0.9);
+}
+
 .cardContent {
   padding: 15px;
 }
@@ -93,12 +130,12 @@
 .informations {
   display: flex;
   justify-content: space-between;
+  margin-bottom: 15px;
 }
 
 .templateName {
   font-size: 16px;
   font-weight: 600;
-  margin-bottom: 10px;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
@@ -106,8 +143,42 @@
 }
 
 .platforms {
-  gap: 10px;
-  margin-bottom: 10px;
+  display: flex;
+  gap: 8px;
+  color: var(--textSoft);
+}
+
+/* Nouvelles statistiques */
+.templateStats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 15px;
+  padding: 10px;
+  background-color: rgba(93, 87, 201, 0.1);
+  border-radius: 6px;
+  border-left: 3px solid #5d57c9;
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.statIcon {
+  color: #5d57c9;
+  font-size: 14px;
+}
+
+.statValue {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.statLabel {
+  color: var(--textSoft);
 }
 
 .actions {
@@ -127,7 +198,9 @@
   cursor: pointer;
   color: white;
   font-size: 18px;
-  transition: background-color 0.3s, transform 0.2s;
+  transition:
+    background-color 0.3s,
+    transform 0.2s;
 }
 
 .actionButton:hover {
