@@ -125,13 +125,36 @@ export const templateUpdateSchema = yup
 
 /**
  * Schema de validation pour l'ID d'un template (pour les opérations CRUD)
+ * Valide les UUID générés par PostgreSQL
  */
 export const templateIdSchema = yup.object().shape({
   id: yup
-    .number()
-    .positive("This template ID doesn't exist")
-    .integer('Template ID must be an integer')
-    .required('Template ID is required'),
+    .string()
+    .required('Template ID is required')
+    .matches(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      'Invalid template ID format (must be a valid UUID)',
+    )
+    .test('is-valid-uuid', 'Template ID must be a valid UUID', (value) => {
+      if (!value) return false;
+
+      // Vérifier le format UUID plus strictement
+      const uuidRegex =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+      if (!uuidRegex.test(value)) {
+        return false;
+      }
+
+      // Vérifier que ce n'est pas un UUID vide ou par défaut
+      const emptyUUIDs = [
+        '00000000-0000-0000-0000-000000000000',
+        'ffffffff-ffff-ffff-ffff-ffffffffffff',
+      ];
+
+      return !emptyUUIDs.includes(value.toLowerCase());
+    })
+    .transform((value) => value?.toLowerCase().trim()),
 });
 
 /**
@@ -164,10 +187,61 @@ export const templateSearchSchema = yup.object().shape({
     .default(0),
 });
 
+/**
+ * Schema de validation pour plusieurs IDs de template (opérations bulk)
+ */
+export const templateIdsSchema = yup.object().shape({
+  ids: yup
+    .array()
+    .of(
+      yup
+        .string()
+        .matches(
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+          'Each template ID must be a valid UUID',
+        ),
+    )
+    .min(1, 'At least one template ID is required')
+    .max(50, 'Cannot process more than 50 templates at once')
+    .required('Template IDs are required'),
+});
+
+/**
+ * Fonction utilitaire pour valider un UUID individuel
+ * @param {string} uuid - L'UUID à valider
+ * @returns {boolean} - True si l'UUID est valide
+ */
+export const isValidUUID = (uuid) => {
+  if (!uuid || typeof uuid !== 'string') {
+    return false;
+  }
+
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(uuid);
+};
+
+/**
+ * Fonction utilitaire pour nettoyer et valider un UUID
+ * @param {string} uuid - L'UUID à nettoyer
+ * @returns {string|null} - L'UUID nettoyé ou null si invalide
+ */
+export const cleanUUID = (uuid) => {
+  if (!uuid || typeof uuid !== 'string') {
+    return null;
+  }
+
+  const cleaned = uuid.toLowerCase().trim();
+  return isValidUUID(cleaned) ? cleaned : null;
+};
+
 // Export par défaut pour faciliter l'import
 export default {
   templateAddingSchema,
   templateUpdateSchema,
   templateIdSchema,
+  templateIdsSchema,
   templateSearchSchema,
+  isValidUUID,
+  cleanUUID,
 };
