@@ -14,6 +14,12 @@ import {
 import logger from '@/utils/logger';
 import isAuthenticatedUser from '@backend/authMiddleware';
 import { applyRateLimit } from '@backend/rateLimiter';
+import {
+  dashboardCache,
+  getDashboardCacheKey,
+  getCacheHeaders,
+  cacheEvents,
+} from '@/utils/cache';
 
 // ----- CONFIGURATION DU RATE LIMITING POUR LES TEMPLATES -----
 
@@ -126,7 +132,93 @@ export async function GET(req) {
       action: 'auth_verification_success',
     });
 
-    // ===== ÉTAPE 3: CONNEXION BASE DE DONNÉES =====
+    // ===== ÉTAPE 3: VÉRIFICATION DU CACHE =====
+    const cacheKey = getDashboardCacheKey('templates_list', {
+      endpoint: 'dashboard_templates',
+      version: '1.0',
+    });
+
+    logger.debug('Checking cache for templates', {
+      requestId,
+      component: 'templates',
+      action: 'cache_check_start',
+      cacheKey,
+    });
+
+    // Vérifier si les données sont en cache
+    const cachedTemplates = dashboardCache.templates.get(cacheKey);
+
+    if (cachedTemplates) {
+      const responseTime = Date.now() - startTime;
+
+      logger.info('Templates served from cache', {
+        templateCount: cachedTemplates.length,
+        response_time_ms: responseTime,
+        cache_hit: true,
+        requestId,
+        component: 'templates',
+        action: 'cache_hit',
+        entity: 'template',
+        rateLimitingApplied: true,
+      });
+
+      // Capturer le succès du cache avec Sentry
+      captureMessage('Templates served from cache successfully', {
+        level: 'info',
+        tags: {
+          component: 'templates',
+          action: 'cache_hit',
+          success: 'true',
+          entity: 'template',
+        },
+        extra: {
+          requestId,
+          templateCount: cachedTemplates.length,
+          responseTimeMs: responseTime,
+          cacheKey,
+          ip: anonymizeIp(extractRealIp(req)),
+          rateLimitingApplied: true,
+        },
+      });
+
+      // Émettre un événement de cache hit
+      cacheEvents.emit('dashboard_hit', {
+        key: cacheKey,
+        cache: dashboardCache.templates,
+        entityType: 'template',
+        requestId,
+      });
+
+      // Retourner les données en cache avec headers appropriés
+      return NextResponse.json(
+        {
+          templates: cachedTemplates,
+          meta: {
+            count: cachedTemplates.length,
+            requestId,
+            timestamp: new Date().toISOString(),
+            fromCache: true,
+          },
+        },
+        {
+          status: 200,
+          headers: {
+            'X-Request-ID': requestId,
+            'X-Response-Time': `${responseTime}ms`,
+            'X-Cache-Status': 'HIT',
+            ...getCacheHeaders('templates'),
+          },
+        },
+      );
+    }
+
+    logger.debug('Cache miss, fetching from database', {
+      requestId,
+      component: 'templates',
+      action: 'cache_miss',
+    });
+
+    // ===== ÉTAPE 4: CONNEXION BASE DE DONNÉES =====
     try {
       client = await getClient();
       logger.debug('Database connection successful', {
