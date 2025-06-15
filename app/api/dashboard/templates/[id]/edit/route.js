@@ -39,7 +39,7 @@ export async function PUT(request, { params }) {
              template_image = $2,
              template_has_web = $3,
              template_has_mobile = $4,
-             is_active = $5,
+             is_active = $5
          WHERE template_id = $6
          RETURNING *`,
       [
