@@ -13,6 +13,7 @@ export async function PUT(request, { params }) {
       templateImageId,
       templateHasWeb,
       templateHasMobile,
+      isActive,
       oldImageId,
     } = body;
 
@@ -33,14 +34,22 @@ export async function PUT(request, { params }) {
     }
 
     const result = await client.query(
-      `UPDATE templates 
+      `UPDATE catalog.templates 
          SET template_name = $1,
              template_image = $2,
              template_has_web = $3,
-             template_has_mobile = $4
-         WHERE template_id = $5
+             template_has_mobile = $4,
+             is_active = $5,
+         WHERE template_id = $6
          RETURNING *`,
-      [templateName, templateImageId, templateHasWeb, templateHasMobile, id],
+      [
+        templateName,
+        templateImageId,
+        templateHasWeb,
+        templateHasMobile,
+        isActive,
+        id,
+      ],
     );
 
     if (result.rows.length === 0) {
