@@ -260,7 +260,7 @@ export async function GET(req) {
       );
     }
 
-    // ===== ÉTAPE 4: EXÉCUTION DE LA REQUÊTE =====
+    // ===== ÉTAPE 5: EXÉCUTION DE LA REQUÊTE =====
     let result;
     try {
       const templatesQuery = `
@@ -334,7 +334,7 @@ export async function GET(req) {
       );
     }
 
-    // ===== ÉTAPE 5: VALIDATION DES DONNÉES =====
+    // ===== ÉTAPE 6: VALIDATION DES DONNÉES =====
     if (!result || !Array.isArray(result.rows)) {
       logger.warn('Templates query returned invalid data structure', {
         requestId,
@@ -368,7 +368,7 @@ export async function GET(req) {
       );
     }
 
-    // ===== ÉTAPE 6: NETTOYAGE ET FORMATAGE DES DONNÉES =====
+    // ===== ÉTAPE 7: NETTOYAGE ET FORMATAGE DES DONNÉES =====
     const sanitizedTemplates = result.rows.map((template) => ({
       template_id: template.template_id,
       template_name: template.template_name || '[No Name]',
@@ -389,7 +389,46 @@ export async function GET(req) {
       sanitizedCount: sanitizedTemplates.length,
     });
 
-    // ===== ÉTAPE 7: SUCCÈS - LOG ET NETTOYAGE =====
+    // ===== ÉTAPE 8: MISE EN CACHE DES DONNÉES =====
+    logger.debug('Caching templates data', {
+      requestId,
+      component: 'templates',
+      action: 'cache_set_start',
+      templateCount: sanitizedTemplates.length,
+    });
+
+    // Mettre les données en cache
+    const cacheSuccess = dashboardCache.templates.set(
+      cacheKey,
+      sanitizedTemplates,
+    );
+
+    if (cacheSuccess) {
+      logger.debug('Templates data cached successfully', {
+        requestId,
+        component: 'templates',
+        action: 'cache_set_success',
+        cacheKey,
+      });
+
+      // Émettre un événement de cache set
+      cacheEvents.emit('dashboard_set', {
+        key: cacheKey,
+        cache: dashboardCache.templates,
+        entityType: 'template',
+        requestId,
+        size: sanitizedTemplates.length,
+      });
+    } else {
+      logger.warn('Failed to cache templates data', {
+        requestId,
+        component: 'templates',
+        action: 'cache_set_failed',
+        cacheKey,
+      });
+    }
+
+    // ===== ÉTAPE 9: SUCCÈS - LOG ET NETTOYAGE =====
     const responseTime = Date.now() - startTime;
 
     logger.info('Templates fetch successful', {
@@ -402,6 +441,8 @@ export async function GET(req) {
       action: 'fetch_success',
       entity: 'template',
       rateLimitingApplied: true,
+      cacheMiss: true,
+      cacheSet: cacheSuccess,
     });
 
     // Capturer le succès de la récupération avec Sentry
@@ -420,6 +461,8 @@ export async function GET(req) {
         databaseOperations: 2,
         ip: anonymizeIp(extractRealIp(req)),
         rateLimitingApplied: true,
+        cacheMiss: true,
+        cacheSet: cacheSuccess,
       },
     });
 
