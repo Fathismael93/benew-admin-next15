@@ -13,6 +13,29 @@ import {
 } from '@/utils/helpers';
 import logger from '@/utils/logger';
 import isAuthenticatedUser from '@backend/authMiddleware';
+import { applyRateLimit } from '@backend/rateLimiter';
+
+// ----- CONFIGURATION DU RATE LIMITING POUR LES TEMPLATES -----
+
+// Créer le middleware de rate limiting spécifique pour les templates
+const templatesRateLimit = applyRateLimit('AUTHENTICATED_API', {
+  // Configuration personnalisée pour les templates
+  windowMs: 2 * 60 * 1000, // 2 minutes
+  max: 50, // 50 requêtes par 2 minutes (plus généreux pour les APIs de lecture)
+  message:
+    'Trop de requêtes vers les templates. Veuillez réessayer dans quelques instants.',
+  skipSuccessfulRequests: false, // Compter toutes les requêtes réussies
+  skipFailedRequests: false, // Compter aussi les échecs
+  prefix: 'templates', // Préfixe spécifique pour les templates
+
+  // Fonction personnalisée pour générer la clé (basée sur IP)
+  keyGenerator: (req) => {
+    const ip = extractRealIp(req);
+    return `templates:ip:${ip}`;
+  },
+});
+
+// ----- API ROUTE PRINCIPALE AVEC RATE LIMITING ET MONITORING SENTRY -----
 
 export async function GET(req) {
   let client;
@@ -44,10 +67,66 @@ export async function GET(req) {
   });
 
   try {
-    // 1. Vérifier l'authentification
+    // ===== ÉTAPE 1: APPLIQUER LE RATE LIMITING =====
+    logger.debug('Applying rate limiting for templates API', {
+      requestId,
+      component: 'templates',
+      action: 'rate_limit_start',
+    });
+
+    const rateLimitResponse = await templatesRateLimit(req);
+
+    // Si le rate limiter retourne une réponse, cela signifie que la limite est dépassée
+    if (rateLimitResponse) {
+      logger.warn('Templates API rate limit exceeded', {
+        requestId,
+        component: 'templates',
+        action: 'rate_limit_exceeded',
+        ip: anonymizeIp(extractRealIp(req)),
+      });
+
+      // Capturer l'événement de rate limiting avec Sentry
+      captureMessage('Templates API rate limit exceeded', {
+        level: 'warning',
+        tags: {
+          component: 'templates',
+          action: 'rate_limit_exceeded',
+          error_category: 'rate_limiting',
+          entity: 'template',
+        },
+        extra: {
+          requestId,
+          ip: anonymizeIp(extractRealIp(req)),
+          userAgent:
+            req.headers.get('user-agent')?.substring(0, 100) || 'unknown',
+        },
+      });
+
+      return rateLimitResponse; // Retourner directement la réponse 429
+    }
+
+    logger.debug('Rate limiting passed successfully', {
+      requestId,
+      component: 'templates',
+      action: 'rate_limit_passed',
+    });
+
+    // ===== ÉTAPE 2: VÉRIFICATION AUTHENTIFICATION =====
+    logger.debug('Verifying user authentication', {
+      requestId,
+      component: 'templates',
+      action: 'auth_verification_start',
+    });
+
     await isAuthenticatedUser(req, NextResponse);
 
-    // ===== ÉTAPE 1: CONNEXION BASE DE DONNÉES =====
+    logger.debug('User authentication verified successfully', {
+      requestId,
+      component: 'templates',
+      action: 'auth_verification_success',
+    });
+
+    // ===== ÉTAPE 3: CONNEXION BASE DE DONNÉES =====
     try {
       client = await getClient();
       logger.debug('Database connection successful', {
@@ -79,6 +158,7 @@ export async function GET(req) {
           requestId,
           timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
           ip: anonymizeIp(extractRealIp(req)),
+          rateLimitingApplied: true,
         },
       });
 
@@ -88,7 +168,7 @@ export async function GET(req) {
       );
     }
 
-    // ===== ÉTAPE 2: EXÉCUTION DE LA REQUÊTE =====
+    // ===== ÉTAPE 4: EXÉCUTION DE LA REQUÊTE =====
     let result;
     try {
       const templatesQuery = `
@@ -151,6 +231,7 @@ export async function GET(req) {
           postgresCode: queryError.code,
           postgresDetail: queryError.detail ? '[Filtered]' : undefined,
           ip: anonymizeIp(extractRealIp(req)),
+          rateLimitingApplied: true,
         },
       });
 
@@ -161,7 +242,7 @@ export async function GET(req) {
       );
     }
 
-    // ===== ÉTAPE 3: VALIDATION DES DONNÉES =====
+    // ===== ÉTAPE 5: VALIDATION DES DONNÉES =====
     if (!result || !Array.isArray(result.rows)) {
       logger.warn('Templates query returned invalid data structure', {
         requestId,
@@ -195,7 +276,7 @@ export async function GET(req) {
       );
     }
 
-    // ===== ÉTAPE 4: NETTOYAGE ET FORMATAGE DES DONNÉES =====
+    // ===== ÉTAPE 6: NETTOYAGE ET FORMATAGE DES DONNÉES =====
     const sanitizedTemplates = result.rows.map((template) => ({
       template_id: template.template_id,
       template_name: template.template_name || '[No Name]',
@@ -216,7 +297,7 @@ export async function GET(req) {
       sanitizedCount: sanitizedTemplates.length,
     });
 
-    // ===== ÉTAPE 5: SUCCÈS - LOG ET NETTOYAGE =====
+    // ===== ÉTAPE 7: SUCCÈS - LOG ET NETTOYAGE =====
     const responseTime = Date.now() - startTime;
 
     logger.info('Templates fetch successful', {
@@ -228,6 +309,7 @@ export async function GET(req) {
       component: 'templates',
       action: 'fetch_success',
       entity: 'template',
+      rateLimitingApplied: true,
     });
 
     // Capturer le succès de la récupération avec Sentry
@@ -245,6 +327,7 @@ export async function GET(req) {
         responseTimeMs: responseTime,
         databaseOperations: 2,
         ip: anonymizeIp(extractRealIp(req)),
+        rateLimitingApplied: true,
       },
     });
 
@@ -303,6 +386,7 @@ export async function GET(req) {
         stackAvailable: !!error.stack,
         process: 'templates_fetch',
         ip: anonymizeIp(extractRealIp(req)),
+        rateLimitingApplied: true,
       },
     });
 
