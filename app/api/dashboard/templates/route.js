@@ -12,6 +12,7 @@ import {
   anonymizeIp,
 } from '@/utils/helpers';
 import logger from '@/utils/logger';
+import isAuthenticatedUser from '@backend/authMiddleware';
 
 export async function GET(req) {
   let client;
@@ -43,6 +44,9 @@ export async function GET(req) {
   });
 
   try {
+    // 1. Vérifier l'authentification
+    await isAuthenticatedUser(req, NextResponse);
+
     // ===== ÉTAPE 1: CONNEXION BASE DE DONNÉES =====
     try {
       client = await getClient();
