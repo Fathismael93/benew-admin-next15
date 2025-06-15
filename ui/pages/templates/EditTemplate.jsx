@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CldUploadWidget, CldImage } from 'next-cloudinary';
 import styles from '@/ui/styling/dashboard/templates/editTemplate/editTemplate.module.css';
+import { templateUpdateSchema } from '@/utils/schemas/templateSchema';
 
 const EditTemplate = ({ template }) => {
   const [templateName, setTemplateName] = useState(template.template_name);
@@ -43,6 +44,7 @@ const EditTemplate = ({ template }) => {
     setError('');
     setSuccess('');
 
+    // Vérifications de base pour les champs requis
     if (!templateName.trim()) {
       setError('Template name is required');
       return;
@@ -53,7 +55,33 @@ const EditTemplate = ({ template }) => {
       return;
     }
 
+    // Vérification qu'au moins une plateforme est sélectionnée
+    if (!hasWeb && !hasMobile) {
+      setError(
+        'Template must be available for at least one platform (Web or Mobile)',
+      );
+      return;
+    }
+
+    // Vérification du type boolean pour isActive
+    if (typeof isActive !== 'boolean') {
+      setError('Active status must be a valid boolean value');
+      return;
+    }
+
+    // Préparer les données pour la validation
+    const formData = {
+      templateName,
+      templateImageId: publicId,
+      templateHasWeb: hasWeb,
+      templateHasMobile: hasMobile,
+      isActive: isActive,
+    };
+
     try {
+      // Validation avec templateUpdateSchema
+      await templateUpdateSchema.validate(formData, { abortEarly: false });
+
       setIsLoading(true);
 
       const response = await fetch(
@@ -85,8 +113,15 @@ const EditTemplate = ({ template }) => {
       setTimeout(() => {
         router.push('/dashboard/templates');
       }, 2000);
-    } catch (err) {
-      setError(err.message || 'An error occurred');
+    } catch (validationError) {
+      if (validationError.name === 'ValidationError') {
+        // Erreurs de validation Yup - afficher la première erreur
+        const firstError = validationError.errors[0];
+        setError(firstError || 'Validation failed');
+      } else {
+        // Autres erreurs (API, réseau, etc.)
+        setError(validationError.message || 'An error occurred');
+      }
     } finally {
       setIsLoading(false);
     }
