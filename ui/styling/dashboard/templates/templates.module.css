@@ -248,3 +248,213 @@
   border-radius: 8px;
   background-color: var(--bg);
 }
+
+/* Styles pour les modals de confirmation/avertissement */
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal {
+  background: white;
+  border-radius: 12px;
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modalAppear 0.2s ease-out;
+}
+
+@keyframes modalAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 24px 0;
+}
+
+.modalIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  margin-bottom: 16px;
+}
+
+.warningIcon {
+  font-size: 24px;
+  color: #f59e0b;
+  background: #fef3c7;
+  padding: 12px;
+  border-radius: 50%;
+}
+
+.deleteIcon {
+  font-size: 24px;
+  color: #ef4444;
+  background: #fee2e2;
+  padding: 12px;
+  border-radius: 50%;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  align-self: flex-start;
+}
+
+.closeButton:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.modalContent {
+  padding: 0 24px 24px;
+  text-align: center;
+}
+
+.modalTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 12px;
+}
+
+.modalMessage {
+  font-size: 16px;
+  color: #374151;
+  line-height: 1.5;
+  margin: 0 0 8px;
+}
+
+.modalSubmessage {
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.modalActions {
+  padding: 16px 24px 24px;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.modalButtonPrimary {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 100px;
+}
+
+.modalButtonPrimary:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+}
+
+.modalButtonSecondary {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 100px;
+}
+
+.modalButtonSecondary:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+  transform: translateY(-1px);
+}
+
+.modalButtonDanger {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 100px;
+}
+
+.modalButtonDanger:hover:not(:disabled) {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+.modalButtonDanger:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Style pour le bouton de suppression désactivé */
+.disabledButton {
+  opacity: 0.5;
+  cursor: not-allowed !important;
+}
+
+.disabledButton:hover {
+  transform: none !important;
+  background: #6b7280 !important;
+}
+
+/* Responsive design pour les modals */
+@media (max-width: 640px) {
+  .modal {
+    width: 95%;
+    margin: 16px;
+  }
+
+  .modalActions {
+    flex-direction: column;
+  }
+
+  .modalButtonPrimary,
+  .modalButtonSecondary,
+  .modalButtonDanger {
+    width: 100%;
+  }
+}
