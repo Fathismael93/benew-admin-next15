@@ -600,31 +600,31 @@ export async function PUT(request, { params }) {
       let paramCounter = 1;
 
       if (sanitizedTemplateName !== undefined) {
-        updateFields.push(`template_name = ${paramCounter}`);
+        updateFields.push(`template_name = $${paramCounter}`);
         updateValues.push(sanitizedTemplateName);
         paramCounter++;
       }
 
       if (sanitizedTemplateImageId !== undefined) {
-        updateFields.push(`template_image = ${paramCounter}`);
+        updateFields.push(`template_image = $${paramCounter}`);
         updateValues.push(sanitizedTemplateImageId);
         paramCounter++;
       }
 
       if (sanitizedTemplateHasWeb !== undefined) {
-        updateFields.push(`template_has_web = ${paramCounter}`);
+        updateFields.push(`template_has_web = $${paramCounter}`);
         updateValues.push(sanitizedTemplateHasWeb);
         paramCounter++;
       }
 
       if (sanitizedTemplateHasMobile !== undefined) {
-        updateFields.push(`template_has_mobile = ${paramCounter}`);
+        updateFields.push(`template_has_mobile = $${paramCounter}`);
         updateValues.push(sanitizedTemplateHasMobile);
         paramCounter++;
       }
 
       if (isActive !== undefined) {
-        updateFields.push(`is_active = ${paramCounter}`);
+        updateFields.push(`is_active = $${paramCounter}`);
         updateValues.push(isActive);
         paramCounter++;
       }
@@ -635,7 +635,7 @@ export async function PUT(request, { params }) {
       const queryText = `
         UPDATE catalog.templates 
         SET ${updateFields.join(', ')}
-        WHERE template_id = ${paramCounter}
+        WHERE template_id = $${paramCounter}
         RETURNING *
       `;
 
