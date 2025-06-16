@@ -62,20 +62,20 @@ const ListTemplates = ({ data: initialData }) => {
   };
 
   // Fonction pour mise à jour optimiste des templates
-  const optimisticUpdateTemplate = useCallback((templateId, updates) => {
-    setTemplates((prevTemplates) =>
-      prevTemplates.map((template) =>
-        template.template_id === templateId
-          ? { ...template, ...updates }
-          : template,
-      ),
-    );
-  }, []);
+  // const optimisticUpdateTemplate = useCallback((templateId, updates) => {
+  //   setTemplates((prevTemplates) =>
+  //     prevTemplates.map((template) =>
+  //       template.template_id === templateId
+  //         ? { ...template, ...updates }
+  //         : template,
+  //     ),
+  //   );
+  // }, []);
 
   // Fonction pour ajout optimiste d'un template
-  const optimisticAddTemplate = useCallback((newTemplate) => {
-    setTemplates((prevTemplates) => [...prevTemplates, newTemplate]);
-  }, []);
+  // const optimisticAddTemplate = useCallback((newTemplate) => {
+  //   setTemplates((prevTemplates) => [...prevTemplates, newTemplate]);
+  // }, []);
 
   // Fonction pour suppression optimiste avec rollback
   const optimisticDeleteTemplate = useCallback((templateId) => {
@@ -138,9 +138,6 @@ const ListTemplates = ({ data: initialData }) => {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            imageID: templateToDelete.template_image,
-          }),
         },
       );
 
@@ -174,6 +171,7 @@ const ListTemplates = ({ data: initialData }) => {
       setIsDeleting(false);
       setDeleteId(null);
       setTemplateToDelete(null);
+      router.refresh(); // Rafraîchir la page pour mettre à jour l'état
     }
   };
 
