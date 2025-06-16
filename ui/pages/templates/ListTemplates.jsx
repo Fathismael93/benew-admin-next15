@@ -41,7 +41,7 @@ const ListTemplates = ({ data }) => {
     template.template_name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
-  const handleDeleteClick = async (id, imagePublicId) => {
+  const handleDeleteClick = async (id) => {
     setDeleteId(id);
     setIsDeleting(true);
 
@@ -51,7 +51,6 @@ const ListTemplates = ({ data }) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ imageID: imagePublicId }),
       });
 
       if (response.ok) {
@@ -171,12 +170,7 @@ const ListTemplates = ({ data }) => {
                     </Link>
                     <button
                       className={`${styles.actionButton} ${styles.deleteButton}`}
-                      onClick={() =>
-                        handleDeleteClick(
-                          template.template_id,
-                          template.template_image,
-                        )
-                      }
+                      onClick={() => handleDeleteClick(template.template_id)}
                       disabled={isDeleting && deleteId === template.template_id}
                     >
                       <MdDelete />

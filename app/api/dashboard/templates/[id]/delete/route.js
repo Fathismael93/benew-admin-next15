@@ -267,67 +267,6 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    // ===== ÉTAPE 5: PARSING ET VALIDATION DU BODY =====
-    let body;
-    let imageID;
-
-    try {
-      body = await request.json();
-      imageID = body.imageID;
-
-      logger.debug('Request body parsed successfully', {
-        requestId,
-        templateId: id,
-        component: 'templates',
-        action: 'body_parse_success',
-        operation: 'delete_template',
-        hasImageID: !!imageID,
-      });
-    } catch (parseError) {
-      const errorCategory = categorizeError(parseError);
-
-      logger.error('JSON Parse Error during template deletion', {
-        category: errorCategory,
-        message: parseError.message,
-        requestId,
-        templateId: id,
-        component: 'templates',
-        action: 'json_parse_error',
-        operation: 'delete_template',
-        headers: {
-          'content-type': request.headers.get('content-type'),
-          'user-agent': request.headers.get('user-agent')?.substring(0, 100),
-        },
-      });
-
-      // Capturer l'erreur de parsing avec Sentry
-      captureException(parseError, {
-        level: 'error',
-        tags: {
-          component: 'templates',
-          action: 'json_parse_error',
-          error_category: categorizeError(parseError),
-          operation: 'delete',
-        },
-        extra: {
-          requestId,
-          templateId: id,
-          contentType: request.headers.get('content-type'),
-          userAgent: request.headers.get('user-agent')?.substring(0, 100),
-        },
-      });
-
-      if (client) await client.cleanup();
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Invalid JSON in request body',
-          message: 'Invalid request format',
-        },
-        { status: 400 },
-      );
-    }
-
     // ===== ÉTAPE 6: VÉRIFICATION DE L'EXISTENCE ET DE L'ÉTAT DU TEMPLATE =====
     let templateToDelete;
     try {
@@ -588,7 +527,8 @@ export async function DELETE(request, { params }) {
 
     // ===== ÉTAPE 8: SUPPRESSION DE L'IMAGE CLOUDINARY =====
     const deletedTemplate = deleteResult.rows[0];
-    const cloudinaryImageId = imageID || deletedTemplate.template_image;
+    const cloudinaryImageId =
+      templateToDelete.template_image || deletedTemplate.template_image;
 
     if (cloudinaryImageId) {
       try {
