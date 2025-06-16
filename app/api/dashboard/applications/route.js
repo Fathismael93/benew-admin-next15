@@ -379,10 +379,9 @@ export async function GET(req) {
       application_fee: parseFloat(application.application_fee) || 0,
       application_rent: parseFloat(application.application_rent) || 0,
       application_link: application.application_link,
-      application_level: application.application_level || 'beginner',
-      application_added: application.application_added,
+      application_level: application.application_level || '1',
+      application_added: application.created_at,
       sales_count: parseInt(application.sales_count) || 0,
-      is_active: Boolean(application.is_active),
       updated_at: application.updated_at,
     }));
 
