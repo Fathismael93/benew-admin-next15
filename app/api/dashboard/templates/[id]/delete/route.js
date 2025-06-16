@@ -23,7 +23,7 @@ export async function DELETE(req, { params }) {
   try {
     client = await getClient();
     const result = await client.query(
-      'DELETE FROM templates WHERE template_id=$1',
+      'DELETE FROM catalog.templates WHERE template_id=$1',
       [id],
     );
 
