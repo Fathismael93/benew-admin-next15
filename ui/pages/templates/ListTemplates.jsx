@@ -192,7 +192,7 @@ const ListTemplates = ({ data: initialData }) => {
 
   // Fonction pour actualiser manuellement la liste (utile pour les cas edge)
   const refreshTemplates = useCallback(() => {
-    router.refresh();
+    window.location.reload();
   }, [router]);
 
   // Modal de confirmation/avertissement
