@@ -635,9 +635,14 @@ export async function PUT(request, { params }) {
       const queryText = `
         UPDATE catalog.templates 
         SET ${updateFields.join(', ')}
-        WHERE template_id = ${id}
+        WHERE template_id = ${paramCounter}
         RETURNING *
       `;
+
+      console.log('Update Fields:', updateFields);
+      console.log('Update Values:', updateValues);
+      console.log('Query Text:', queryText);
+      console.log('Param Counter:', paramCounter);
 
       logger.debug('Executing template update query', {
         requestId,
