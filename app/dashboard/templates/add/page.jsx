@@ -85,7 +85,7 @@ const AddTemplatePage = () => {
         throw new Error(errorData.message || 'Failed to add template');
       }
 
-      const result = await response.json();
+      await response.json();
 
       setSuccess('Template added successfully!');
 
