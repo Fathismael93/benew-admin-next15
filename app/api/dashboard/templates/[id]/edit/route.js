@@ -639,11 +639,6 @@ export async function PUT(request, { params }) {
         RETURNING *
       `;
 
-      console.log('Update Fields:', updateFields);
-      console.log('Update Values:', updateValues);
-      console.log('Query Text:', queryText);
-      console.log('Param Counter:', paramCounter);
-
       logger.debug('Executing template update query', {
         requestId,
         templateId: id,
