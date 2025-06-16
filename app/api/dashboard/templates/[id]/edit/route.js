@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // app/api/dashboard/templates/[id]/edit/route.js
 import { NextResponse } from 'next/server';
 import cloudinary from '@backend/cloudinary';
@@ -39,7 +40,7 @@ const editTemplateRateLimit = applyRateLimit('CONTENT_API', {
   keyGenerator: (req) => {
     const ip = extractRealIp(req);
     const url = req.url || req.nextUrl?.pathname || '';
-    const templateIdMatch = url.match(/templates\/([^\/]+)\/edit/);
+    const templateIdMatch = url.match(/templates\/([^/]+)\/edit/);
     const templateId = templateIdMatch ? templateIdMatch[1] : 'unknown';
     return `edit_template:ip:${ip}:template:${templateId}`;
   },
