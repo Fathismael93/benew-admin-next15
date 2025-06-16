@@ -274,11 +274,11 @@ export async function GET(req) {
           application_rent, 
           application_link, 
           application_level,
-          application_added,
+          created_at,
           sales_count,
           updated_at
         FROM catalog.applications
-        ORDER BY  created_at DESC
+        ORDER BY created_at DESC
       `;
 
       logger.debug('Executing applications query', {
