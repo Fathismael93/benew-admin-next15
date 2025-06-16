@@ -15,6 +15,7 @@ const EditTemplate = ({ template }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [validationErrors, setValidationErrors] = useState({});
   const router = useRouter();
 
   const handleUploadSuccess = (result) => {
@@ -22,11 +23,28 @@ const EditTemplate = ({ template }) => {
     setPublicId(uploadInfo.public_id);
     setSuccess('Image updated successfully!');
     setTimeout(() => setSuccess(''), 3000);
+
+    // Clear validation error for image if it exists
+    if (validationErrors.templateImageId) {
+      setValidationErrors((prev) => ({
+        ...prev,
+        templateImageId: '',
+      }));
+    }
   };
 
   const handleUploadError = (error) => {
     setError('Failed to upload image. Please try again.');
     console.error('Upload error:', error);
+  };
+
+  const clearFieldError = (fieldName) => {
+    if (validationErrors[fieldName]) {
+      setValidationErrors((prev) => ({
+        ...prev,
+        [fieldName]: '',
+      }));
+    }
   };
 
   const formatDate = (dateString) => {
@@ -43,31 +61,7 @@ const EditTemplate = ({ template }) => {
     e.preventDefault();
     setError('');
     setSuccess('');
-
-    // Vérifications de base pour les champs requis
-    if (!templateName.trim()) {
-      setError('Template name is required');
-      return;
-    }
-
-    if (!publicId) {
-      setError('Please upload an image for the template');
-      return;
-    }
-
-    // Vérification qu'au moins une plateforme est sélectionnée
-    if (!hasWeb && !hasMobile) {
-      setError(
-        'Template must be available for at least one platform (Web or Mobile)',
-      );
-      return;
-    }
-
-    // Vérification du type boolean pour isActive
-    if (typeof isActive !== 'boolean') {
-      setError('Active status must be a valid boolean value');
-      return;
-    }
+    setValidationErrors({});
 
     // Préparer les données pour la validation
     const formData = {
@@ -104,20 +98,35 @@ const EditTemplate = ({ template }) => {
 
       if (!response.ok) {
         const errorData = await response.json();
+
+        // Gestion des erreurs de validation côté serveur
+        if (errorData.errors && typeof errorData.errors === 'object') {
+          setValidationErrors(errorData.errors);
+          setError('Please correct the errors below');
+          return;
+        }
+
         throw new Error(errorData.message || 'Failed to update template');
       }
 
+      const result = await response.json();
+
       setSuccess('Template updated successfully!');
 
-      // Redirect to templates list after successful update
+      // Redirection optimisée avec revalidation
       setTimeout(() => {
         router.push('/dashboard/templates');
-      }, 2000);
+        router.refresh(); // Force la revalidation des données côté serveur
+      }, 1500);
     } catch (validationError) {
       if (validationError.name === 'ValidationError') {
-        // Erreurs de validation Yup - afficher la première erreur
-        const firstError = validationError.errors[0];
-        setError(firstError || 'Validation failed');
+        // Erreurs de validation Yup
+        const newErrors = {};
+        validationError.inner.forEach((error) => {
+          newErrors[error.path] = error.message;
+        });
+        setValidationErrors(newErrors);
+        setError('Please correct the errors below');
       } else {
         // Autres erreurs (API, réseau, etc.)
         setError(validationError.message || 'An error occurred');
@@ -168,11 +177,19 @@ const EditTemplate = ({ template }) => {
             type="text"
             id="templateName"
             value={templateName}
-            onChange={(e) => setTemplateName(e.target.value)}
+            onChange={(e) => {
+              setTemplateName(e.target.value);
+              clearFieldError('templateName');
+            }}
             placeholder="Enter template name"
-            className={styles.input}
+            className={`${styles.input} ${validationErrors.templateName ? styles.inputError : ''}`}
             required
           />
+          {validationErrors.templateName && (
+            <div className={styles.fieldError}>
+              {validationErrors.templateName}
+            </div>
+          )}
         </div>
 
         <div className={styles.statusSection}>
@@ -182,7 +199,20 @@ const EditTemplate = ({ template }) => {
                 type="checkbox"
                 id="hasWeb"
                 checked={hasWeb}
-                onChange={(e) => setHasWeb(e.target.checked)}
+                onChange={(e) => {
+                  setHasWeb(e.target.checked);
+                  // Clear platform validation error when user changes selection
+                  if (
+                    validationErrors.templateHasWeb ||
+                    validationErrors.templateHasMobile
+                  ) {
+                    setValidationErrors((prev) => ({
+                      ...prev,
+                      templateHasWeb: '',
+                      templateHasMobile: '',
+                    }));
+                  }
+                }}
               />
               <label htmlFor="hasWeb">Web</label>
             </div>
@@ -192,17 +222,42 @@ const EditTemplate = ({ template }) => {
                 type="checkbox"
                 id="hasMobile"
                 checked={hasMobile}
-                onChange={(e) => setHasMobile(e.target.checked)}
+                onChange={(e) => {
+                  setHasMobile(e.target.checked);
+                  // Clear platform validation error when user changes selection
+                  if (
+                    validationErrors.templateHasWeb ||
+                    validationErrors.templateHasMobile
+                  ) {
+                    setValidationErrors((prev) => ({
+                      ...prev,
+                      templateHasWeb: '',
+                      templateHasMobile: '',
+                    }));
+                  }
+                }}
               />
               <label htmlFor="hasMobile">Mobile</label>
             </div>
+
+            {/* Validation error for platform selection */}
+            {(validationErrors.templateHasWeb ||
+              validationErrors.templateHasMobile) && (
+              <div className={styles.fieldError}>
+                Template must be available for at least one platform (Web or
+                Mobile)
+              </div>
+            )}
 
             <div className={`${styles.checkbox} ${styles.statusCheckbox}`}>
               <input
                 type="checkbox"
                 id="isActive"
                 checked={isActive}
-                onChange={(e) => setIsActive(e.target.checked)}
+                onChange={(e) => {
+                  setIsActive(e.target.checked);
+                  clearFieldError('isActive');
+                }}
                 className={styles.statusInput}
               />
               <label
@@ -215,6 +270,12 @@ const EditTemplate = ({ template }) => {
                 {isActive ? 'Active' : 'Inactive'}
               </label>
             </div>
+
+            {validationErrors.isActive && (
+              <div className={styles.fieldError}>
+                {validationErrors.isActive}
+              </div>
+            )}
           </div>
         </div>
 
@@ -234,13 +295,19 @@ const EditTemplate = ({ template }) => {
             {({ open }) => (
               <button
                 type="button"
-                className={styles.uploadButton}
+                className={`${styles.uploadButton} ${validationErrors.templateImageId ? styles.uploadButtonError : ''}`}
                 onClick={() => open()}
               >
                 Update Template Image
               </button>
             )}
           </CldUploadWidget>
+
+          {validationErrors.templateImageId && (
+            <div className={styles.fieldError}>
+              {validationErrors.templateImageId}
+            </div>
+          )}
 
           {publicId && (
             <div className={styles.imagePreview}>

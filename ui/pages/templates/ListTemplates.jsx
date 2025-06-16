@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   MdAdd,
@@ -21,22 +22,23 @@ import { CldImage } from 'next-cloudinary';
 import styles from '@/ui/styling/dashboard/templates/templates.module.css';
 import Search from '@/ui/components/dashboard/search';
 
-const ListTemplates = ({ data }) => {
+const ListTemplates = ({ data: initialData }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState(''); // 'active' ou 'confirm'
   const [templateToDelete, setTemplateToDelete] = useState(null);
+  const [templates, setTemplates] = useState(initialData);
+  const [deletedTemplates, setDeletedTemplates] = useState(new Set()); // Pour rollback
 
-  const [templates, setTemplates] = useState(data);
+  const router = useRouter();
 
+  // Mise à jour des templates quand les props changent (après navigation)
   useEffect(() => {
-    setTemplates(data);
-  }, [deleteId, isDeleting]);
-
-  console.log('templates: ');
-  console.log(templates);
+    setTemplates(initialData);
+    setDeletedTemplates(new Set()); // Reset des suppressions optimistes
+  }, [initialData]);
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -59,16 +61,78 @@ const ListTemplates = ({ data }) => {
     setShowModal(true);
   };
 
+  // Fonction pour mise à jour optimiste des templates
+  const optimisticUpdateTemplate = useCallback((templateId, updates) => {
+    setTemplates((prevTemplates) =>
+      prevTemplates.map((template) =>
+        template.template_id === templateId
+          ? { ...template, ...updates }
+          : template,
+      ),
+    );
+  }, []);
+
+  // Fonction pour ajout optimiste d'un template
+  const optimisticAddTemplate = useCallback((newTemplate) => {
+    setTemplates((prevTemplates) => [...prevTemplates, newTemplate]);
+  }, []);
+
+  // Fonction pour suppression optimiste avec rollback
+  const optimisticDeleteTemplate = useCallback((templateId) => {
+    // Marquer comme supprimé pour rollback potentiel
+    setDeletedTemplates((prev) => new Set(prev).add(templateId));
+
+    // Supprimer de l'UI
+    setTemplates((prevTemplates) =>
+      prevTemplates.filter((template) => template.template_id !== templateId),
+    );
+  }, []);
+
+  // Fonction de rollback en cas d'échec
+  const rollbackDelete = useCallback(
+    (templateId) => {
+      // Restaurer le template s'il était dans les données initiales
+      const templateToRestore = initialData.find(
+        (t) => t.template_id === templateId,
+      );
+      if (templateToRestore) {
+        setTemplates((prevTemplates) => {
+          // Vérifier s'il n'est pas déjà présent
+          const exists = prevTemplates.some(
+            (t) => t.template_id === templateId,
+          );
+          if (!exists) {
+            return [...prevTemplates, templateToRestore];
+          }
+          return prevTemplates;
+        });
+      }
+
+      // Retirer de la liste des supprimés
+      setDeletedTemplates((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(templateId);
+        return newSet;
+      });
+    },
+    [initialData],
+  );
+
   const confirmDelete = async () => {
     if (!templateToDelete) return;
 
-    setDeleteId(templateToDelete.template_id);
+    const templateId = templateToDelete.template_id;
+
+    setDeleteId(templateId);
     setIsDeleting(true);
     setShowModal(false);
 
+    // Suppression optimiste
+    optimisticDeleteTemplate(templateId);
+
     try {
       const response = await fetch(
-        `/api/dashboard/templates/${templateToDelete.template_id}/delete`,
+        `/api/dashboard/templates/${templateId}/delete`,
         {
           method: 'DELETE',
           headers: {
@@ -83,22 +147,28 @@ const ListTemplates = ({ data }) => {
       const result = await response.json();
 
       if (response.ok && result.success) {
-        // Remove the template from the UI without refreshing
-        setTemplates((prevTemplates) =>
-          prevTemplates.filter(
-            (t) => t.template_id !== templateToDelete.template_id,
-          ),
-        );
         console.log('Template deleted successfully');
+        // La suppression optimiste est confirmée, pas besoin de modification supplémentaire
       } else {
+        // Rollback en cas d'échec
         console.error(
           'Failed to delete template:',
           result.message || 'Unknown error',
         );
-        alert(result.message || 'Erreur lors de la suppression du template');
+
+        rollbackDelete(templateId);
+
+        // Afficher un message d'erreur plus user-friendly
+        const errorMessage =
+          result.message || 'Erreur lors de la suppression du template';
+        alert(errorMessage);
       }
     } catch (error) {
       console.error('Error deleting template:', error);
+
+      // Rollback en cas d'erreur réseau
+      rollbackDelete(templateId);
+
       alert('Erreur de connexion lors de la suppression du template');
     } finally {
       setIsDeleting(false);
@@ -122,13 +192,18 @@ const ListTemplates = ({ data }) => {
     });
   };
 
+  // Fonction pour actualiser manuellement la liste (utile pour les cas edge)
+  const refreshTemplates = useCallback(() => {
+    router.refresh();
+  }, [router]);
+
   // Modal de confirmation/avertissement
   const renderModal = () => {
     if (!showModal || !templateToDelete) return null;
 
     return (
-      <div className={styles.modalOverlay}>
-        <div className={styles.modal}>
+      <div className={styles.modalOverlay} onClick={cancelDelete}>
+        <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
           <div className={styles.modalHeader}>
             <div className={styles.modalIcon}>
               {modalType === 'active' ? (
@@ -210,11 +285,20 @@ const ListTemplates = ({ data }) => {
           value={searchTerm}
           onChange={handleSearchChange}
         />
-        <Link href="/dashboard/templates/add">
-          <button className={styles.addButton} type="button">
-            <MdAdd /> Template
+        <div className={styles.headerActions}>
+          <button
+            className={styles.refreshButton}
+            onClick={refreshTemplates}
+            title="Actualiser la liste"
+          >
+            <MdUpdate />
           </button>
-        </Link>
+          <Link href="/dashboard/templates/add">
+            <button className={styles.addButton} type="button">
+              <MdAdd /> Template
+            </button>
+          </Link>
+        </div>
       </div>
       <div className={styles.bottom}>
         {templates?.length === 0 ? (
@@ -226,7 +310,13 @@ const ListTemplates = ({ data }) => {
             {filteredTemplates?.map((template) => (
               <div
                 key={template.template_id}
-                className={`${styles.card} ${template.is_active ? styles.activeCard : styles.inactiveCard}`}
+                className={`${styles.card} ${
+                  template.is_active ? styles.activeCard : styles.inactiveCard
+                } ${
+                  deletedTemplates.has(template.template_id)
+                    ? styles.deletingCard
+                    : ''
+                }`}
               >
                 <div className={styles.imageContainer}>
                   {template.template_image ? (
@@ -245,7 +335,11 @@ const ListTemplates = ({ data }) => {
                   )}
                   {/* Status badge */}
                   <div
-                    className={`${styles.statusBadge} ${template.is_active ? styles.activeBadge : styles.inactiveBadge}`}
+                    className={`${styles.statusBadge} ${
+                      template.is_active
+                        ? styles.activeBadge
+                        : styles.inactiveBadge
+                    }`}
                   >
                     {template.is_active ? <MdCheckCircle /> : <MdCancel />}
                     <span>{template.is_active ? 'Actif' : 'Inactif'}</span>
@@ -291,6 +385,7 @@ const ListTemplates = ({ data }) => {
                     <Link href={`/dashboard/templates/${template.template_id}`}>
                       <button
                         className={`${styles.actionButton} ${styles.editButton}`}
+                        disabled={deletedTemplates.has(template.template_id)}
                       >
                         <MdEdit />
                       </button>
@@ -300,7 +395,10 @@ const ListTemplates = ({ data }) => {
                         template.is_active ? styles.disabledButton : ''
                       }`}
                       onClick={() => handleDeleteClick(template)}
-                      disabled={isDeleting && deleteId === template.template_id}
+                      disabled={
+                        (isDeleting && deleteId === template.template_id) ||
+                        deletedTemplates.has(template.template_id)
+                      }
                       title={
                         template.is_active
                           ? 'Ce template est actif et ne peut pas être supprimé'

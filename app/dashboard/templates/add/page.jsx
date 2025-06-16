@@ -85,6 +85,8 @@ const AddTemplatePage = () => {
         throw new Error(errorData.message || 'Failed to add template');
       }
 
+      const result = await response.json();
+
       setSuccess('Template added successfully!');
 
       // Reset form
@@ -94,10 +96,11 @@ const AddTemplatePage = () => {
       setPublicId('');
       setValidationErrors({});
 
-      // Redirect to templates list after successful addition
+      // Redirection optimisée avec revalidation
       setTimeout(() => {
         router.push('/dashboard/templates');
-      }, 2000);
+        router.refresh(); // Force la revalidation des données côté serveur
+      }, 1500);
     } catch (validationError) {
       if (validationError.name === 'ValidationError') {
         // Erreurs de validation Yup
