@@ -276,10 +276,9 @@ export async function GET(req) {
           application_level,
           application_added,
           sales_count,
-          is_active,
           updated_at
         FROM catalog.applications
-        ORDER BY application_added DESC
+        ORDER BY  created_at DESC
       `;
 
       logger.debug('Executing applications query', {
