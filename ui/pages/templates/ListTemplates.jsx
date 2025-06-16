@@ -30,14 +30,14 @@ const ListTemplates = ({ data: initialData }) => {
   const [modalType, setModalType] = useState(''); // 'active' ou 'confirm'
   const [templateToDelete, setTemplateToDelete] = useState(null);
   const [templates, setTemplates] = useState(initialData);
-  const [deletedTemplates, setDeletedTemplates] = useState(new Set()); // Pour rollback
+  // const [deletedTemplates, setDeletedTemplates] = useState(new Set()); // Pour rollback
 
   const router = useRouter();
 
   // Mise à jour des templates quand les props changent (après navigation)
   useEffect(() => {
     setTemplates(initialData);
-    setDeletedTemplates(new Set()); // Reset des suppressions optimistes
+    // setDeletedTemplates(new Set()); // Reset des suppressions optimistes
   }, [initialData]);
 
   const handleSearchChange = (e) => {
@@ -80,7 +80,7 @@ const ListTemplates = ({ data: initialData }) => {
   // Fonction pour suppression optimiste avec rollback
   const optimisticDeleteTemplate = useCallback((templateId) => {
     // Marquer comme supprimé pour rollback potentiel
-    setDeletedTemplates((prev) => new Set(prev).add(templateId));
+    // setDeletedTemplates((prev) => new Set(prev).add(templateId));
 
     // Supprimer de l'UI
     setTemplates((prevTemplates) =>
@@ -109,11 +109,11 @@ const ListTemplates = ({ data: initialData }) => {
       }
 
       // Retirer de la liste des supprimés
-      setDeletedTemplates((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(templateId);
-        return newSet;
-      });
+      // setDeletedTemplates((prev) => {
+      //   const newSet = new Set(prev);
+      //   newSet.delete(templateId);
+      //   return newSet;
+      // });
     },
     [initialData],
   );
@@ -311,9 +311,11 @@ const ListTemplates = ({ data: initialData }) => {
                 className={`${styles.card} ${
                   template.is_active ? styles.activeCard : styles.inactiveCard
                 } ${
+                  '' /*
                   deletedTemplates.has(template.template_id)
                     ? styles.deletingCard
                     : ''
+                */
                 }`}
               >
                 <div className={styles.imageContainer}>
@@ -383,7 +385,7 @@ const ListTemplates = ({ data: initialData }) => {
                     <Link href={`/dashboard/templates/${template.template_id}`}>
                       <button
                         className={`${styles.actionButton} ${styles.editButton}`}
-                        disabled={deletedTemplates.has(template.template_id)}
+                        // disabled={deletedTemplates.has(template.template_id)}
                       >
                         <MdEdit />
                       </button>
@@ -393,10 +395,10 @@ const ListTemplates = ({ data: initialData }) => {
                         template.is_active ? styles.disabledButton : ''
                       }`}
                       onClick={() => handleDeleteClick(template)}
-                      disabled={
-                        (isDeleting && deleteId === template.template_id) ||
-                        deletedTemplates.has(template.template_id)
-                      }
+                      // disabled={
+                      //   (isDeleting && deleteId === template.template_id) ||
+                      //   deletedTemplates.has(template.template_id)
+                      // }
                       title={
                         template.is_active
                           ? 'Ce template est actif et ne peut pas être supprimé'
