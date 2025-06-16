@@ -1,5 +1,4 @@
 import ListTemplates from '@/ui/pages/templates/ListTemplates';
-import axios from 'axios';
 
 // Configuration de revalidation pour cette page
 export const revalidate = 0; // Désactive le cache statique
@@ -9,24 +8,36 @@ async function getTemplates() {
   let templates = [];
 
   try {
-    const response = await axios.get(
+    const response = await fetch(
       'https://benew-admin-next15.vercel.app/api/dashboard/templates',
       {
-        // Désactiver le cache axios aussi
+        method: 'GET',
         headers: {
+          'Content-Type': 'application/json',
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           Pragma: 'no-cache',
           Expires: '0',
         },
+        cache: 'no-store', // Force pas de cache côté Next.js
         // Ajouter un timestamp pour éviter le cache navigateur
-        params: {
-          _t: Date.now(),
+        next: {
+          revalidate: 0, // Pas de cache Next.js
+          tags: [], // Pas de tags pour éviter la mise en cache
         },
       },
     );
-    templates = response.data.templates;
+
+    // Vérifier si la réponse est OK
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    templates = data.templates || [];
+
+    console.log(`✅ Successfully fetched ${templates.length} templates`);
   } catch (error) {
-    console.error('Error fetching templates:', error);
+    console.error('❌ Error fetching templates:', error.message);
     // Retourner un tableau vide en cas d'erreur plutôt que de laisser undefined
     templates = [];
   }
