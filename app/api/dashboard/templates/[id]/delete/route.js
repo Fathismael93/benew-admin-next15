@@ -17,6 +17,8 @@ import logger from '@/utils/logger';
 import isAuthenticatedUser from '@backend/authMiddleware';
 import { applyRateLimit } from '@backend/rateLimiter';
 import { templateIdSchema } from '@/utils/schemas/templateSchema';
+// AJOUT POUR L'INVALIDATION DU CACHE
+import { dashboardCache, getDashboardCacheKey } from '@/utils/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,6 +44,73 @@ const deleteTemplateRateLimit = applyRateLimit('CONTENT_API', {
     return `delete_template:ip:${ip}:template:${templateId}`;
   },
 });
+
+// ----- FONCTION D'INVALIDATION DU CACHE -----
+const invalidateTemplatesCache = (requestId, templateId) => {
+  try {
+    const cacheKey = getDashboardCacheKey('templates_list', {
+      endpoint: 'dashboard_templates',
+      version: '1.0',
+    });
+
+    const cacheInvalidated = dashboardCache.templates.delete(cacheKey);
+
+    logger.debug('Templates cache invalidation', {
+      requestId,
+      templateId,
+      component: 'templates',
+      action: 'cache_invalidation',
+      operation: 'delete_template',
+      cacheKey,
+      invalidated: cacheInvalidated,
+    });
+
+    // Capturer l'invalidation du cache avec Sentry
+    captureMessage('Templates cache invalidated after deletion', {
+      level: 'info',
+      tags: {
+        component: 'templates',
+        action: 'cache_invalidation',
+        entity: 'template',
+        operation: 'delete',
+      },
+      extra: {
+        requestId,
+        templateId,
+        cacheKey,
+        invalidated: cacheInvalidated,
+      },
+    });
+
+    return cacheInvalidated;
+  } catch (cacheError) {
+    logger.warn('Failed to invalidate templates cache', {
+      requestId,
+      templateId,
+      component: 'templates',
+      action: 'cache_invalidation_failed',
+      operation: 'delete_template',
+      error: cacheError.message,
+    });
+
+    captureException(cacheError, {
+      level: 'warning',
+      tags: {
+        component: 'templates',
+        action: 'cache_invalidation_failed',
+        error_category: 'cache',
+        entity: 'template',
+        operation: 'delete',
+      },
+      extra: {
+        requestId,
+        templateId,
+      },
+    });
+
+    return false;
+  }
+};
 
 // ----- API ROUTE PRINCIPALE AVEC RATE LIMITING -----
 
@@ -264,6 +333,67 @@ export async function DELETE(request, { params }) {
           error: 'Database connection failed',
         },
         { status: 503 },
+      );
+    }
+
+    // ===== ÉTAPE 5: PARSING ET VALIDATION DU BODY =====
+    let body;
+    let imageID;
+
+    try {
+      body = await request.json();
+      imageID = body.imageID;
+
+      logger.debug('Request body parsed successfully', {
+        requestId,
+        templateId: id,
+        component: 'templates',
+        action: 'body_parse_success',
+        operation: 'delete_template',
+        hasImageID: !!imageID,
+      });
+    } catch (parseError) {
+      const errorCategory = categorizeError(parseError);
+
+      logger.error('JSON Parse Error during template deletion', {
+        category: errorCategory,
+        message: parseError.message,
+        requestId,
+        templateId: id,
+        component: 'templates',
+        action: 'json_parse_error',
+        operation: 'delete_template',
+        headers: {
+          'content-type': request.headers.get('content-type'),
+          'user-agent': request.headers.get('user-agent')?.substring(0, 100),
+        },
+      });
+
+      // Capturer l'erreur de parsing avec Sentry
+      captureException(parseError, {
+        level: 'error',
+        tags: {
+          component: 'templates',
+          action: 'json_parse_error',
+          error_category: categorizeError(parseError),
+          operation: 'delete',
+        },
+        extra: {
+          requestId,
+          templateId: id,
+          contentType: request.headers.get('content-type'),
+          userAgent: request.headers.get('user-agent')?.substring(0, 100),
+        },
+      });
+
+      if (client) await client.cleanup();
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid JSON in request body',
+          message: 'Invalid request format',
+        },
+        { status: 400 },
       );
     }
 
@@ -527,8 +657,7 @@ export async function DELETE(request, { params }) {
 
     // ===== ÉTAPE 8: SUPPRESSION DE L'IMAGE CLOUDINARY =====
     const deletedTemplate = deleteResult.rows[0];
-    const cloudinaryImageId =
-      templateToDelete.template_image || deletedTemplate.template_image;
+    const cloudinaryImageId = imageID || deletedTemplate.template_image;
 
     if (cloudinaryImageId) {
       try {
@@ -583,7 +712,11 @@ export async function DELETE(request, { params }) {
       }
     }
 
-    // ===== ÉTAPE 9: SUCCÈS - LOG ET NETTOYAGE =====
+    // ===== ÉTAPE 9: INVALIDATION DU CACHE APRÈS SUCCÈS =====
+    // Invalider le cache des templates après suppression réussie
+    invalidateTemplatesCache(requestId, id);
+
+    // ===== ÉTAPE 10: SUCCÈS - LOG ET NETTOYAGE =====
     const responseTime = Date.now() - startTime;
 
     logger.info('Template deletion successful', {
@@ -593,6 +726,7 @@ export async function DELETE(request, { params }) {
       response_time_ms: responseTime,
       database_operations: 3, // connection + check + delete
       cloudinary_operations: cloudinaryImageId ? 1 : 0,
+      cache_invalidated: true,
       success: true,
       requestId,
       component: 'templates',
@@ -620,6 +754,7 @@ export async function DELETE(request, { params }) {
         responseTimeMs: responseTime,
         databaseOperations: 3,
         cloudinaryOperations: cloudinaryImageId ? 1 : 0,
+        cacheInvalidated: true,
         ip: anonymizeIp(extractRealIp(request)),
         rateLimitingApplied: true,
       },

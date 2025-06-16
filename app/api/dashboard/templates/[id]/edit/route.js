@@ -22,6 +22,8 @@ import {
   templateUpdateSchema,
   templateIdSchema,
 } from '@/utils/schemas/templateSchema';
+// AJOUT POUR L'INVALIDATION DU CACHE
+import { dashboardCache, getDashboardCacheKey } from '@/utils/cache';
 
 // ----- CONFIGURATION DU RATE LIMITING POUR LA MODIFICATION DE TEMPLATES -----
 
@@ -45,6 +47,73 @@ const editTemplateRateLimit = applyRateLimit('CONTENT_API', {
     return `edit_template:ip:${ip}:template:${templateId}`;
   },
 });
+
+// ----- FONCTION D'INVALIDATION DU CACHE -----
+const invalidateTemplatesCache = (requestId, templateId) => {
+  try {
+    const cacheKey = getDashboardCacheKey('templates_list', {
+      endpoint: 'dashboard_templates',
+      version: '1.0',
+    });
+
+    const cacheInvalidated = dashboardCache.templates.delete(cacheKey);
+
+    logger.debug('Templates cache invalidation', {
+      requestId,
+      templateId,
+      component: 'templates',
+      action: 'cache_invalidation',
+      operation: 'edit_template',
+      cacheKey,
+      invalidated: cacheInvalidated,
+    });
+
+    // Capturer l'invalidation du cache avec Sentry
+    captureMessage('Templates cache invalidated after modification', {
+      level: 'info',
+      tags: {
+        component: 'templates',
+        action: 'cache_invalidation',
+        entity: 'template',
+        operation: 'update',
+      },
+      extra: {
+        requestId,
+        templateId,
+        cacheKey,
+        invalidated: cacheInvalidated,
+      },
+    });
+
+    return cacheInvalidated;
+  } catch (cacheError) {
+    logger.warn('Failed to invalidate templates cache', {
+      requestId,
+      templateId,
+      component: 'templates',
+      action: 'cache_invalidation_failed',
+      operation: 'edit_template',
+      error: cacheError.message,
+    });
+
+    captureException(cacheError, {
+      level: 'warning',
+      tags: {
+        component: 'templates',
+        action: 'cache_invalidation_failed',
+        error_category: 'cache',
+        entity: 'template',
+        operation: 'update',
+      },
+      extra: {
+        requestId,
+        templateId,
+      },
+    });
+
+    return false;
+  }
+};
 
 // ----- API ROUTE PRINCIPALE AVEC RATE LIMITING -----
 
@@ -531,31 +600,31 @@ export async function PUT(request, { params }) {
       let paramCounter = 1;
 
       if (sanitizedTemplateName !== undefined) {
-        updateFields.push(`template_name = $${paramCounter}`);
+        updateFields.push(`template_name = ${paramCounter}`);
         updateValues.push(sanitizedTemplateName);
         paramCounter++;
       }
 
       if (sanitizedTemplateImageId !== undefined) {
-        updateFields.push(`template_image = $${paramCounter}`);
+        updateFields.push(`template_image = ${paramCounter}`);
         updateValues.push(sanitizedTemplateImageId);
         paramCounter++;
       }
 
       if (sanitizedTemplateHasWeb !== undefined) {
-        updateFields.push(`template_has_web = $${paramCounter}`);
+        updateFields.push(`template_has_web = ${paramCounter}`);
         updateValues.push(sanitizedTemplateHasWeb);
         paramCounter++;
       }
 
       if (sanitizedTemplateHasMobile !== undefined) {
-        updateFields.push(`template_has_mobile = $${paramCounter}`);
+        updateFields.push(`template_has_mobile = ${paramCounter}`);
         updateValues.push(sanitizedTemplateHasMobile);
         paramCounter++;
       }
 
       if (isActive !== undefined) {
-        updateFields.push(`is_active = $${paramCounter}`);
+        updateFields.push(`is_active = ${paramCounter}`);
         updateValues.push(isActive);
         paramCounter++;
       }
@@ -566,7 +635,7 @@ export async function PUT(request, { params }) {
       const queryText = `
         UPDATE catalog.templates 
         SET ${updateFields.join(', ')}
-        WHERE template_id = $${paramCounter}
+        WHERE template_id = ${paramCounter}
         RETURNING *
       `;
 
@@ -664,8 +733,13 @@ export async function PUT(request, { params }) {
       );
     }
 
-    // ===== ÉTAPE 10: SUCCÈS - LOG ET NETTOYAGE =====
+    // ===== ÉTAPE 10: INVALIDATION DU CACHE APRÈS SUCCÈS =====
     const updatedTemplate = result.rows[0];
+
+    // Invalider le cache des templates après modification réussie
+    invalidateTemplatesCache(requestId, id);
+
+    // ===== ÉTAPE 11: SUCCÈS - LOG ET NETTOYAGE =====
     const responseTime = Date.now() - startTime;
 
     logger.info('Template update successful', {
@@ -673,6 +747,7 @@ export async function PUT(request, { params }) {
       templateName: updatedTemplate.template_name,
       response_time_ms: responseTime,
       database_operations: 2, // connection + update
+      cache_invalidated: true,
       success: true,
       requestId,
       component: 'templates',
@@ -700,6 +775,7 @@ export async function PUT(request, { params }) {
         templateName: updatedTemplate.template_name,
         responseTimeMs: responseTime,
         databaseOperations: 2,
+        cacheInvalidated: true,
         ip: anonymizeIp(extractRealIp(request)),
         rateLimitingApplied: true,
         sanitizationApplied: true,
