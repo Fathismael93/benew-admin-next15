@@ -9,7 +9,7 @@ export async function GET() {
     client = await getClient();
 
     const result = await client.query(
-      'SELECT application_id, application_name, application_images, application_fee, application_rent, application_link, application_type FROM catalog.applications',
+      'SELECT application_id, application_name, application_images, application_fee, application_rent, application_link, application_level FROM catalog.applications',
     );
     const applications = result.rows;
 
