@@ -109,7 +109,7 @@ const EditTemplate = ({ template }) => {
         throw new Error(errorData.message || 'Failed to update template');
       }
 
-      const result = await response.json();
+      await response.json();
 
       setSuccess('Template updated successfully!');
 
