@@ -67,7 +67,7 @@ function ApplicationsList({ data }) {
               <div className={styles.applicationDetails}>
                 <h2>{app.application_name}</h2>
                 <p className={styles.applicationType}>
-                  Type: {app.application_type}
+                  Type: {app.application_level}
                 </p>
                 <p>Fee: {app.application_fee} Fdj</p>
                 <p>Rent: {app.application_rent} Fdj/month</p>
