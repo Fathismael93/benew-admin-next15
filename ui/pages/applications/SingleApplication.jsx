@@ -46,7 +46,7 @@ function SingleApplication({ data }) {
       <h1>{application.application_name}</h1>
       <div className={styles.applicationDetails}>
         <div className={styles.applicationImages}>
-          {application.application_images.length > 0 &&
+          {Array.isArray(application.application_images) &&
             application.application_images.map((image, index) => (
               <div key={index} className={styles.imageContainer}>
                 <CldImage
@@ -89,7 +89,7 @@ function SingleApplication({ data }) {
             <p>
               <strong>Other Versions:</strong>
               <ul>
-                {application.application_other_versions.length > 0 ? (
+                {Array.isArray(application.application_other_versions) ? (
                   application.application_other_versions.map((url, index) => (
                     <li key={index}>
                       <a href={url} target="_blank" rel="noopener noreferrer">
