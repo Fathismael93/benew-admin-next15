@@ -71,12 +71,12 @@ export async function PUT(req, { params }) {
     client = await getClient();
 
     const updateApplication = await client.query(
-      'UPDATE applications SET ' +
+      'UPDATE catalog.applications SET ' +
         'application_name = $1, ' +
         'application_link = $2, ' +
         'application_description = $3, ' +
         'application_category = $4, ' +
-        'application_type = $5, ' + // Added application_type
+        'application_level = $5, ' + // Added application_type
         'application_fee = $6, ' +
         'application_rent = $7, ' +
         'application_images = $8, ' +

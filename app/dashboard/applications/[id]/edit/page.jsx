@@ -1,17 +1,17 @@
 import EditApplication from '@/ui/pages/applications/EditApplication';
+import axios from 'axios';
 
-// eslint-disable-next-line no-unused-vars
 async function getSingleApplication(id) {
   let application = [];
 
-  // await axios
-  //   .get(
-  //     `https://benew-admin-next15.vercel.app/api/dashboard/applications/${id}`,
-  //   )
-  //   .then((response) => {
-  //     application = response.data.application;
-  //   })
-  //   .catch((error) => console.log(error));
+  await axios
+    .get(
+      `https://benew-admin-next15.vercel.app/api/dashboard/applications/${id}`,
+    )
+    .then((response) => {
+      application = response.data.application;
+    })
+    .catch((error) => console.log(error));
 
   return application;
 }
