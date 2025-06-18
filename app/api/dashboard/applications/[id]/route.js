@@ -7,6 +7,8 @@ export async function GET(req, { params }) {
   const { id } = params;
   let client;
 
+  console.log('Fetching application with ID:', id);
+
   try {
     client = await getClient();
 
