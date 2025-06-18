@@ -274,6 +274,7 @@ export async function GET(req) {
           application_rent, 
           application_link, 
           application_level,
+          is_active,
           created_at,
           sales_count,
           updated_at
@@ -381,6 +382,7 @@ export async function GET(req) {
       application_link: application.application_link,
       application_level: application.application_level || '1',
       application_added: application.created_at,
+      is_active: Boolean(application.is_active),
       sales_count: parseInt(application.sales_count) || 0,
       updated_at: application.updated_at,
     }));
