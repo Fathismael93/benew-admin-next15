@@ -294,15 +294,18 @@ export async function GET(req, { params }) {
         SELECT 
           application_id,
           application_name,
+          application_link,
+          application_admin_link,
           application_description,
-          application_image,
+          application_fee,
+          application_rent,
+          application_images,
           application_category,
-          application_version,
-          application_price,
-          application_added,
-          download_count,
+          application_other_versions,
+          application_level,
+          created_at,
+          sales_count,
           is_active,
-          is_featured,
           updated_at
         FROM catalog.applications 
         WHERE application_id = $1
