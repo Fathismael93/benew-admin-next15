@@ -38,8 +38,6 @@ function SingleApplication({ data }) {
     }
   };
 
-  console.log('Application data:', application);
-
   return (
     <div className={styles.singleApplicationContainer}>
       <Link href="/dashboard/applications" className={styles.backButton}>
@@ -48,21 +46,22 @@ function SingleApplication({ data }) {
       <h1>{application.application_name}</h1>
       <div className={styles.applicationDetails}>
         <div className={styles.applicationImages}>
-          {application.application_images.map((image, index) => (
-            <div key={index} className={styles.imageContainer}>
-              <CldImage
-                width="400"
-                height="300"
-                src={image}
-                alt={`${application.application_name} image ${index + 1}`}
-                className={styles.image}
-              />
-            </div>
-          ))}
+          {application.application_images.length > 0 &&
+            application.application_images.map((image, index) => (
+              <div key={index} className={styles.imageContainer}>
+                <CldImage
+                  width="400"
+                  height="300"
+                  src={image}
+                  alt={`${application.application_name} image ${index + 1}`}
+                  className={styles.image}
+                />
+              </div>
+            ))}
         </div>
         <div className={styles.applicationInfo}>
           <p className={styles.applicationType}>
-            <strong>Type:</strong> {application.application_type}
+            <strong>Type:</strong> {application.application_level}
           </p>
           <p>
             <strong>Link:</strong>{' '}
@@ -90,13 +89,17 @@ function SingleApplication({ data }) {
             <p>
               <strong>Other Versions:</strong>
               <ul>
-                {application.application_other_versions.map((url, index) => (
-                  <li key={index}>
-                    <a href={url} target="_blank" rel="noopener noreferrer">
-                      {url}
-                    </a>
-                  </li>
-                ))}
+                {application.application_other_versions.length > 0 ? (
+                  application.application_other_versions.map((url, index) => (
+                    <li key={index}>
+                      <a href={url} target="_blank" rel="noopener noreferrer">
+                        {url}
+                      </a>
+                    </li>
+                  ))
+                ) : (
+                  <p>{application.application_other_versions}</p>
+                )}
               </ul>
             </p>
           )}
