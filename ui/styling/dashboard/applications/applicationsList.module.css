@@ -40,16 +40,132 @@
 
 .applicationCard {
   background-color: var(--bg);
-  border-radius: 10px;
+  border-radius: 12px;
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.applicationCard:hover {
+/* Cartes actives - Bordure verte avec glow */
+.activeCard {
+  border: 2px solid #22c55e;
+  box-shadow:
+    0 0 0 1px rgba(34, 197, 94, 0.2),
+    0 4px 12px rgba(34, 197, 94, 0.15),
+    0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.activeCard:hover {
   transform: translateY(-5px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  box-shadow:
+    0 0 0 1px rgba(34, 197, 94, 0.3),
+    0 8px 25px rgba(34, 197, 94, 0.2),
+    0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* Cartes inactives - Bordure rouge avec glow */
+.inactiveCard {
+  border: 2px solid #ef4444;
+  box-shadow:
+    0 0 0 1px rgba(239, 68, 68, 0.2),
+    0 4px 12px rgba(239, 68, 68, 0.15),
+    0 2px 8px rgba(0, 0, 0, 0.1);
+  opacity: 0.85;
+}
+
+.inactiveCard:hover {
+  transform: translateY(-5px);
+  box-shadow:
+    0 0 0 1px rgba(239, 68, 68, 0.3),
+    0 8px 25px rgba(239, 68, 68, 0.2),
+    0 4px 16px rgba(0, 0, 0, 0.15);
+  opacity: 1;
+}
+
+/* Indicateur de statut */
+.statusIndicator {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  z-index: 10;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.activeIndicator {
+  background: linear-gradient(
+    135deg,
+    rgba(34, 197, 94, 0.9),
+    rgba(16, 185, 129, 0.9)
+  );
+  color: white;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.inactiveIndicator {
+  background: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.9),
+    rgba(220, 38, 38, 0.9)
+  );
+  color: white;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  position: relative;
+}
+
+.activeIndicator .statusDot {
+  background: #ffffff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+  animation: pulse-green 2s infinite;
+}
+
+.inactiveIndicator .statusDot {
+  background: #ffffff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+  animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-green {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1);
+  }
+}
+
+@keyframes pulse-red {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1);
+  }
+}
+
+.statusText {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .applicationImage {
@@ -57,19 +173,27 @@
   height: 200px;
   overflow: hidden;
   border-radius: 10px;
+  margin: 0 12px;
+  margin-top: 12px;
+  width: calc(100% - 24px);
 }
 
 .applicationImage .image {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.applicationCard:hover .applicationImage .image {
+  transform: scale(1.05);
 }
 
 .applicationType {
   font-size: 0.9rem;
   color: var(--textSoft);
   font-weight: 500;
-  background-color: rgba(93, 87, 201, 0.1); /* Light purple background */
+  background-color: rgba(93, 87, 201, 0.1);
   padding: 0.3rem 0.6rem;
   border-radius: 4px;
   display: inline-block;
@@ -81,27 +205,32 @@
   display: flex;
   padding: 1rem;
   flex-direction: column;
-  gap: 0.7rem; /* Increased gap for better spacing */
+  gap: 0.7rem;
 }
 
 .applicationDetails h2 {
   font-size: 1.2rem;
   color: var(--text);
+  margin: 0;
 }
 
 .applicationDetails p {
   font-size: 0.9rem;
   color: var(--textSoft);
+  margin: 0;
 }
 
 .applicationDetails a {
   color: #5d57c9;
   text-decoration: none;
   font-size: 0.9rem;
+  font-weight: 500;
+  transition: color 0.3s ease;
 }
 
 .applicationDetails a:hover {
   text-decoration: underline;
+  color: #6b66d6;
 }
 
 .applicationActions {
@@ -109,50 +238,102 @@
   padding: 1rem;
   justify-content: space-between;
   gap: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .actionLink {
   padding: 0.5rem 1rem;
-  border-radius: 5px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 0.9rem;
   text-align: center;
   text-decoration: none;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  flex: 1;
 }
 
 .viewLink {
-  background-color: #4caf50; /* Green for View */
+  background-color: #4caf50;
   color: white;
 }
 
 .viewLink:hover {
   background-color: #45a049;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
 }
 
 .editLink {
-  background-color: #ffa500; /* Orange for Edit */
+  background-color: #ffa500;
   color: white;
 }
 
 .editLink:hover {
   background-color: #e69500;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);
 }
 
 .actionButton {
   padding: 0.5rem 1rem;
   border: none;
-  border-radius: 5px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 0.9rem;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  flex: 1;
 }
 
 .deleteButton {
-  background-color: #f44336; /* Red for Delete */
+  background-color: #f44336;
   color: white;
 }
 
 .deleteButton:hover {
   background-color: #e53935;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+}
+
+/* Styles pour les cartes inactives - Désaturation légère */
+.inactiveCard .applicationDetails h2 {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.inactiveCard .applicationDetails p {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.inactiveCard .applicationImage .image {
+  filter: grayscale(20%) brightness(0.9);
+}
+
+.inactiveCard:hover .applicationImage .image {
+  filter: grayscale(0%) brightness(1);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .applicationsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .statusIndicator {
+    top: 8px;
+    right: 8px;
+    padding: 4px 8px;
+    font-size: 0.7rem;
+  }
+
+  .statusDot {
+    width: 6px;
+    height: 6px;
+  }
+
+  .applicationActions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
 }

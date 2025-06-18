@@ -54,7 +54,26 @@ function ApplicationsList({ data }) {
       <div className={styles.applicationsGrid}>
         {applications !== undefined &&
           applications.map((app) => (
-            <div key={app.application_id} className={styles.applicationCard}>
+            <div
+              key={app.application_id}
+              className={`${styles.applicationCard} ${
+                app.is_active ? styles.activeCard : styles.inactiveCard
+              }`}
+            >
+              {/* Indicateur de statut */}
+              <div
+                className={`${styles.statusIndicator} ${
+                  app.is_active
+                    ? styles.activeIndicator
+                    : styles.inactiveIndicator
+                }`}
+              >
+                <span className={styles.statusDot}></span>
+                <span className={styles.statusText}>
+                  {app.is_active ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+
               <div className={styles.applicationImage}>
                 <CldImage
                   width="300"
