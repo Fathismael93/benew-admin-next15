@@ -411,15 +411,20 @@ export async function GET(req, { params }) {
     const sanitizedApplication = {
       application_id: application.application_id,
       application_name: application.application_name || '[No Name]',
-      application_description: application.application_description || '',
-      application_image: application.application_image,
-      application_category: application.application_category || 'General',
-      application_version: application.application_version || '1.0.0',
-      application_price: parseFloat(application.application_price) || 0.0,
-      application_added: application.application_added,
-      download_count: parseInt(application.download_count) || 0,
+      application_link: application.application_link || '[No Link]',
+      application_admin_link: application.application_admin_link || '[No Link]',
+      application_description:
+        application.application_description || '[No Desription]',
+      application_images: application.application_images,
+      application_category: application.application_category || '[No Category]',
+      application_level: application.application_level || '[No Level]',
+      application_other_versions:
+        application.application_other_versions || '[No Other Versions]',
+      application_fee: parseFloat(application.application_fee) || 0.0,
+      application_rent: parseFloat(application.application_rent) || 0.0,
+      created_at: application.created_at,
+      sales_count: parseInt(application.sales_count) || 0,
       is_active: Boolean(application.is_active),
-      is_featured: Boolean(application.is_featured),
       updated_at: application.updated_at,
     };
 
