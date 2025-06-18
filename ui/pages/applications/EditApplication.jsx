@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CldImage, CldUploadWidget } from 'next-cloudinary';
 import axios from 'axios';
@@ -13,17 +13,24 @@ function EditApplication({ application }) {
 
   const [name, setName] = useState(application.application_name);
   const [link, setLink] = useState(application.application_link);
+  const [admin, setAdmin] = useState(application.application_admin_link);
   const [description, setDescription] = useState(
     application.application_description,
   );
   const [fee, setFee] = useState(application.application_fee);
   const [rent, setRent] = useState(application.application_rent);
   const [category, setCategory] = useState(application.application_category);
-  const [type, setType] = useState(application.application_type);
+  const [level, setLevel] = useState(application.application_level);
   const [imageUrls, setImageUrls] = useState(application.application_images);
   const [otherVersions, setOtherVersions] = useState(
-    application.application_other_versions?.join(', ') || '',
+    Array.isArray(application.application_other_versions)
+      ? application.application_other_versions?.join(', ')
+      : '',
   );
+  const [isActive, setIsActive] = useState(application.is_active);
+  const [salesCount, setSalesCount] = useState(application.sales_count);
+  const [createdAt, setCreatedAt] = useState(application.created_at);
+  const [updatedAt, setUpdatedAt] = useState(application.updated_at);
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleSubmit = async (e) => {
@@ -54,7 +61,7 @@ function EditApplication({ application }) {
       return;
     }
 
-    if (!type) {
+    if (!level) {
       setErrorMessage('Type is missing');
       return;
     }
@@ -71,7 +78,7 @@ function EditApplication({ application }) {
         link,
         description: description || null,
         category,
-        type,
+        level,
         fee,
         rent,
         imageUrls,
@@ -128,8 +135,8 @@ function EditApplication({ application }) {
             type="text"
             name="type"
             placeholder="Application Type"
-            value={type}
-            onChange={(e) => setType(e.target.value)}
+            value={level}
+            onChange={(e) => setLevel(e.target.value)}
           />
           <input
             type="text"
