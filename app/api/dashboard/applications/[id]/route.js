@@ -15,6 +15,8 @@ export async function GET(req, { params }) {
       [id],
     );
 
+    console.log('Result rows', result.rows);
+
     if (result.rows.length === 0) {
       await client.cleanup();
       return NextResponse.json({
