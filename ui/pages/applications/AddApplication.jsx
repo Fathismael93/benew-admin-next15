@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { CldImage, CldUploadWidget } from 'next-cloudinary';
 import axios from 'axios';
 import styles from '@/ui/styling/dashboard/applications/add/addApplication.module.css';
+import { applicationAddingSchema } from '@/utils/schemas/applicationSchema';
 
 function AddApplication({ templates }) {
   const [name, setName] = useState('');
@@ -22,44 +23,50 @@ function AddApplication({ templates }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMessage('');
 
+    // Vérifications de base pour les champs requis
     if (!name || name.length < 3) {
-      setErrorMessage('Name is missing');
+      setErrorMessage(
+        'Application name is required and must be at least 3 characters',
+      );
       return;
     }
 
     if (!link || link.length < 3) {
-      setErrorMessage('Link is missing');
+      setErrorMessage(
+        'Application link is required and must be at least 3 characters',
+      );
       return;
     }
 
     if (!admin || admin.length < 3) {
-      setErrorMessage('Admin link is missing');
+      setErrorMessage(
+        'Admin link is required and must be at least 3 characters',
+      );
       return;
     }
 
     if (!fee || fee === 0) {
-      setErrorMessage('Fee is missing');
+      setErrorMessage('Opening fee is required and must be greater than 0');
       return;
     }
 
-    if (!rent || rent < 0) {
-      setErrorMessage('Rent is missing');
+    if (rent < 0) {
+      setErrorMessage('Monthly rent cannot be negative');
       return;
     }
 
     if (!category) {
-      setErrorMessage('Category is missing');
+      setErrorMessage('Category is required (Web or Mobile)');
       return;
     }
 
     if (imageUrls.length === 0) {
-      // Check if at least one image is uploaded
       setErrorMessage('At least one image is required');
       return;
     }
 
-    // Updated validation for level instead of type
     if (!level || level < 1 || level > 4) {
       setErrorMessage('Application level must be between 1 and 4');
       return;
@@ -70,28 +77,66 @@ function AddApplication({ templates }) {
       return;
     }
 
-    // Update the axios post request to include the level
-    const response = await axios.post(
-      '/api/dashboard/applications/add',
-      JSON.stringify({
-        name,
-        link,
-        admin,
-        description: description || null,
-        category,
-        fee,
-        rent,
-        imageUrls,
-        templateId,
-        level: parseInt(level, 10), // Changed from type to level and ensure it's a number
-      }),
-      {
-        headers: { 'Content-Type': 'application/json' },
-      },
+    // Vérifier la compatibilité template/catégorie
+    const selectedTemplate = templates.find(
+      (t) => t.template_id.toString() === templateId,
     );
 
-    if (await response.data.success) {
-      router.push('/dashboard/applications');
+    if (selectedTemplate) {
+      if (category === 'web' && !selectedTemplate.template_has_web) {
+        setErrorMessage('Selected template does not support Web applications');
+        return;
+      }
+      if (category === 'mobile' && !selectedTemplate.template_has_mobile) {
+        setErrorMessage(
+          'Selected template does not support Mobile applications',
+        );
+        return;
+      }
+    }
+
+    // Préparer les données pour la validation
+    const formData = {
+      name,
+      link,
+      admin,
+      description: description || null,
+      fee: parseInt(fee, 10),
+      rent: parseInt(rent, 10),
+      category,
+      imageUrls,
+      level: parseInt(level, 10),
+      templateId,
+    };
+
+    try {
+      // Validation avec applicationAddingSchema
+      await applicationAddingSchema.validate(formData, { abortEarly: false });
+
+      // Si validation réussie, procéder à l'envoi
+      const response = await axios.post(
+        '/api/dashboard/applications/add',
+        JSON.stringify(formData),
+        {
+          headers: { 'Content-Type': 'application/json' },
+        },
+      );
+
+      if (await response.data.success) {
+        router.push('/dashboard/applications');
+      }
+    } catch (validationError) {
+      if (validationError.name === 'ValidationError') {
+        // Erreurs de validation Yup - afficher la première erreur
+        const firstError = validationError.errors[0];
+        setErrorMessage(firstError || 'Validation failed');
+      } else {
+        // Autres erreurs (API, réseau, etc.)
+        setErrorMessage(
+          validationError.message ||
+            'An error occurred while adding the application',
+        );
+      }
     }
   };
 
@@ -111,6 +156,7 @@ function AddApplication({ templates }) {
             type="text"
             name="name"
             placeholder="Nom de l'application"
+            value={name}
             onChange={(e) => setName(e.target.value)}
           />
           <input
@@ -118,24 +164,28 @@ function AddApplication({ templates }) {
             name="firstTimeFee"
             min="0"
             placeholder="Prix d'ouverture du compte"
+            value={fee}
             onChange={(e) => setFee(e.target.value)}
           />
           <input
             type="text"
             name="lien"
             placeholder="Lien vers l'application"
+            value={link}
             onChange={(e) => setLink(e.target.value)}
           />
           <input
             type="text"
             name="admin"
             placeholder="Lien admin"
+            value={admin}
             onChange={(e) => setAdmin(e.target.value)}
           />
           <input
             type="number"
             name="rent"
             placeholder="Location par mois"
+            value={rent}
             onChange={(e) => setRent(e.target.value)}
           />
           <input
@@ -144,6 +194,7 @@ function AddApplication({ templates }) {
             min="1"
             max="4"
             placeholder="Niveau d'application (1-4)"
+            value={level}
             onChange={(e) => setLevel(e.target.value)}
           />
           <select
@@ -184,6 +235,7 @@ function AddApplication({ templates }) {
           placeholder="Décrivez l'application... (optionnel)"
           cols="30"
           rows="7"
+          value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
         <div
@@ -197,6 +249,7 @@ function AddApplication({ templates }) {
               name="categorie"
               value="web"
               id="website"
+              checked={category === 'web'}
               disabled={selectedTemplate && !selectedTemplate.template_has_web}
             />
           </div>
@@ -207,6 +260,7 @@ function AddApplication({ templates }) {
               name="categorie"
               value="mobile"
               id="mobile"
+              checked={category === 'mobile'}
               disabled={
                 selectedTemplate && !selectedTemplate.template_has_mobile
               }
