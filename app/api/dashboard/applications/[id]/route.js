@@ -11,7 +11,7 @@ export async function GET(req, { params }) {
     client = await getClient();
 
     const result = await client.query(
-      'SELECT * FROM applications WHERE application_id = $1',
+      'SELECT * FROM catalog.applications WHERE application_id = $1',
       [id],
     );
 
