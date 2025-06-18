@@ -399,4 +399,5 @@ export default {
   applicationUpdateSchema,
   applicationIdSchema,
   applicationSearchSchema,
+  cleanUUID,
 };

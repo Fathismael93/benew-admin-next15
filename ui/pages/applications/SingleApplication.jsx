@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CldImage } from 'next-cloudinary';
 import styles from '@/ui/styling/dashboard/applications/singleApplication.module.css';
 import Link from 'next/link';

@@ -15,7 +15,8 @@ import {
 import logger from '@/utils/logger';
 import isAuthenticatedUser from '@backend/authMiddleware';
 import { applyRateLimit } from '@backend/rateLimiter';
-import applicationIdSchema, {
+import {
+  applicationIdSchema,
   cleanUUID,
 } from '@/utils/schemas/applicationSchema';
 
