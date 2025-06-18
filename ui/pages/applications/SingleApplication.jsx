@@ -38,6 +38,8 @@ function SingleApplication({ data }) {
     }
   };
 
+  console.log('Application data:', application);
+
   return (
     <div className={styles.singleApplicationContainer}>
       <Link href="/dashboard/applications" className={styles.backButton}>
