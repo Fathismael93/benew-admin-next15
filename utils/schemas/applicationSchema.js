@@ -339,6 +339,26 @@ export const applicationIdSchema = yup.object().shape({
     .transform((value) => value?.toLowerCase().trim()),
 });
 
+// Fonction pour nettoyer et valider un UUID
+export const cleanUUID = (uuid) => {
+  if (!uuid || typeof uuid !== 'string') {
+    return null;
+  }
+
+  // Supprimer les espaces et convertir en minuscules
+  const cleaned = uuid.trim().toLowerCase();
+
+  // Vérifier le format UUID
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+  if (!uuidRegex.test(cleaned)) {
+    return null;
+  }
+
+  return cleaned;
+};
+
 /**
  * Schema de validation pour la recherche d'applications
  */
