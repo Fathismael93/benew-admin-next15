@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // app/api/dashboard/applications/[id]/edit/route.js
 import { NextResponse } from 'next/server';
 import cloudinary from '@backend/cloudinary';
@@ -16,7 +17,6 @@ import {
 import logger from '@/utils/logger';
 import isAuthenticatedUser from '@backend/authMiddleware';
 import { applyRateLimit } from '@backend/rateLimiter';
-import { sanitizeApplicationInputsStrict } from '@/utils/sanitizers/sanitizeApplicationInputs';
 import {
   applicationUpdateSchema,
   applicationIdSchema,
@@ -24,6 +24,7 @@ import {
 } from '@/utils/schemas/applicationSchema';
 // AJOUT POUR L'INVALIDATION DU CACHE
 import { dashboardCache, getDashboardCacheKey } from '@/utils/cache';
+import { sanitizeApplicationUpdateInputsStrict } from '@utils/sanitizers/sanitizeApplicationUpdateInputs';
 
 // ----- CONFIGURATION DU RATE LIMITING POUR LA MODIFICATION D'APPLICATIONS -----
 
@@ -463,7 +464,7 @@ export async function PUT(request, { params }) {
       ),
     );
 
-    const sanitizedInputs = sanitizeApplicationInputsStrict(
+    const sanitizedInputs = sanitizeApplicationUpdateInputsStrict(
       filteredDataToSanitize,
     );
 
@@ -509,17 +510,17 @@ export async function PUT(request, { params }) {
       // Filtrer les champs undefined pour la validation
       const dataToValidate = Object.fromEntries(
         Object.entries({
-          name: sanitizedName,
-          link: sanitizedLink,
-          admin: sanitizedAdmin,
-          description: sanitizedDescription,
-          category: sanitizedCategory,
-          level,
-          fee: sanitizedFee,
-          rent: sanitizedRent,
-          imageUrls: sanitizedImageUrls,
-          otherVersions: sanitizedOtherVersions,
-          isActive,
+          name: finalData.name,
+          link: finalData.link,
+          admin: finalData.admin,
+          description: finalData.description,
+          category: finalData.category,
+          level: finalData.level,
+          fee: finalData.fee,
+          rent: finalData.rent,
+          imageUrls: finalData.imageUrls,
+          otherVersions: finalData.otherVersions,
+          isActive: finalData.isActive,
         }).filter(([_, value]) => value !== undefined),
       );
 
