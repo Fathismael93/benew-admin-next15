@@ -36,7 +36,7 @@ function ApplicationsList({ data }) {
 
       if (response.data.success) {
         setIsDeleting(false);
-        router.refresh(); // Refresh the page to reflect changes
+        router.push('/dashboard/applications'); // Refresh the page to reflect changes
       }
     }
   };
