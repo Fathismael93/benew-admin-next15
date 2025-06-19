@@ -40,7 +40,7 @@ function EditApplication({ application }) {
 
   const [errorMessage, setErrorMessage] = useState('');
   // État pour les erreurs par champ (à ajouter dans le useState)
-  const [fieldErrors, setFieldErrors] = useState({});
+  // const [fieldErrors, setFieldErrors] = useState({});
 
   // Helper function to format dates
   const formatDate = (dateString) => {
@@ -82,7 +82,6 @@ function EditApplication({ application }) {
       // Validation avec le schema Yup
       await applicationUpdateSchema.validate(formData, {
         abortEarly: false, // Récupérer toutes les erreurs
-        stripUnknown: true, // Supprimer les champs non définis dans le schema
       });
 
       // Réinitialiser les erreurs si la validation passe
