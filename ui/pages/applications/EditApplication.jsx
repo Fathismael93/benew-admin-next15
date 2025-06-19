@@ -54,10 +54,11 @@ function EditApplication({ application }) {
     });
   };
 
-  // Version alternative avec gestion d'erreurs par champ
-  const handleSubmitWithFieldErrors = async (e) => {
+  // Méthode handleSubmit mise à jour avec validation Yup
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Préparer les données du formulaire
     const formData = {
       name,
       link,
@@ -80,15 +81,14 @@ function EditApplication({ application }) {
     try {
       // Validation avec le schema Yup
       await applicationUpdateSchema.validate(formData, {
-        abortEarly: false,
-        stripUnknown: true, // Supprime les champs non définis
+        abortEarly: false, // Récupérer toutes les erreurs
+        stripUnknown: true, // Supprimer les champs non définis dans le schema
       });
 
-      // Réinitialiser les erreurs
+      // Réinitialiser les erreurs si la validation passe
       setErrorMessage('');
-      setFieldErrors({});
 
-      // Envoyer la requête
+      // Envoyer la requête de mise à jour
       const response = await axios.put(
         `/api/dashboard/applications/${application.application_id}/edit`,
         JSON.stringify(formData),
@@ -101,22 +101,44 @@ function EditApplication({ application }) {
         router.push('/dashboard/applications');
       } else {
         setErrorMessage(
-          response.data.message || 'Failed to update application.',
+          response.data.message ||
+            'Failed to update application. Please try again.',
         );
       }
     } catch (error) {
+      // Gestion des erreurs de validation Yup
       if (error.name === 'ValidationError') {
-        // Créer un objet d'erreurs par champ
-        const errors = {};
-        error.inner.forEach((err) => {
-          errors[err.path] = err.message;
-        });
+        // Si c'est une erreur de validation, afficher la première erreur
+        setErrorMessage(error.errors[0]); // Première erreur
 
-        setFieldErrors(errors);
-        setErrorMessage('Please fix the errors below and try again.');
+        // Optionnel: Afficher toutes les erreurs
+        // const allErrors = error.inner.map(err => err.message).join(', ');
+        // setErrorMessage(allErrors);
+
+        console.warn('Validation errors:', error.errors);
+        console.warn(
+          'Failed fields:',
+          error.inner.map((err) => ({
+            field: err.path,
+            message: err.message,
+          })),
+        );
+      } else if (error.response) {
+        // Erreur de l'API
+        setErrorMessage(
+          error.response.data.message ||
+            'An error occurred while updating the application.',
+        );
+        console.error('API error:', error.response.data);
+      } else if (error.request) {
+        // Erreur réseau
+        setErrorMessage(
+          'Network error. Please check your connection and try again.',
+        );
+        console.error('Network error:', error.request);
       } else {
-        // Autres erreurs
-        setErrorMessage('An error occurred while updating the application.');
+        // Autre erreur
+        setErrorMessage('An unexpected error occurred. Please try again.');
         console.error('Update error:', error);
       }
     }
@@ -171,10 +193,7 @@ function EditApplication({ application }) {
         </div>
       </div>
 
-      <form
-        className={styles.editApplicationForm}
-        onSubmit={handleSubmitWithFieldErrors}
-      >
+      <form className={styles.editApplicationForm} onSubmit={handleSubmit}>
         {errorMessage && <p className={styles.errorMessage}>{errorMessage}</p>}
 
         <div className={styles.inputs}>
