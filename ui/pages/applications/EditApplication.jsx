@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { CldImage, CldUploadWidget } from 'next-cloudinary';
 import axios from 'axios';
 import styles from '@/ui/styling/dashboard/applications/edit/editApplication.module.css';
-import { MdArrowBack, MdInfo, MdCheck, MdClose } from 'react-icons/md';
+import { MdArrowBack, MdInfo, MdCheck, MdClose, MdError } from 'react-icons/md';
 import Link from 'next/link';
 import { applicationUpdateSchema } from '@utils/schemas/applicationSchema';
 
@@ -39,8 +39,9 @@ function EditApplication({ application }) {
   const updatedAt = application.updated_at;
 
   const [errorMessage, setErrorMessage] = useState('');
-  // État pour les erreurs par champ (à ajouter dans le useState)
-  // const [fieldErrors, setFieldErrors] = useState({});
+  // État pour les erreurs par champ
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Helper function to format dates
   const formatDate = (dateString) => {
@@ -54,11 +55,21 @@ function EditApplication({ application }) {
     });
   };
 
-  // Méthode handleSubmit mise à jour avec validation Yup
+  // Fonction pour vérifier si un champ a une erreur
+  const hasFieldError = (fieldName) => {
+    return fieldErrors[fieldName] && fieldErrors[fieldName].length > 0;
+  };
+
+  // Fonction pour obtenir l'erreur d'un champ
+  const getFieldError = (fieldName) => {
+    return fieldErrors[fieldName] || '';
+  };
+
+  // Méthode handleSubmit avec gestion d'erreurs par champ
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
 
-    // Préparer les données du formulaire
     const formData = {
       name,
       link,
@@ -81,13 +92,14 @@ function EditApplication({ application }) {
     try {
       // Validation avec le schema Yup
       await applicationUpdateSchema.validate(formData, {
-        abortEarly: false, // Récupérer toutes les erreurs
+        abortEarly: false,
       });
 
-      // Réinitialiser les erreurs si la validation passe
+      // Réinitialiser les erreurs
       setErrorMessage('');
+      setFieldErrors({});
 
-      // Envoyer la requête de mise à jour
+      // Envoyer la requête
       const response = await axios.put(
         `/api/dashboard/applications/${application.application_id}/edit`,
         JSON.stringify(formData),
@@ -100,19 +112,21 @@ function EditApplication({ application }) {
         router.push('/dashboard/applications');
       } else {
         setErrorMessage(
-          response.data.message ||
-            'Failed to update application. Please try again.',
+          response.data.message || 'Failed to update application.',
         );
       }
     } catch (error) {
-      // Gestion des erreurs de validation Yup
       if (error.name === 'ValidationError') {
-        // Si c'est une erreur de validation, afficher la première erreur
-        setErrorMessage(error.errors[0]); // Première erreur
+        // Créer un objet d'erreurs par champ
+        const errors = {};
+        error.inner.forEach((err) => {
+          errors[err.path] = err.message;
+        });
 
-        // Optionnel: Afficher toutes les erreurs
-        // const allErrors = error.inner.map(err => err.message).join(', ');
-        // setErrorMessage(allErrors);
+        setFieldErrors(errors);
+        setErrorMessage(
+          'Please fix the validation errors below and try again.',
+        );
 
         console.warn('Validation errors:', error.errors);
         console.warn(
@@ -140,6 +154,8 @@ function EditApplication({ application }) {
         setErrorMessage('An unexpected error occurred. Please try again.');
         console.error('Update error:', error);
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -196,125 +212,240 @@ function EditApplication({ application }) {
         {errorMessage && <p className={styles.errorMessage}>{errorMessage}</p>}
 
         <div className={styles.inputs}>
-          <input
-            type="text"
-            name="name"
-            placeholder="Application Name *"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
-          <input
-            type="url"
-            name="link"
-            placeholder="Application Link *"
-            value={link}
-            onChange={(e) => setLink(e.target.value)}
-            required
-          />
-          <input
-            type="url"
-            name="admin"
-            placeholder="Admin Link (Optional)"
-            value={admin}
-            onChange={(e) => setAdmin(e.target.value)}
-          />
-          <input
-            type="number"
-            name="fee"
-            placeholder="Application Fee *"
-            value={fee}
-            onChange={(e) => setFee(e.target.value)}
-            min="0"
-            step="0.01"
-            required
-          />
-          <input
-            type="number"
-            name="rent"
-            placeholder="Application Rent *"
-            value={rent}
-            onChange={(e) => setRent(e.target.value)}
-            min="0"
-            step="0.01"
-            required
-          />
-          <select
-            name="level"
-            value={level}
-            onChange={(e) => setLevel(parseInt(e.target.value))}
-            className={styles.levelSelect}
-            required
-          >
-            <option value="">Select Level *</option>
-            <option value={1}>1 - Basic</option>
-            <option value={2}>2 - Intermediate</option>
-            <option value={3}>3 - Advanced</option>
-            <option value={4}>4 - Professional</option>
-          </select>
-          <input
-            type="text"
-            name="otherVersions"
-            placeholder="Other Versions (comma-separated)"
-            value={otherVersions}
-            onChange={(e) => setOtherVersions(e.target.value)}
-          />
+          {/* Application Name */}
+          <div className={styles.inputGroup}>
+            <input
+              type="text"
+              name="name"
+              placeholder="Application Name *"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={hasFieldError('name') ? styles.inputError : ''}
+              required
+            />
+            {hasFieldError('name') && (
+              <div className={styles.fieldError}>
+                <MdError className={styles.errorIcon} />
+                <span>{getFieldError('name')}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Application Link */}
+          <div className={styles.inputGroup}>
+            <input
+              type="url"
+              name="link"
+              placeholder="Application Link *"
+              value={link}
+              onChange={(e) => setLink(e.target.value)}
+              className={hasFieldError('link') ? styles.inputError : ''}
+              required
+            />
+            {hasFieldError('link') && (
+              <div className={styles.fieldError}>
+                <MdError className={styles.errorIcon} />
+                <span>{getFieldError('link')}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Admin Link */}
+          <div className={styles.inputGroup}>
+            <input
+              type="url"
+              name="admin"
+              placeholder="Admin Link (Optional)"
+              value={admin}
+              onChange={(e) => setAdmin(e.target.value)}
+              className={hasFieldError('admin') ? styles.inputError : ''}
+            />
+            {hasFieldError('admin') && (
+              <div className={styles.fieldError}>
+                <MdError className={styles.errorIcon} />
+                <span>{getFieldError('admin')}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Application Fee */}
+          <div className={styles.inputGroup}>
+            <input
+              type="number"
+              name="fee"
+              placeholder="Application Fee *"
+              value={fee}
+              onChange={(e) => setFee(e.target.value)}
+              className={hasFieldError('fee') ? styles.inputError : ''}
+              min="0"
+              step="0.01"
+              required
+            />
+            {hasFieldError('fee') && (
+              <div className={styles.fieldError}>
+                <MdError className={styles.errorIcon} />
+                <span>{getFieldError('fee')}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Application Rent */}
+          <div className={styles.inputGroup}>
+            <input
+              type="number"
+              name="rent"
+              placeholder="Application Rent *"
+              value={rent}
+              onChange={(e) => setRent(e.target.value)}
+              className={hasFieldError('rent') ? styles.inputError : ''}
+              min="0"
+              step="0.01"
+              required
+            />
+            {hasFieldError('rent') && (
+              <div className={styles.fieldError}>
+                <MdError className={styles.errorIcon} />
+                <span>{getFieldError('rent')}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Application Level */}
+          <div className={styles.inputGroup}>
+            <select
+              name="level"
+              value={level}
+              onChange={(e) => setLevel(parseInt(e.target.value))}
+              className={`${styles.levelSelect} ${hasFieldError('level') ? styles.inputError : ''}`}
+              required
+            >
+              <option value="">Select Level *</option>
+              <option value={1}>1 - Basic</option>
+              <option value={2}>2 - Intermediate</option>
+              <option value={3}>3 - Advanced</option>
+              <option value={4}>4 - Professional</option>
+            </select>
+            {hasFieldError('level') && (
+              <div className={styles.fieldError}>
+                <MdError className={styles.errorIcon} />
+                <span>{getFieldError('level')}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Other Versions */}
+          <div className={styles.inputGroup}>
+            <input
+              type="text"
+              name="otherVersions"
+              placeholder="Other Versions (comma-separated)"
+              value={otherVersions}
+              onChange={(e) => setOtherVersions(e.target.value)}
+              className={
+                hasFieldError('otherVersions') ? styles.inputError : ''
+              }
+            />
+            {hasFieldError('otherVersions') && (
+              <div className={styles.fieldError}>
+                <MdError className={styles.errorIcon} />
+                <span>{getFieldError('otherVersions')}</span>
+              </div>
+            )}
+          </div>
         </div>
 
-        <textarea
-          name="description"
-          className={styles.description}
-          placeholder="Application Description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows="5"
-        />
+        {/* Description */}
+        <div className={styles.inputGroup}>
+          <textarea
+            name="description"
+            className={`${styles.description} ${hasFieldError('description') ? styles.inputError : ''}`}
+            placeholder="Application Description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows="5"
+          />
+          {hasFieldError('description') && (
+            <div className={styles.fieldError}>
+              <MdError className={styles.errorIcon} />
+              <span>{getFieldError('description')}</span>
+            </div>
+          )}
+        </div>
 
         <div className={styles.controlsSection}>
+          {/* Category Radio Buttons */}
           <div className={styles.radioButtons}>
             <h4>Category *</h4>
-            <label className={styles.radioLabel}>
-              <input
-                type="radio"
-                name="category"
-                value="web"
-                checked={category === 'web'}
-                onChange={(e) => setCategory(e.target.value)}
-                required
-              />
-              <span>Web Application</span>
-            </label>
-            <label className={styles.radioLabel}>
-              <input
-                type="radio"
-                name="category"
-                value="mobile"
-                checked={category === 'mobile'}
-                onChange={(e) => setCategory(e.target.value)}
-                required
-              />
-              <span>Mobile Application</span>
-            </label>
+            <div
+              className={
+                hasFieldError('category') ? styles.radioGroupError : ''
+              }
+            >
+              <label className={styles.radioLabel}>
+                <input
+                  type="radio"
+                  name="category"
+                  value="web"
+                  checked={category === 'web'}
+                  onChange={(e) => setCategory(e.target.value)}
+                  required
+                />
+                <span>Web Application</span>
+              </label>
+              <label className={styles.radioLabel}>
+                <input
+                  type="radio"
+                  name="category"
+                  value="mobile"
+                  checked={category === 'mobile'}
+                  onChange={(e) => setCategory(e.target.value)}
+                  required
+                />
+                <span>Mobile Application</span>
+              </label>
+            </div>
+            {hasFieldError('category') && (
+              <div className={styles.fieldError}>
+                <MdError className={styles.errorIcon} />
+                <span>{getFieldError('category')}</span>
+              </div>
+            )}
           </div>
 
+          {/* Active Toggle */}
           <div className={styles.activeToggle}>
             <h4>Application Status</h4>
-            <label className={styles.checkboxLabel}>
-              <input
-                type="checkbox"
-                checked={isActive}
-                onChange={(e) => setIsActive(e.target.checked)}
-                className={styles.activeCheckbox}
-              />
-              <span
-                className={`${styles.checkboxText} ${isActive ? styles.activeText : styles.inactiveText}`}
-              >
-                {isActive ? 'Application is Active' : 'Application is Inactive'}
-              </span>
-            </label>
+            <div
+              className={
+                hasFieldError('isActive') ? styles.checkboxGroupError : ''
+              }
+            >
+              <label className={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={isActive}
+                  onChange={(e) => setIsActive(e.target.checked)}
+                  className={styles.activeCheckbox}
+                />
+                <span
+                  className={`${styles.checkboxText} ${isActive ? styles.activeText : styles.inactiveText}`}
+                >
+                  {isActive
+                    ? 'Application is Active'
+                    : 'Application is Inactive'}
+                </span>
+              </label>
+            </div>
+            {hasFieldError('isActive') && (
+              <div className={styles.fieldError}>
+                <MdError className={styles.errorIcon} />
+                <span>{getFieldError('isActive')}</span>
+              </div>
+            )}
           </div>
         </div>
 
+        {/* Image Section */}
         <div className={styles.imageSection}>
           <h4>Application Images *</h4>
           <CldUploadWidget
@@ -338,6 +469,7 @@ function EditApplication({ application }) {
                   className={styles.addImage}
                   onClick={handleOnClick}
                   type="button"
+                  disabled={isSubmitting}
                 >
                   Add Image
                 </button>
@@ -361,21 +493,34 @@ function EditApplication({ application }) {
                   onClick={() =>
                     setImageUrls((prev) => prev.filter((_, i) => i !== index))
                   }
+                  disabled={isSubmitting}
                 >
                   Remove
                 </button>
               </div>
             ))}
           </div>
+
           {imageUrls.length === 0 && (
             <p className={styles.imageWarning}>
               At least one image is required
             </p>
           )}
+
+          {hasFieldError('imageUrls') && (
+            <div className={styles.fieldError}>
+              <MdError className={styles.errorIcon} />
+              <span>{getFieldError('imageUrls')}</span>
+            </div>
+          )}
         </div>
 
-        <button type="submit" className={styles.saveButton}>
-          Save Changes
+        <button
+          type="submit"
+          className={styles.saveButton}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? 'Saving Changes...' : 'Save Changes'}
         </button>
       </form>
     </div>

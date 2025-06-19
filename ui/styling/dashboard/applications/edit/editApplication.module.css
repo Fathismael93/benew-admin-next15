@@ -152,6 +152,13 @@
   gap: 1rem;
 }
 
+/* Input Group for field-specific errors */
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 .inputs input,
 .levelSelect {
   padding: 0.8rem 1.2rem;
@@ -170,6 +177,38 @@
   outline: none;
   border-color: #5d57c9;
   box-shadow: 0 0 0 3px rgba(93, 87, 201, 0.1);
+}
+
+/* Input Error State */
+.inputError {
+  border-color: #f44336 !important;
+  background-color: rgba(244, 67, 54, 0.05) !important;
+  box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.1) !important;
+}
+
+.inputError:focus {
+  border-color: #f44336 !important;
+  box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.2) !important;
+}
+
+/* Field Error Message */
+.fieldError {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #f44336;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-top: 0.3rem;
+  padding: 0.5rem 0.8rem;
+  background-color: rgba(244, 67, 54, 0.05);
+  border-radius: 6px;
+  border-left: 3px solid #f44336;
+}
+
+.errorIcon {
+  font-size: 1rem;
+  flex-shrink: 0;
 }
 
 .levelSelect {
@@ -244,6 +283,14 @@
   color: var(--text);
 }
 
+/* Radio Group Error State */
+.radioGroupError {
+  border: 2px solid rgba(244, 67, 54, 0.3);
+  border-radius: 8px;
+  padding: 0.5rem;
+  background-color: rgba(244, 67, 54, 0.05);
+}
+
 /* Active toggle */
 .activeToggle {
   display: flex;
@@ -286,6 +333,13 @@
   color: #f44336;
 }
 
+/* Checkbox Group Error State */
+.checkboxGroupError {
+  border: 2px solid rgba(244, 67, 54, 0.3);
+  border-radius: 8px;
+  background-color: rgba(244, 67, 54, 0.05);
+}
+
 /* Image section */
 .imageSection {
   background-color: var(--bg);
@@ -313,10 +367,17 @@
   margin-bottom: 1rem;
 }
 
-.addImage:hover {
+.addImage:hover:not(:disabled) {
   background-color: #6b66d6;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(93, 87, 201, 0.3);
+}
+
+.addImage:disabled {
+  background-color: #9e9e9e;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .images {
@@ -361,9 +422,15 @@
   transition: all 0.3s ease;
 }
 
-.removeImage:hover {
+.removeImage:hover:not(:disabled) {
   background-color: #e53935;
   transform: scale(1.1);
+}
+
+.removeImage:disabled {
+  background-color: #9e9e9e;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .imageWarning {
@@ -371,6 +438,10 @@
   font-style: italic;
   margin-top: 0.5rem;
   font-size: 0.9rem;
+  padding: 0.5rem 0.8rem;
+  background-color: rgba(244, 67, 54, 0.05);
+  border-radius: 6px;
+  border-left: 3px solid #f44336;
 }
 
 /* Save button */
@@ -386,12 +457,22 @@
   align-self: flex-start;
   transition: all 0.3s ease;
   margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.saveButton:hover {
+.saveButton:hover:not(:disabled) {
   background-color: #45a049;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.saveButton:disabled {
+  background-color: #9e9e9e;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 /* Error message */
@@ -403,6 +484,86 @@
   border-radius: 8px;
   border-left: 4px solid #f44336;
   margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.errorMessage::before {
+  content: '⚠️';
+  font-size: 1.2rem;
+}
+
+/* Animation for field errors */
+.fieldError {
+  animation: slideInError 0.3s ease-out;
+}
+
+@keyframes slideInError {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Validation states */
+.inputGroup input:valid:not(:focus):not(.inputError),
+.inputGroup select:valid:not(:focus):not(.inputError),
+.inputGroup textarea:valid:not(:focus):not(.inputError) {
+  border-color: #4caf50;
+  background-color: rgba(76, 175, 80, 0.02);
+}
+
+.inputGroup input:valid:not(:focus):not(.inputError)::after,
+.inputGroup select:valid:not(:focus):not(.inputError)::after,
+.inputGroup textarea:valid:not(:focus):not(.inputError)::after {
+  content: '✓';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #4caf50;
+  font-weight: bold;
+}
+
+/* Loading state for inputs */
+.inputGroup input:disabled,
+.inputGroup select:disabled,
+.inputGroup textarea:disabled {
+  background-color: rgba(158, 158, 158, 0.1);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Focus ring improvements */
+.inputGroup input:focus-visible,
+.inputGroup select:focus-visible,
+.inputGroup textarea:focus-visible {
+  outline: 2px solid #5d57c9;
+  outline-offset: 2px;
+}
+
+/* Improved accessibility for radio and checkbox errors */
+.radioGroupError .radioLabel,
+.checkboxGroupError .checkboxLabel {
+  border: 1px solid rgba(244, 67, 54, 0.5);
+  margin: 0.2rem 0;
+}
+
+.radioGroupError .radioLabel:first-child,
+.checkboxGroupError .checkboxLabel:first-child {
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+.radioGroupError .radioLabel:last-child,
+.checkboxGroupError .checkboxLabel:last-child {
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
 }
 
 /* Responsive design */
@@ -432,5 +593,59 @@
 
   .images {
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+
+  .fieldError {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
+  }
+
+  .errorIcon {
+    font-size: 0.9rem;
+  }
+
+  .saveButton {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .fieldError {
+    background-color: rgba(244, 67, 54, 0.1);
+    color: #ff6b6b;
+  }
+
+  .inputError {
+    background-color: rgba(244, 67, 54, 0.08) !important;
+    border-color: #ff5722 !important;
+  }
+
+  .radioGroupError,
+  .checkboxGroupError {
+    background-color: rgba(244, 67, 54, 0.08);
+    border-color: rgba(244, 67, 54, 0.4);
+  }
+
+  .imageWarning {
+    background-color: rgba(244, 67, 54, 0.1);
+    color: #ff6b6b;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .fieldError {
+    border-width: 2px;
+    font-weight: 600;
+  }
+
+  .inputError {
+    border-width: 3px !important;
+  }
+
+  .errorIcon {
+    font-weight: 900;
   }
 }
