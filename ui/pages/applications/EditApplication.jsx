@@ -185,11 +185,7 @@ function EditApplication({ application }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            className={fieldErrors.name ? styles.inputError : ''}
           />
-          {fieldErrors.name && (
-            <span className={styles.fieldError}>{fieldErrors.name}</span>
-          )}
           <input
             type="url"
             name="link"
@@ -197,22 +193,14 @@ function EditApplication({ application }) {
             value={link}
             onChange={(e) => setLink(e.target.value)}
             required
-            className={fieldErrors.name ? styles.inputError : ''}
           />
-          {fieldErrors.name && (
-            <span className={styles.fieldError}>{fieldErrors.name}</span>
-          )}
           <input
             type="url"
             name="admin"
             placeholder="Admin Link (Optional)"
             value={admin}
             onChange={(e) => setAdmin(e.target.value)}
-            className={fieldErrors.name ? styles.inputError : ''}
           />
-          {fieldErrors.name && (
-            <span className={styles.fieldError}>{fieldErrors.name}</span>
-          )}
           <input
             type="number"
             name="fee"
@@ -222,11 +210,7 @@ function EditApplication({ application }) {
             min="0"
             step="0.01"
             required
-            className={fieldErrors.name ? styles.inputError : ''}
           />
-          {fieldErrors.name && (
-            <span className={styles.fieldError}>{fieldErrors.name}</span>
-          )}
           <input
             type="number"
             name="rent"
@@ -236,20 +220,12 @@ function EditApplication({ application }) {
             min="0"
             step="0.01"
             required
-            className={fieldErrors.name ? styles.inputError : ''}
           />
-          {fieldErrors.name && (
-            <span className={styles.fieldError}>{fieldErrors.name}</span>
-          )}
           <select
             name="level"
             value={level}
             onChange={(e) => setLevel(parseInt(e.target.value))}
-            className={
-              fieldErrors.name
-                ? `${styles.levelSelect}``${styles.inputError}`
-                : styles.levelSelect
-            }
+            className={styles.levelSelect}
             required
           >
             <option value="">Select Level *</option>
@@ -258,9 +234,6 @@ function EditApplication({ application }) {
             <option value={3}>3 - Advanced</option>
             <option value={4}>4 - Professional</option>
           </select>
-          {fieldErrors.name && (
-            <span className={styles.fieldError}>{fieldErrors.name}</span>
-          )}
           <input
             type="text"
             name="otherVersions"
