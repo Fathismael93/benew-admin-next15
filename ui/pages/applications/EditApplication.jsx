@@ -7,6 +7,7 @@ import axios from 'axios';
 import styles from '@/ui/styling/dashboard/applications/edit/editApplication.module.css';
 import { MdArrowBack, MdInfo, MdCheck, MdClose } from 'react-icons/md';
 import Link from 'next/link';
+import { applicationUpdateSchema } from '@utils/schemas/applicationSchema';
 
 function EditApplication({ application }) {
   const router = useRouter();
@@ -38,6 +39,8 @@ function EditApplication({ application }) {
   const updatedAt = application.updated_at;
 
   const [errorMessage, setErrorMessage] = useState('');
+  // État pour les erreurs par champ (à ajouter dans le useState)
+  const [fieldErrors, setFieldErrors] = useState({});
 
   // Helper function to format dates
   const formatDate = (dateString) => {
@@ -51,78 +54,44 @@ function EditApplication({ application }) {
     });
   };
 
-  // Helper function to get level label
-  const getLevelLabel = (levelNum) => {
-    const levels = {
-      1: 'Basic',
-      2: 'Intermediate',
-      3: 'Advanced',
-      4: 'Professional',
-    };
-    return levels[levelNum] || 'Unknown';
-  };
-
-  const handleSubmit = async (e) => {
+  // Version alternative avec gestion d'erreurs par champ
+  const handleSubmitWithFieldErrors = async (e) => {
     e.preventDefault();
 
-    if (!name || name.length < 3) {
-      setErrorMessage('Name must be at least 3 characters long');
-      return;
-    }
-
-    if (!link || link.length < 3) {
-      setErrorMessage('Link must be at least 3 characters long');
-      return;
-    }
-
-    if (!fee || fee === 0) {
-      setErrorMessage('Fee is required');
-      return;
-    }
-
-    if (!rent || rent < 0) {
-      setErrorMessage('Rent cannot be negative');
-      return;
-    }
-
-    if (!category) {
-      setErrorMessage('Category is required');
-      return;
-    }
-
-    if (!level || level < 1 || level > 4) {
-      setErrorMessage('Level must be between 1 and 4');
-      return;
-    }
-
-    if (imageUrls.length === 0) {
-      setErrorMessage('At least one image is required');
-      return;
-    }
-
-    setErrorMessage('');
+    const formData = {
+      name,
+      link,
+      admin,
+      description,
+      fee: parseFloat(fee),
+      rent: parseFloat(rent),
+      category,
+      level: parseInt(level),
+      imageUrls,
+      otherVersions: otherVersions
+        ? otherVersions
+            .split(',')
+            .map((url) => url.trim())
+            .filter((url) => url)
+        : null,
+      isActive,
+    };
 
     try {
+      // Validation avec le schema Yup
+      await applicationUpdateSchema.validate(formData, {
+        abortEarly: false,
+        stripUnknown: true, // Supprime les champs non définis
+      });
+
+      // Réinitialiser les erreurs
+      setErrorMessage('');
+      setFieldErrors({});
+
+      // Envoyer la requête
       const response = await axios.put(
         `/api/dashboard/applications/${application.application_id}/edit`,
-        JSON.stringify({
-          name,
-          link,
-          admin: admin || null,
-          description: description || null,
-          category,
-          level: parseInt(level),
-          fee,
-          rent,
-          imageUrls,
-          otherVersions: otherVersions
-            ? otherVersions
-                .split(',')
-                .map((url) => url.trim())
-                .filter((url) => url)
-            : [],
-          isActive,
-        }),
+        JSON.stringify(formData),
         {
           headers: { 'Content-Type': 'application/json' },
         },
@@ -131,11 +100,25 @@ function EditApplication({ application }) {
       if (response.data.success) {
         router.push('/dashboard/applications');
       } else {
-        setErrorMessage('Failed to update application. Please try again.');
+        setErrorMessage(
+          response.data.message || 'Failed to update application.',
+        );
       }
     } catch (error) {
-      setErrorMessage('An error occurred while updating the application.');
-      console.error('Update error:', error);
+      if (error.name === 'ValidationError') {
+        // Créer un objet d'erreurs par champ
+        const errors = {};
+        error.inner.forEach((err) => {
+          errors[err.path] = err.message;
+        });
+
+        setFieldErrors(errors);
+        setErrorMessage('Please fix the errors below and try again.');
+      } else {
+        // Autres erreurs
+        setErrorMessage('An error occurred while updating the application.');
+        console.error('Update error:', error);
+      }
     }
   };
 
@@ -188,7 +171,10 @@ function EditApplication({ application }) {
         </div>
       </div>
 
-      <form className={styles.editApplicationForm} onSubmit={handleSubmit}>
+      <form
+        className={styles.editApplicationForm}
+        onSubmit={handleSubmitWithFieldErrors}
+      >
         {errorMessage && <p className={styles.errorMessage}>{errorMessage}</p>}
 
         <div className={styles.inputs}>
@@ -199,7 +185,11 @@ function EditApplication({ application }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
+            className={fieldErrors.name ? styles.inputError : ''}
           />
+          {fieldErrors.name && (
+            <span className={styles.fieldError}>{fieldErrors.name}</span>
+          )}
           <input
             type="url"
             name="link"
@@ -207,14 +197,22 @@ function EditApplication({ application }) {
             value={link}
             onChange={(e) => setLink(e.target.value)}
             required
+            className={fieldErrors.name ? styles.inputError : ''}
           />
+          {fieldErrors.name && (
+            <span className={styles.fieldError}>{fieldErrors.name}</span>
+          )}
           <input
             type="url"
             name="admin"
             placeholder="Admin Link (Optional)"
             value={admin}
             onChange={(e) => setAdmin(e.target.value)}
+            className={fieldErrors.name ? styles.inputError : ''}
           />
+          {fieldErrors.name && (
+            <span className={styles.fieldError}>{fieldErrors.name}</span>
+          )}
           <input
             type="number"
             name="fee"
@@ -224,7 +222,11 @@ function EditApplication({ application }) {
             min="0"
             step="0.01"
             required
+            className={fieldErrors.name ? styles.inputError : ''}
           />
+          {fieldErrors.name && (
+            <span className={styles.fieldError}>{fieldErrors.name}</span>
+          )}
           <input
             type="number"
             name="rent"
@@ -234,12 +236,20 @@ function EditApplication({ application }) {
             min="0"
             step="0.01"
             required
+            className={fieldErrors.name ? styles.inputError : ''}
           />
+          {fieldErrors.name && (
+            <span className={styles.fieldError}>{fieldErrors.name}</span>
+          )}
           <select
             name="level"
             value={level}
             onChange={(e) => setLevel(parseInt(e.target.value))}
-            className={styles.levelSelect}
+            className={
+              fieldErrors.name
+                ? `${styles.levelSelect}``${styles.inputError}`
+                : styles.levelSelect
+            }
             required
           >
             <option value="">Select Level *</option>
@@ -248,6 +258,9 @@ function EditApplication({ application }) {
             <option value={3}>3 - Advanced</option>
             <option value={4}>4 - Professional</option>
           </select>
+          {fieldErrors.name && (
+            <span className={styles.fieldError}>{fieldErrors.name}</span>
+          )}
           <input
             type="text"
             name="otherVersions"
