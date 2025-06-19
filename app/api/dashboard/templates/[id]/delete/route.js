@@ -498,7 +498,11 @@ export async function DELETE(request, { params }) {
 
       // Supprimer uniquement si is_active = false (sécurité supplémentaire)
       deleteResult = await client.query(
-        'DELETE FROM catalog.templates WHERE template_id = $1 AND is_active = false RETURNING template_name, template_image',
+        `DELETE FROM catalog.templates 
+        WHERE template_id = $1
+        AND is_active = false
+        AND (sales_count = 0 OR sales_count IS NULL)
+        RETURNING template_name, template_image`,
         [id],
       );
 
