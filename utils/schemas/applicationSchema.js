@@ -193,269 +193,191 @@ export const applicationAddingSchema = yup
 
 /**
  * Schema de validation pour la mise à jour d'une application
- * Correspond aux champs du formulaire EditApplication.jsx
+ * Version simplifiée pour éviter les problèmes de build Vercel
  */
-export const applicationUpdateSchema = yup
-  .object()
-  .shape({
-    // Champ obligatoire: nom de l'application
-    name: yup
-      .string()
-      .required('Application name is required')
-      .min(3, 'Application name must be at least 3 characters')
-      .max(100, 'Application name must not exceed 100 characters')
-      .matches(
-        /^[a-zA-Z0-9._\s-]+$/,
-        'Application name can only contain letters, numbers, spaces, and ._-',
-      )
-      .matches(/^[a-zA-Z]/, 'Application name must start with a letter')
-      .test(
-        'no-only-spaces',
-        'Application name cannot contain only spaces',
-        (value) => value && value.trim().length > 0,
-      )
-      .test(
-        'no-consecutive-spaces',
-        'Application name cannot contain multiple consecutive spaces',
-        (value) => !value || !/\s{2,}/.test(value),
-      )
-      .test(
-        'reserved-words',
-        'This application name is not allowed',
-        (value) => {
-          if (!value) return true;
-          return ![
-            'admin',
-            'root',
-            'system',
-            'test',
-            'app',
-            'application',
-            'default',
-          ].includes(value.toLowerCase().trim());
-        },
-      )
-      .transform((value) => value?.trim()),
+export const applicationUpdateSchema = yup.object().shape({
+  // Champ obligatoire: nom de l'application
+  name: yup
+    .string()
+    .required('Application name is required')
+    .min(3, 'Application name must be at least 3 characters')
+    .max(100, 'Application name must not exceed 100 characters')
+    .matches(
+      /^[a-zA-Z0-9._\s-]+$/,
+      'Application name can only contain letters, numbers, spaces, and ._-',
+    )
+    .matches(/^[a-zA-Z]/, 'Application name must start with a letter')
+    .test(
+      'no-only-spaces',
+      'Application name cannot contain only spaces',
+      (value) => value && value.trim().length > 0,
+    )
+    .test(
+      'no-consecutive-spaces',
+      'Application name cannot contain multiple consecutive spaces',
+      (value) => !value || !/\s{2,}/.test(value),
+    )
+    .test('reserved-words', 'This application name is not allowed', (value) => {
+      if (!value) return true;
+      return ![
+        'admin',
+        'root',
+        'system',
+        'test',
+        'app',
+        'application',
+        'default',
+      ].includes(value.toLowerCase().trim());
+    })
+    .transform((value) => value?.trim()),
 
-    // Champ obligatoire: lien public de l'application
-    link: yup
-      .string()
-      .required('Application link is required')
-      .min(3, 'Application link must be at least 3 characters')
-      .max(500, 'Application link must not exceed 500 characters')
-      .matches(
-        /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/,
-        'Invalid URL format',
-      )
-      .test('valid-url', 'Please provide a valid URL', (value) => {
-        if (!value) return false;
+  // Champ obligatoire: lien public de l'application
+  link: yup
+    .string()
+    .required('Application link is required')
+    .min(3, 'Application link must be at least 3 characters')
+    .max(500, 'Application link must not exceed 500 characters')
+    .matches(
+      /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/,
+      'Invalid URL format',
+    )
+    .test('valid-url', 'Please provide a valid URL', (value) => {
+      if (!value) return false;
+      try {
+        // Ajouter https:// si pas de protocole
+        const url = value.startsWith('http') ? value : `https://${value}`;
+        new URL(url);
+        return true;
+      } catch {
+        return false;
+      }
+    })
+    .transform((value) => value?.trim()),
+
+  // Champ optionnel: lien d'administration - VERSION SIMPLIFIÉE
+  admin: yup
+    .string()
+    .nullable()
+    .min(3, 'Admin link must be at least 3 characters when provided')
+    .max(500, 'Admin link must not exceed 500 characters')
+    .test(
+      'valid-admin-url-optional',
+      'Please provide a valid admin URL',
+      (value) => {
+        // Si vide ou null, c'est valide (optionnel)
+        if (!value || value.trim() === '') return true;
+
         try {
-          // Ajouter https:// si pas de protocole
           const url = value.startsWith('http') ? value : `https://${value}`;
           new URL(url);
           return true;
         } catch {
           return false;
         }
-      })
-      .transform((value) => value?.trim()),
+      },
+    )
+    .transform((value) => {
+      if (!value || value.trim() === '') return null;
+      return value.trim();
+    }),
 
-    // Champ optionnel: lien d'administration
-    admin: yup
-      .string()
-      .nullable()
-      .when('admin', (admin, schema) => {
-        // Si admin est fourni et n'est pas vide
-        if (admin && admin.trim().length > 0) {
-          return schema
-            .min(3, 'Admin link must be at least 3 characters')
-            .max(500, 'Admin link must not exceed 500 characters')
-            .matches(
-              /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/,
-              'Invalid admin URL format',
-            )
-            .test(
-              'valid-admin-url',
-              'Please provide a valid admin URL',
-              (value) => {
-                try {
-                  const url = value.startsWith('http')
-                    ? value
-                    : `https://${value}`;
-                  new URL(url);
-                  return true;
-                } catch {
-                  return false;
-                }
-              },
-            );
-        }
-        return schema;
-      })
-      .transform((value) => {
-        if (!value || value.trim() === '') return null;
-        return value.trim();
-      }),
+  // Champ optionnel: description
+  description: yup
+    .string()
+    .nullable()
+    .max(1000, 'Description must not exceed 1000 characters')
+    .test(
+      'no-only-spaces',
+      'Description cannot contain only spaces',
+      (value) => !value || value.trim().length > 0,
+    )
+    .transform((value) => {
+      if (!value || value.trim() === '') return null;
+      return value.trim();
+    }),
 
-    // Champ optionnel: description
-    description: yup
-      .string()
-      .nullable()
-      .max(1000, 'Description must not exceed 1000 characters')
-      .test(
-        'no-only-spaces',
-        'Description cannot contain only spaces',
-        (value) => !value || value.trim().length > 0,
-      )
-      .transform((value) => {
-        if (!value || value.trim() === '') return null;
-        return value.trim();
-      }),
+  // Champ obligatoire: frais d'ouverture
+  fee: yup
+    .number()
+    .required('Opening fee is required')
+    .positive('Opening fee must be positive')
+    .min(1, 'Opening fee must be at least 1')
+    .max(100000, 'Opening fee cannot exceed 100,000')
+    .test('is-valid-fee', 'Opening fee must be a valid number', (value) => {
+      return typeof value === 'number' && !isNaN(value) && isFinite(value);
+    }),
 
-    // Champ obligatoire: frais d'ouverture
-    fee: yup
-      .number()
-      .required('Opening fee is required')
-      .positive('Opening fee must be positive')
-      .min(1, 'Opening fee must be at least 1')
-      .max(100000, 'Opening fee cannot exceed 100,000')
-      .test('is-number', 'Opening fee must be a valid number', (value) => {
-        return !isNaN(value) && isFinite(value);
-      })
-      .transform((value) => {
-        // Convertir string en number si nécessaire
-        const parsed = typeof value === 'string' ? parseFloat(value) : value;
-        return isNaN(parsed) ? undefined : parsed;
-      }),
+  // Champ obligatoire: loyer mensuel
+  rent: yup
+    .number()
+    .required('Monthly rent is required')
+    .min(0, 'Monthly rent cannot be negative')
+    .max(50000, 'Monthly rent cannot exceed 50,000')
+    .test('is-valid-rent', 'Monthly rent must be a valid number', (value) => {
+      return typeof value === 'number' && !isNaN(value) && isFinite(value);
+    }),
 
-    // Champ obligatoire: loyer mensuel
-    rent: yup
-      .number()
-      .required('Monthly rent is required')
-      .min(0, 'Monthly rent cannot be negative')
-      .max(50000, 'Monthly rent cannot exceed 50,000')
-      .test('is-number', 'Monthly rent must be a valid number', (value) => {
-        return !isNaN(value) && isFinite(value);
-      })
-      .transform((value) => {
-        // Convertir string en number si nécessaire
-        const parsed = typeof value === 'string' ? parseFloat(value) : value;
-        return isNaN(parsed) ? undefined : parsed;
-      }),
+  // Champ obligatoire: catégorie (web/mobile)
+  category: yup
+    .string()
+    .required('Category is required')
+    .oneOf(['web', 'mobile'], 'Category must be either "web" or "mobile"'),
 
-    // Champ obligatoire: catégorie (web/mobile)
-    category: yup
-      .string()
-      .required('Category is required')
-      .oneOf(['web', 'mobile'], 'Category must be either "web" or "mobile"'),
+  // Champ obligatoire: niveau (1-4)
+  level: yup
+    .number()
+    .required('Application level is required')
+    .min(1, 'Application level must be between 1 and 4')
+    .max(4, 'Application level must be between 1 and 4')
+    .integer('Application level must be a whole number')
+    .test(
+      'is-valid-level',
+      'Application level must be 1, 2, 3, or 4',
+      (value) => {
+        return [1, 2, 3, 4].includes(value);
+      },
+    ),
 
-    // Champ obligatoire: niveau (1-4)
-    level: yup
-      .number()
-      .required('Application level is required')
-      .min(1, 'Application level must be between 1 and 4')
-      .max(4, 'Application level must be between 1 and 4')
-      .integer('Application level must be a whole number')
-      .test(
-        'is-valid-level',
-        'Application level must be 1, 2, 3, or 4',
-        (value) => {
-          return [1, 2, 3, 4].includes(value);
-        },
-      )
-      .transform((value) => {
-        // Convertir string en number si nécessaire
-        const parsed = typeof value === 'string' ? parseInt(value, 10) : value;
-        return isNaN(parsed) ? undefined : parsed;
-      }),
+  // Champ obligatoire: images de l'application
+  imageUrls: yup
+    .array()
+    .of(
+      yup
+        .string()
+        .matches(/^[a-zA-Z0-9._/-]+$/, 'Invalid image format')
+        .test(
+          'valid-cloudinary-id',
+          'Invalid Cloudinary image ID format',
+          (value) => {
+            if (!value) return false;
+            // Vérifier que ce n'est pas juste des caractères spéciaux
+            return /[a-zA-Z0-9]/.test(value);
+          },
+        ),
+    )
+    .min(1, 'At least one image is required')
+    .max(10, 'Cannot upload more than 10 images')
+    .required('Application images are required'),
 
-    // Champ obligatoire: images de l'application
-    imageUrls: yup
-      .array()
-      .of(
-        yup
-          .string()
-          .matches(/^[a-zA-Z0-9._/-]+$/, 'Invalid image format')
-          .test(
-            'valid-cloudinary-id',
-            'Invalid Cloudinary image ID format',
-            (value) => {
-              if (!value) return false;
-              // Vérifier que ce n'est pas juste des caractères spéciaux
-              return /[a-zA-Z0-9]/.test(value);
-            },
-          ),
-      )
-      .min(1, 'At least one image is required')
-      .max(10, 'Cannot upload more than 10 images')
-      .required('Application images are required'),
+  // Champ optionnel: autres versions
+  otherVersions: yup
+    .array()
+    .of(
+      yup
+        .string()
+        .url('Each version must be a valid URL')
+        .max(500, 'Version URL must not exceed 500 characters'),
+    )
+    .max(5, 'Cannot have more than 5 other versions')
+    .nullable()
+    .default(null),
 
-    // Champ optionnel: autres versions
-    otherVersions: yup
-      .array()
-      .of(
-        yup
-          .string()
-          .url('Each version must be a valid URL')
-          .max(500, 'Version URL must not exceed 500 characters'),
-      )
-      .max(5, 'Cannot have more than 5 other versions')
-      .nullable()
-      .transform((value) => {
-        // Si c'est un array vide ou null, retourner null
-        if (!value || (Array.isArray(value) && value.length === 0)) {
-          return null;
-        }
-        // Filtrer les URLs vides
-        if (Array.isArray(value)) {
-          const filtered = value.filter((url) => url && url.trim().length > 0);
-          return filtered.length > 0 ? filtered : null;
-        }
-        return value;
-      }),
-
-    // Champ obligatoire: statut actif/inactif
-    isActive: yup
-      .boolean()
-      .required('Application status is required')
-      .typeError('Application status must be true or false'),
-  })
-  .test(
-    'has-required-fields',
-    'All required fields must be provided',
-    (values) => {
-      const requiredFields = [
-        'name',
-        'link',
-        'fee',
-        'rent',
-        'category',
-        'level',
-        'imageUrls',
-        'isActive',
-      ];
-
-      for (const field of requiredFields) {
-        if (
-          values[field] === undefined ||
-          values[field] === null ||
-          values[field] === ''
-        ) {
-          return false;
-        }
-
-        // Vérification spéciale pour imageUrls
-        if (
-          field === 'imageUrls' &&
-          (!Array.isArray(values[field]) || values[field].length === 0)
-        ) {
-          return false;
-        }
-      }
-
-      return true;
-    },
-  );
+  // Champ obligatoire: statut actif/inactif
+  isActive: yup
+    .boolean()
+    .required('Application status is required')
+    .typeError('Application status must be true or false'),
+});
 
 /**
  * Schema de validation pour l'ID d'une application
@@ -465,27 +387,12 @@ export const applicationIdSchema = yup.object().shape({
     .string()
     .required('Application ID is required')
     .matches(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
-      'Invalid application ID format (must be a valid UUID)',
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+      'Application ID must be a valid UUID format',
     )
-    .test('is-valid-uuid', 'Application ID must be a valid UUID', (value) => {
-      if (!value) return false;
-
-      const uuidRegex =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-      if (!uuidRegex.test(value)) {
-        return false;
-      }
-
-      const emptyUUIDs = [
-        '00000000-0000-0000-0000-000000000000',
-        'ffffffff-ffff-ffff-ffff-ffffffffffff',
-      ];
-
-      return !emptyUUIDs.includes(value.toLowerCase());
-    })
-    .transform((value) => value?.toLowerCase().trim()),
+    .min(36, 'Application ID must be exactly 36 characters')
+    .max(36, 'Application ID must be exactly 36 characters')
+    .trim(),
 });
 
 // Fonction pour nettoyer et valider un UUID
