@@ -465,7 +465,6 @@ export async function POST(request) {
 
       existingPlatform = await client.query(uniqueCheckQuery, [
         sanitizedPlatformName,
-        sanitizedPlatformNumber,
       ]);
 
       if (existingPlatform.rows.length > 0) {
