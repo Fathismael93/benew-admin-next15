@@ -37,23 +37,19 @@ export const addArticleSchema = yup.object().shape({
 
   imageUrl: yup
     .string()
-    .required('Image is missing for this article')
-    .url('Image URL must be a valid URL')
-    .matches(
-      /\.(jpg|jpeg|png|gif|webp|svg)$/i,
-      'Image URL must end with a valid image extension (.jpg, .jpeg, .png, .gif, .webp, .svg)',
+    .required('Template image is required')
+    .min(1, 'Invalid template image')
+    .max(200, 'Template image ID is too long')
+    .matches(/^[a-zA-Z0-9._/-]+$/, 'Invalid template image format')
+    .test(
+      'valid-cloudinary-id',
+      'Invalid Cloudinary image ID format',
+      (value) => {
+        if (!value) return false;
+        // Vérifier que ce n'est pas juste des caractères spéciaux
+        return /[a-zA-Z0-9]/.test(value);
+      },
     )
-    .test('url-reachable', 'Image URL must be accessible', (value) => {
-      console.log('Validating image URL:', value);
-      if (!value) return false;
-      // Vérification basique de l'URL
-      try {
-        new URL(value);
-        return true;
-      } catch {
-        return false;
-      }
-    })
     .transform((value) => value?.trim()),
 });
 
