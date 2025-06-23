@@ -80,7 +80,7 @@ export async function POST(req) {
     // Insert article into the database
     const query = {
       name: 'insert-article',
-      text: 'INSERT INTO articles (article_title, article_text, article_image) VALUES ($1, $2, $3) RETURNING *',
+      text: 'INSERT INTO admin.articles (article_title, article_text, article_image) VALUES ($1, $2, $3) RETURNING *',
       values: [cleanedData.title, cleanedData.text, cleanedData.imageUrl],
     };
 
