@@ -44,6 +44,7 @@ export const addArticleSchema = yup.object().shape({
       'Image URL must end with a valid image extension (.jpg, .jpeg, .png, .gif, .webp, .svg)',
     )
     .test('url-reachable', 'Image URL must be accessible', (value) => {
+      console.log('Validating image URL:', value);
       if (!value) return false;
       // Vérification basique de l'URL
       try {
