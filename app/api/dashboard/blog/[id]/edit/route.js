@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getClient } from '@backend/dbConnect';
-import { addArticleSchema } from '@utils/schemas/addArticleSchema';
+import { addArticleSchema } from '@utils/schemas/articleSchema';
 
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute window
 const MAX_REQUESTS = 5; // Max 5 requests per minute

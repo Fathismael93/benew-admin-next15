@@ -30,7 +30,7 @@ const PlatformsList = ({ data }) => {
 
       if (response.data.success) {
         setIsDeleting(false);
-        router.push('/dashboard/platforms'); // Refresh the page to reflect changes
+        router.refresh(); // Refresh the page to reflect changes
       }
     }
   };
