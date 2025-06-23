@@ -7,6 +7,9 @@ async function getPlatform(id) {
     const response = await axios.get(
       `https://benew-admin-next15.vercel.app/api/dashboard/platforms/${id}`,
     );
+
+    console.log('Platform response:', response.data);
+
     platform = response.data.template;
   } catch (error) {
     console.error('Error fetching platform:', error);
