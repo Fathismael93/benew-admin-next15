@@ -540,8 +540,8 @@ export async function DELETE(request, { params }) {
       const dependenciesCheck = await client.query(
         `SELECT COUNT(*) as transaction_count 
          FROM admin.orders 
-         WHERE platform_id = $1 
-         AND order_status IN ('pending', 'processing', 'completed')`,
+         WHERE order_platform_id = $1 
+         AND order_payment_status IN ('pending', 'processing', 'completed')`,
         [cleanedPlatformId],
       );
 

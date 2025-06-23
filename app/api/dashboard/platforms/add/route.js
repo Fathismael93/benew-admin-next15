@@ -452,8 +452,7 @@ export async function POST(request) {
       const uniqueCheckQuery = `
         SELECT platform_id, platform_name, platform_number 
         FROM admin.platforms 
-        WHERE LOWER(platform_name) = LOWER($1) 
-           OR platform_number = $2
+        WHERE LOWER(platform_name) = LOWER($1)
       `;
 
       logger.debug('Checking platform uniqueness', {
