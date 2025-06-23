@@ -44,7 +44,9 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 .platformCard:hover {
@@ -81,7 +83,9 @@
   font-size: 0.9rem;
   text-align: center;
   text-decoration: none;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 .editLink {
@@ -99,7 +103,9 @@
   border-radius: 5px;
   cursor: pointer;
   font-size: 0.9rem;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 .deleteButton {
@@ -109,4 +115,86 @@
 
 .deleteButton:hover {
   background-color: #e53935;
+}
+
+/* États actif/inactif pour les plateformes */
+.platformCard.active {
+  border-left: 4px solid #4caf50; /* Vert pour actif */
+  background-color: var(--bg);
+}
+
+.platformCard.inactive {
+  border-left: 4px solid #f44336; /* Rouge pour inactif */
+  background-color: var(--bg);
+  opacity: 0.7;
+}
+
+.statusBadge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  align-self: flex-start;
+}
+
+.statusBadge.active {
+  background-color: #e8f5e8;
+  color: #2e7d32;
+}
+
+.statusBadge.inactive {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.platformInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.infoRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid var(--textSoft);
+  border-bottom-opacity: 0.2;
+}
+
+.infoRow:last-child {
+  border-bottom: none;
+}
+
+.label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--textSoft);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.value {
+  font-size: 0.85rem;
+  color: var(--text);
+  font-weight: 500;
+  text-align: right;
+  word-break: break-all;
+  max-width: 60%;
+}
+
+/* Ajustement de la hauteur de la carte pour accommoder plus de contenu */
+.platformCard {
+  background-color: var(--bg);
+  padding: 1.5rem;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+  min-height: 200px; /* Hauteur minimale pour un affichage cohérent */
 }

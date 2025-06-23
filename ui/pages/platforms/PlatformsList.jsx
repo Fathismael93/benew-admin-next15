@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import styles from '@/ui/styling/dashboard/platforms/platforms.module.css';
 import Search from '@/ui/components/dashboard/search';
 import Link from 'next/link';
@@ -48,11 +48,75 @@ const PlatformsList = ({ data }) => {
       <div className={styles.platformsGrid}>
         {platforms !== undefined &&
           platforms.map((platform) => (
-            <div key={platform.platform_id} className={styles.platformCard}>
+            <div
+              key={platform.platform_id}
+              className={`${styles.platformCard} ${platform.is_active ? styles.active : styles.inactive}`}
+            >
               <div className={styles.platformDetails}>
-                <h2>{platform.platform_name}</h2>
-                <p>{platform.platform_number}</p>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                  }}
+                >
+                  <h2>{platform.platform_name}</h2>
+                  <span
+                    className={`${styles.statusBadge} ${platform.is_active ? styles.active : styles.inactive}`}
+                  >
+                    {platform.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+
+                <div className={styles.platformInfo}>
+                  <div className={styles.infoRow}>
+                    <span className={styles.label}>ID:</span>
+                    <span className={styles.value}>{platform.platform_id}</span>
+                  </div>
+
+                  <div className={styles.infoRow}>
+                    <span className={styles.label}>Number:</span>
+                    <span className={styles.value}>
+                      {platform.platform_number}
+                    </span>
+                  </div>
+
+                  <div className={styles.infoRow}>
+                    <span className={styles.label}>Created:</span>
+                    <span className={styles.value}>
+                      {new Date(platform.created_at).toLocaleDateString(
+                        'en-US',
+                        {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        },
+                      )}
+                    </span>
+                  </div>
+
+                  {platform.updated_at && (
+                    <div className={styles.infoRow}>
+                      <span className={styles.label}>Updated:</span>
+                      <span className={styles.value}>
+                        {new Date(platform.updated_at).toLocaleDateString(
+                          'en-US',
+                          {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          },
+                        )}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
+
               <div className={styles.platformActions}>
                 <button
                   className={`${styles.actionButton} ${styles.deleteButton}`}

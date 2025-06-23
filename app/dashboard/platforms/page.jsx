@@ -1,16 +1,17 @@
 // app/dashboard/platforms/page.js (Server Component)
 
 import PlatformsList from '@/ui/pages/platforms/PlatformsList';
+import axios from 'axios';
 
 async function getPlatforms() {
-  let platforms = [];
+  let platforms;
 
-  // await axios
-  //   .get('https://benew-admin-next15.vercel.app/api/dashboard/platforms')
-  //   .then((response) => {
-  //     platforms = response.data.platforms;
-  //   })
-  //   .catch((error) => console.log(error));
+  await axios
+    .get('https://benew-admin-next15.vercel.app/api/dashboard/platforms')
+    .then((response) => {
+      platforms = response.data.platforms;
+    })
+    .catch((error) => console.log(error));
 
   return platforms;
 }
