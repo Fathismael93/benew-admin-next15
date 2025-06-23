@@ -11,8 +11,9 @@ export async function GET() {
         article_id,
         article_title,
         article_image,
+        is_active,
         TO_CHAR(article_created, 'YYYY-MM-DD') AS created
-      FROM articles
+      FROM admin.articles
       ORDER BY article_created DESC, article_id DESC
     `;
 

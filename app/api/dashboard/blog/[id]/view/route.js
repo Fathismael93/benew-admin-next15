@@ -72,9 +72,11 @@ export async function GET(req, { params }) {
               article_id, 
               article_title, 
               article_text, 
-              article_image, 
+              article_image,
+              is_active,
               TO_CHAR(article_created, 'dd/MM/yyyy') as created 
-            FROM articles 
+              TO_CHAR(article_updated, 'dd/MM/yyyy') as updated 
+            FROM admin.articles 
             WHERE article_id = $1
           `,
           values: [id],

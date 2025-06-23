@@ -71,8 +71,8 @@ export async function PUT(req, { params }) {
     const query = {
       name: 'update-article',
       text: `
-        UPDATE articles 
-        SET article_title = $1, article_text = $2, article_image = $3 
+        UPDATE admin.articles 
+        SET article_title = $1, article_text = $2, article_image = $3, is_active = $4 
         WHERE article_id = $4 
         RETURNING *
       `,

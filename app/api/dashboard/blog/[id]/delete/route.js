@@ -26,7 +26,7 @@ export async function DELETE(req, { params }) {
   try {
     client = await getClient();
     const result = await client.query(
-      'DELETE FROM articles WHERE article_id=$1',
+      'DELETE FROM admin.articles WHERE article_id=$1',
       [id],
     );
 
