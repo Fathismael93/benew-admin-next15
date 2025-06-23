@@ -39,7 +39,7 @@
 
 .platformCard {
   background-color: var(--bg);
-  padding: 1rem;
+  padding: 1.5rem;
   border-radius: 10px;
   display: flex;
   flex-direction: column;
@@ -47,6 +47,8 @@
   transition:
     transform 0.3s ease,
     box-shadow 0.3s ease;
+  min-height: 200px;
+  justify-content: space-between; /* Distribue l'espace entre le contenu et les boutons */
 }
 
 .platformCard:hover {
@@ -74,6 +76,7 @@
   display: flex;
   justify-content: space-between;
   gap: 0.5rem;
+  margin-top: auto; /* Pousse les boutons vers le bas */
 }
 
 .actionLink {
@@ -106,11 +109,25 @@
   transition:
     background-color 0.3s ease,
     color 0.3s ease;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.editButton {
+  background-color: #ff9800; /* Orange pour Edit */
+  color: white;
+  flex: 1; /* Prend la moitié de l'espace disponible */
+}
+
+.editButton:hover {
+  background-color: #f57c00;
 }
 
 .deleteButton {
-  background-color: #f44336; /* Red for Delete */
+  background-color: #f44336; /* Rouge pour Delete */
   color: white;
+  flex: 1; /* Prend la moitié de l'espace disponible */
 }
 
 .deleteButton:hover {
@@ -161,7 +178,6 @@
   align-items: center;
   padding: 0.25rem 0;
   border-bottom: 1px solid var(--textSoft);
-  border-bottom-opacity: 0.2;
 }
 
 .infoRow:last-child {

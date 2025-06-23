@@ -116,8 +116,16 @@ const PlatformsList = ({ data }) => {
                   )}
                 </div>
               </div>
-
               <div className={styles.platformActions}>
+                <Link
+                  href={`/dashboard/platforms/edit/${platform.platform_id}`}
+                >
+                  <button
+                    className={`${styles.actionButton} ${styles.editButton}`}
+                  >
+                    Edit
+                  </button>
+                </Link>
                 <button
                   className={`${styles.actionButton} ${styles.deleteButton}`}
                   onClick={() => handleDelete(platform.platform_id)}
