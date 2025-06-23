@@ -69,6 +69,8 @@ function AddPlatform() {
         },
       );
 
+      console.log('Response from API:', response.data);
+
       if (response.data.success) {
         router.push('/dashboard/platforms');
       } else {

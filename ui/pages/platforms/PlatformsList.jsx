@@ -28,6 +28,8 @@ const PlatformsList = ({ data }) => {
         `/api/dashboard/platforms/${id}/delete`,
       );
 
+      console.log('Response from API:', response.data);
+
       if (response.data.success) {
         setIsDeleting(false);
         router.refresh(); // Refresh the page to reflect changes
