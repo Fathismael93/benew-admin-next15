@@ -148,6 +148,14 @@ export const platformUpdateSchema = yup
         },
       )
       .transform((value) => value?.trim()),
+
+    isActive: yup
+      .boolean()
+      .typeError('Platform status must be a boolean value')
+      .test('is-boolean', 'Platform status must be true or false', (value) => {
+        // Accepter undefined (optionnel) ou boolean
+        return value === undefined || typeof value === 'boolean';
+      }),
   })
   .test(
     'at-least-one-field',
@@ -157,7 +165,7 @@ export const platformUpdateSchema = yup
         (key) =>
           values[key] !== undefined &&
           values[key] !== null &&
-          values[key] !== '',
+          (typeof values[key] === 'boolean' || values[key] !== ''),
       );
       return providedFields.length > 0;
     },
