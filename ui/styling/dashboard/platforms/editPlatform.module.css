@@ -1,0 +1,361 @@
+/* ui/styling/dashboard/platforms/editPlatform.module.css */
+
+.container {
+  background-color: var(--bgSoft);
+  padding: 2rem;
+  border-radius: 12px;
+  margin-top: 20px;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* En-tête */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--textSoft);
+  border-bottom-opacity: 0.2;
+}
+
+.titleSection {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.titleIcon {
+  font-size: 1.75rem;
+  color: var(--textSoft);
+}
+
+.header h1 {
+  font-size: 1.8rem;
+  color: var(--text);
+  margin: 0;
+  font-weight: 600;
+}
+
+.platformInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.platformId {
+  font-size: 0.85rem;
+  color: var(--textSoft);
+  font-family: monospace;
+  background-color: var(--bg);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+/* Badges de statut */
+.statusBadge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.statusBadge.active {
+  background-color: #e8f5e8;
+  color: #2e7d32;
+}
+
+.statusBadge.inactive {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+/* Messages */
+.successMessage {
+  background-color: #e8f5e8;
+  color: #2e7d32;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid #4caf50;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.errorMessage {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid #f44336;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Formulaire */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.25rem;
+}
+
+.input {
+  padding: 0.75rem;
+  border: 2px solid var(--textSoft);
+  border-opacity: 0.3;
+  border-radius: 8px;
+  background-color: var(--bg);
+  color: var(--text);
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #5d57c9;
+  box-shadow: 0 0 0 3px rgba(93, 87, 201, 0.1);
+}
+
+.input:disabled {
+  background-color: var(--textSoft);
+  background-color-opacity: 0.1;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.inputError {
+  border-color: #f44336;
+}
+
+.inputError:focus {
+  border-color: #f44336;
+  box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.1);
+}
+
+.fieldError {
+  color: #f44336;
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}
+
+.inputHint {
+  color: var(--textSoft);
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}
+
+/* Checkbox */
+.checkboxGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.checkbox {
+  width: 1.2rem;
+  height: 1.2rem;
+  accent-color: #5d57c9;
+  cursor: pointer;
+}
+
+.checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.checkboxLabel {
+  font-size: 0.9rem;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Détails de la plateforme */
+.platformDetails {
+  background-color: var(--bg);
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--textSoft);
+  border-opacity: 0.2;
+  margin-top: 1rem;
+}
+
+.platformDetails h3 {
+  margin: 0 0 1rem 0;
+  color: var(--text);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.detailsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+.detailItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--textSoft);
+  border-bottom-opacity: 0.1;
+}
+
+.detailItem:last-child {
+  border-bottom: none;
+}
+
+.detailLabel {
+  font-size: 0.85rem;
+  color: var(--textSoft);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detailValue {
+  font-size: 0.9rem;
+  color: var(--text);
+  text-align: right;
+}
+
+/* Boutons */
+.buttonGroup {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--textSoft);
+  border-top-opacity: 0.2;
+}
+
+.button {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.button:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.saveButton {
+  background-color: #4caf50;
+  color: white;
+}
+
+.saveButton:not(:disabled):hover {
+  background-color: #45a049;
+}
+
+.resetButton {
+  background-color: #ff9800;
+  color: white;
+}
+
+.resetButton:not(:disabled):hover {
+  background-color: #f57c00;
+}
+
+.cancelButton {
+  background-color: #f44336;
+  color: white;
+}
+
+.cancelButton:not(:disabled):hover {
+  background-color: #e53935;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+    margin: 10px;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .platformInfo {
+    align-items: flex-start;
+  }
+
+  .buttonGroup {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .button {
+    justify-content: center;
+  }
+
+  .detailsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .detailItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .detailValue {
+    text-align: left;
+  }
+}
+
+@media (max-width: 480px) {
+  .header h1 {
+    font-size: 1.5rem;
+  }
+
+  .titleIcon {
+    font-size: 1.5rem;
+  }
+
+  .container {
+    margin: 5px;
+  }
+}
