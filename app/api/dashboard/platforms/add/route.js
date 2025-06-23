@@ -26,7 +26,7 @@ export async function POST(req) {
     client = await getClient();
 
     const addPlatform = await client.query(
-      'INSERT INTO platforms (platform_name, platform_number) VALUES ($1, $2) RETURNING *',
+      'INSERT INTO admin.platforms (platform_name, platform_number) VALUES ($1, $2) RETURNING *',
       [platformName, platformNumber],
     );
 
