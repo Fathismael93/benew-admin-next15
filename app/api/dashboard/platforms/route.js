@@ -375,7 +375,6 @@ export async function GET(req) {
       platform_number: platform.platform_number
         ? `${platform.platform_number.slice(0, 3)}***${platform.platform_number.slice(-2)}`
         : '[No Number]',
-      platform_number_full: platform.platform_number, // Version complète pour usage interne
       created_at: platform.created_at,
       updated_at: platform.updated_at,
       is_active: Boolean(platform.is_active),
@@ -398,10 +397,7 @@ export async function GET(req) {
     });
 
     // Mettre les données en cache (sans les numéros complets pour sécurité)
-    const cacheData = sanitizedPlatforms.map((platform) => {
-      const { platform_number_full, ...platformForCache } = platform;
-      return platformForCache;
-    });
+    const cacheData = sanitizedPlatforms;
 
     const cacheSuccess = dashboardCache.platforms.set(cacheKey, cacheData);
 
