@@ -2,12 +2,13 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import styles from '@/ui/styling/dashboard/platforms/add/addPlatform.module.css';
 import { MdArrowBack } from 'react-icons/md';
 import Link from 'next/link';
+import { platformAddingSchema } from '@/utils/schemas/platformSchema';
 
 function AddPlatform() {
   const router = useRouter();
@@ -18,30 +19,77 @@ function AddPlatform() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMessage('');
 
+    // Vérifications de base pour les champs requis
     if (!platformName || platformName.length < 3) {
-      setErrorMessage('Platform name is missing or too short');
+      setErrorMessage(
+        'Platform name is required and must be at least 3 characters',
+      );
       return;
     }
 
     if (!platformNumber || platformNumber.length < 3) {
-      setErrorMessage('Platform number is missing or too short');
+      setErrorMessage(
+        'Platform number is required and must be at least 3 characters',
+      );
       return;
     }
 
-    const response = await axios.post(
-      '/api/dashboard/platforms/add',
-      JSON.stringify({
-        platformName,
-        platformNumber,
-      }),
-      {
-        headers: { 'Content-Type': 'application/json' },
-      },
-    );
+    // Vérifier que le nom commence par une lettre
+    if (!/^[a-zA-Z]/.test(platformName.trim())) {
+      setErrorMessage('Platform name must start with a letter');
+      return;
+    }
 
-    if (response.data.success) {
-      router.push('/dashboard/platforms');
+    // Vérifier que le numéro contient au moins un caractère alphanumérique
+    if (!/[a-zA-Z0-9]/.test(platformNumber.trim())) {
+      setErrorMessage(
+        'Platform number must contain at least one alphanumeric character',
+      );
+      return;
+    }
+
+    // Préparer les données pour la sanitization et validation
+    const formData = {
+      platformName,
+      platformNumber,
+    };
+
+    try {
+      // 2. Validation avec platformAddingSchema
+      await platformAddingSchema.validate(formData, { abortEarly: false });
+
+      // 3. Si validation réussie, procéder à l'envoi
+      const response = await axios.post(
+        '/api/dashboard/platforms/add',
+        JSON.stringify(formData),
+        {
+          headers: { 'Content-Type': 'application/json' },
+        },
+      );
+
+      if (response.data.success) {
+        router.push('/dashboard/platforms');
+      } else {
+        setErrorMessage(response.data.message || 'Failed to add platform');
+      }
+    } catch (validationError) {
+      if (validationError.name === 'ValidationError') {
+        // Erreurs de validation Yup - afficher la première erreur
+        const firstError = validationError.errors[0];
+        setErrorMessage(firstError || 'Validation failed');
+      } else if (validationError.response) {
+        // Erreurs de réponse API
+        const apiError = validationError.response.data;
+        setErrorMessage(apiError.message || 'Server error occurred');
+      } else {
+        // Autres erreurs (réseau, etc.)
+        setErrorMessage(
+          validationError.message ||
+            'An error occurred while adding the platform',
+        );
+      }
     }
   };
 
@@ -57,16 +105,20 @@ function AddPlatform() {
           <input
             type="text"
             name="platformName"
-            placeholder="Platform Name"
+            placeholder="Platform Name (e.g., PayPal, Stripe)"
             value={platformName}
             onChange={(e) => setPlatformName(e.target.value)}
+            maxLength="50"
+            required
           />
           <input
             type="text"
             name="platformNumber"
-            placeholder="Platform Number"
+            placeholder="Platform Number or Code (e.g., +33123456789, PAYPAL_001)"
             value={platformNumber}
             onChange={(e) => setPlatformNumber(e.target.value)}
+            maxLength="50"
+            required
           />
         </div>
         <button type="submit" className={styles.addButton}>
