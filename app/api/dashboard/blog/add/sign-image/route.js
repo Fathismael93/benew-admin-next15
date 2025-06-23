@@ -29,6 +29,8 @@ export const POST = async (req) => {
       process.env.CLOUDINARY_API_SECRET,
     );
 
+    console.log('Generated Cloudinary Signature:', signature);
+
     return NextResponse.json({ signature });
   } catch (error) {
     console.error('Cloudinary Signature Error:', error);
