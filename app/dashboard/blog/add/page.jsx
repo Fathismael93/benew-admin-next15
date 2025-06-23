@@ -16,7 +16,6 @@ const CreatePostPage = () => {
   const [imageUrl, setImageUrl] = useState('');
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
@@ -46,16 +45,6 @@ const CreatePostPage = () => {
     }
   };
 
-  const validateField = (field, value) => {
-    try {
-      const schema = addArticleSchema.pick([field]);
-      schema.validateSync({ [field]: value });
-      return null;
-    } catch (error) {
-      return error.message;
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrors({});
@@ -77,7 +66,6 @@ const CreatePostPage = () => {
       );
 
       if (response.data.success) {
-        setIsSuccess(true);
         setShowSuccessMessage(true);
 
         // Redirect after showing success message
