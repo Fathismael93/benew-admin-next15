@@ -69,7 +69,7 @@ function AddPlatform() {
         },
       );
 
-      console.log('Response from API:', response.data);
+      console.log('Response from API:', response);
 
       if (response.data.success) {
         router.push('/dashboard/platforms');

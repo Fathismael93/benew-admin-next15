@@ -28,7 +28,7 @@ const PlatformsList = ({ data }) => {
         `/api/dashboard/platforms/${id}/delete`,
       );
 
-      console.log('Response from API:', response.data);
+      console.log('Response from API:', response);
 
       if (response.data.success) {
         setIsDeleting(false);
