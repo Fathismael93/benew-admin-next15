@@ -7,7 +7,6 @@ import styles from '@/ui/styling/dashboard/platforms/editPlatform.module.css';
 import { MdSave, MdCancel, MdInfo, MdEdit } from 'react-icons/md';
 
 const EditPlatform = ({ platform }) => {
-  console.log('EditPlatform component rendered with platform:', platform);
   const router = useRouter();
 
   // États du formulaire

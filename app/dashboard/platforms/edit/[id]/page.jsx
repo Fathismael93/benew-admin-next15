@@ -8,9 +8,7 @@ async function getPlatform(id) {
       `https://benew-admin-next15.vercel.app/api/dashboard/platforms/${id}`,
     );
 
-    console.log('Platform response:', response.data);
-
-    platform = response.data.template;
+    platform = response.data.platform;
   } catch (error) {
     console.error('Error fetching platform:', error);
     return null;
