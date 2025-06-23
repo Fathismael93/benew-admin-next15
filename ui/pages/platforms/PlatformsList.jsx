@@ -25,7 +25,7 @@ const PlatformsList = ({ data }) => {
       setIsDeleting(true);
 
       const response = await axios.delete(
-        `/api/dashboard/platforms/delete?id=${id}`,
+        `/api/dashboard/platforms/${id}/delete`,
       );
 
       if (response.data.success) {

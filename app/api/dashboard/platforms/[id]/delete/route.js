@@ -3,9 +3,8 @@
 import { NextResponse } from 'next/server';
 import { getClient } from '@backend/dbConnect';
 
-export async function DELETE(req) {
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get('id');
+export async function DELETE(req, { params }) {
+  const { id } = params;
 
   let client;
   try {
@@ -19,12 +18,11 @@ export async function DELETE(req) {
     client = await getClient();
 
     const deleteResult = await client.query(
-      'DELETE FROM platforms WHERE platform_id = $1 RETURNING *',
+      'DELETE FROM admin.platforms WHERE platform_id = $1 RETURNING *',
       [id],
     );
 
     if (deleteResult.rows[0]) {
-      console.log('platform deleted');
       await client.cleanup();
       return NextResponse.json({
         success: true,
