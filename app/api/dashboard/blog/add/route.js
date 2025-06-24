@@ -495,18 +495,10 @@ export async function POST(request) {
           article_title,
           article_text,
           article_image,
-          article_is_active,
-          article_created_at
         ) VALUES ($1, $2, $3, $4, NOW())
-        RETURNING article_id, article_title, article_created_at
       `;
 
-      const values = [
-        sanitizedTitle,
-        sanitizedText,
-        sanitizedImageUrl,
-        true, // Par défaut, les nouveaux articles sont actifs
-      ];
+      const values = [sanitizedTitle, sanitizedText, sanitizedImageUrl];
 
       logger.debug('Executing article insertion query', {
         requestId,
