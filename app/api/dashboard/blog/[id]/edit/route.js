@@ -461,10 +461,10 @@ export async function PUT(request, { params }) {
 
     // Préparer les données pour la sanitization
     const dataToSanitize = {
-      title: title === undefined ? '' : title,
-      text: text === undefined ? '' : text,
-      imageUrl: imageUrl === undefined ? '' : imageUrl,
-      isActive: isActive === undefined ? false : isActive,
+      title,
+      text,
+      imageUrl,
+      isActive,
     };
 
     console.log('Data to sanitize:', dataToSanitize);
