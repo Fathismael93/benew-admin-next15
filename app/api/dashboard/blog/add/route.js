@@ -495,7 +495,7 @@ export async function POST(request) {
           article_title,
           article_text,
           article_image,
-        ) VALUES ($1, $2, $3, $4, NOW())
+        ) VALUES ($1, $2, $3)
       `;
 
       const values = [sanitizedTitle, sanitizedText, sanitizedImageUrl];
