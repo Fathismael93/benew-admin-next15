@@ -1,71 +1,839 @@
-/* eslint-disable no-unused-vars */
 import { NextResponse } from 'next/server';
-import { getClient } from '@backend/dbConnect';
 import cloudinary from '@backend/cloudinary';
+import { getClient } from '@backend/dbConnect';
+import {
+  captureException,
+  captureMessage,
+  captureDatabaseError,
+} from '@/monitoring/sentry';
+import {
+  categorizeError,
+  generateRequestId,
+  extractRealIp,
+  anonymizeIp,
+} from '@/utils/helpers';
+import logger from '@/utils/logger';
+import isAuthenticatedUser from '@backend/authMiddleware';
+import { applyRateLimit } from '@backend/rateLimiter';
+import { articleIdSchema } from '@/utils/schemas/articleSchema';
+import { dashboardCache, getDashboardCacheKey } from '@/utils/cache';
 
 export const dynamic = 'force-dynamic';
 
-export async function DELETE(req, { params }) {
-  let client;
-  console.log('WE are in the DELETE REQUEST OF SINGLE ARTICLE API');
-  const { id } = await params;
+// ----- CONFIGURATION DU RATE LIMITING POUR LA SUPPRESSION D'ARTICLES -----
 
-  console.log('ID of the article that is being deleted !');
-  console.log(id);
+// Créer le middleware de rate limiting spécifique pour la suppression d'articles
+const deleteArticleRateLimit = applyRateLimit('CONTENT_API', {
+  // Configuration personnalisée pour la suppression d'articles
+  windowMs: 5 * 60 * 1000, // 5 minutes (plus strict pour les suppressions)
+  max: 8, // 8 suppressions par 5 minutes (plus restrictif que templates car contenu plus sensible)
+  message:
+    "Trop de tentatives de suppression d'articles. Veuillez réessayer dans quelques minutes.",
+  skipSuccessfulRequests: false, // Compter toutes les suppressions réussies
+  skipFailedRequests: false, // Compter aussi les échecs
+  prefix: 'delete_article', // Préfixe spécifique pour la suppression d'articles
 
-  if (!Number.isInteger(parseInt(id, 10))) {
-    return NextResponse.json({
-      success: false,
-      message: 'This article does not exist',
+  // Fonction personnalisée pour générer la clé (basée sur IP + ID de l'article)
+  keyGenerator: (req) => {
+    const ip = extractRealIp(req);
+    const url = req.url || req.nextUrl?.pathname || '';
+    const articleIdMatch = url.match(/blog\/([^/]+)\/delete/);
+    const articleId = articleIdMatch ? articleIdMatch[1] : 'unknown';
+    return `delete_article:ip:${ip}:article:${articleId}`;
+  },
+});
+
+// ----- FONCTION D'INVALIDATION DU CACHE -----
+const invalidateArticlesCache = (requestId, articleId) => {
+  try {
+    // Invalider le cache de la liste des articles
+    const listCacheKey = getDashboardCacheKey('articles_list', {
+      endpoint: 'dashboard_articles',
+      version: '1.0',
     });
-  }
 
-  const body = await req.json();
-  const imageID = body.imageID;
+    // Invalider le cache de l'article spécifique
+    const singleCacheKey = getDashboardCacheKey('single_article_view', {
+      articleId: articleId,
+      endpoint: 'single_article_view',
+      version: '1.0',
+    });
+
+    const listCacheInvalidated =
+      dashboardCache.blogArticles.delete(listCacheKey);
+    const singleCacheInvalidated =
+      dashboardCache.singleBlogArticle.delete(singleCacheKey);
+
+    logger.debug('Articles cache invalidation', {
+      requestId,
+      articleId,
+      component: 'articles',
+      action: 'cache_invalidation',
+      operation: 'delete_article',
+      listCacheKey,
+      singleCacheKey,
+      listInvalidated: listCacheInvalidated,
+      singleInvalidated: singleCacheInvalidated,
+    });
+
+    // Capturer l'invalidation du cache avec Sentry
+    captureMessage('Articles cache invalidated after deletion', {
+      level: 'info',
+      tags: {
+        component: 'articles',
+        action: 'cache_invalidation',
+        entity: 'blog_article',
+        operation: 'delete',
+      },
+      extra: {
+        requestId,
+        articleId,
+        listCacheKey,
+        singleCacheKey,
+        listInvalidated: listCacheInvalidated,
+        singleInvalidated: singleCacheInvalidated,
+      },
+    });
+
+    return {
+      listInvalidated: listCacheInvalidated,
+      singleInvalidated: singleCacheInvalidated,
+    };
+  } catch (cacheError) {
+    logger.warn('Failed to invalidate articles cache', {
+      requestId,
+      articleId,
+      component: 'articles',
+      action: 'cache_invalidation_failed',
+      operation: 'delete_article',
+      error: cacheError.message,
+    });
+
+    captureException(cacheError, {
+      level: 'warning',
+      tags: {
+        component: 'articles',
+        action: 'cache_invalidation_failed',
+        error_category: 'cache',
+        entity: 'blog_article',
+        operation: 'delete',
+      },
+      extra: {
+        requestId,
+        articleId,
+      },
+    });
+
+    return { listInvalidated: false, singleInvalidated: false };
+  }
+};
+
+// ----- API ROUTE PRINCIPALE AVEC RATE LIMITING -----
+
+export async function DELETE(request, { params }) {
+  let client;
+  const startTime = Date.now();
+  const requestId = generateRequestId();
+  const { id } = params;
+
+  logger.info('Delete Article API called', {
+    timestamp: new Date().toISOString(),
+    requestId,
+    articleId: id,
+    component: 'articles',
+    action: 'api_start',
+    method: 'DELETE',
+    operation: 'delete_article',
+  });
+
+  // Capturer le début du processus de suppression d'article
+  captureMessage('Delete article process started', {
+    level: 'info',
+    tags: {
+      component: 'articles',
+      action: 'process_start',
+      api_endpoint: '/api/dashboard/blog/[id]/delete',
+      entity: 'blog_article',
+      operation: 'delete',
+    },
+    extra: {
+      requestId,
+      articleId: id,
+      timestamp: new Date().toISOString(),
+      method: 'DELETE',
+    },
+  });
 
   try {
-    client = await getClient();
-    const result = await client.query(
-      'DELETE FROM admin.articles WHERE article_id=$1',
-      [id],
-    );
+    // ===== ÉTAPE 1: VALIDATION DE L'ID DE L'ARTICLE =====
+    logger.debug('Validating article ID', {
+      requestId,
+      articleId: id,
+      component: 'articles',
+      action: 'id_validation_start',
+      operation: 'delete_article',
+    });
 
-    console.log('Result after deleting article from db');
-    console.log(result);
+    try {
+      await articleIdSchema.validate({ id }, { abortEarly: false });
 
-    if (result.rowCount > 0) {
-      console.log('Article deleted successfully!');
+      logger.debug('Article ID validation passed', {
+        requestId,
+        articleId: id,
+        component: 'articles',
+        action: 'id_validation_success',
+        operation: 'delete_article',
+      });
+    } catch (idValidationError) {
+      const errorCategory = categorizeError(idValidationError);
 
-      // Delete image from Cloudinary
-      if (imageID) {
-        try {
-          await cloudinary.uploader.destroy(imageID);
-          console.log('Image deleted from Cloudinary successfully');
-        } catch (cloudError) {
-          console.error('Error deleting image from Cloudinary:', cloudError);
-        }
-      }
+      logger.error('Article ID Validation Error', {
+        category: errorCategory,
+        articleId: id,
+        validation_errors: idValidationError.inner?.map(
+          (err) => err.message,
+        ) || [idValidationError.message],
+        requestId,
+        component: 'articles',
+        action: 'id_validation_failed',
+        operation: 'delete_article',
+      });
 
-      if (client) await client.cleanup();
+      // Capturer l'erreur de validation d'ID avec Sentry
+      captureMessage('Article ID validation failed', {
+        level: 'warning',
+        tags: {
+          component: 'articles',
+          action: 'id_validation_failed',
+          error_category: 'validation',
+          entity: 'blog_article',
+          operation: 'delete',
+        },
+        extra: {
+          requestId,
+          articleId: id,
+          validationErrors: idValidationError.inner?.map(
+            (err) => err.message,
+          ) || [idValidationError.message],
+        },
+      });
 
-      return NextResponse.json({
-        success: true,
-        message: 'Article and associated image deleted successfully',
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid article ID format',
+          message: 'This article does not exist',
+          details: idValidationError.inner?.map((err) => err.message) || [
+            idValidationError.message,
+          ],
+          requestId,
+        },
+        {
+          status: 400,
+          headers: {
+            'X-Request-ID': requestId,
+          },
+        },
+      );
+    }
+
+    // ===== ÉTAPE 2: APPLIQUER LE RATE LIMITING =====
+    logger.debug('Applying rate limiting for delete article API', {
+      requestId,
+      articleId: id,
+      component: 'articles',
+      action: 'rate_limit_start',
+      operation: 'delete_article',
+    });
+
+    const rateLimitResponse = await deleteArticleRateLimit(request);
+
+    // Si le rate limiter retourne une réponse, cela signifie que la limite est dépassée
+    if (rateLimitResponse) {
+      logger.warn('Delete article API rate limit exceeded', {
+        requestId,
+        articleId: id,
+        component: 'articles',
+        action: 'rate_limit_exceeded',
+        operation: 'delete_article',
+        ip: anonymizeIp(extractRealIp(request)),
+      });
+
+      // Capturer l'événement de rate limiting avec Sentry
+      captureMessage('Delete article API rate limit exceeded', {
+        level: 'warning',
+        tags: {
+          component: 'articles',
+          action: 'rate_limit_exceeded',
+          error_category: 'rate_limiting',
+          entity: 'blog_article',
+          operation: 'delete',
+        },
+        extra: {
+          requestId,
+          articleId: id,
+          ip: anonymizeIp(extractRealIp(request)),
+          userAgent:
+            request.headers.get('user-agent')?.substring(0, 100) || 'unknown',
+        },
+      });
+
+      return rateLimitResponse; // Retourner directement la réponse 429
+    }
+
+    logger.debug('Rate limiting passed successfully', {
+      requestId,
+      articleId: id,
+      component: 'articles',
+      action: 'rate_limit_passed',
+      operation: 'delete_article',
+    });
+
+    // ===== ÉTAPE 3: VÉRIFICATION AUTHENTIFICATION =====
+    logger.debug('Verifying user authentication', {
+      requestId,
+      articleId: id,
+      component: 'articles',
+      action: 'auth_verification_start',
+      operation: 'delete_article',
+    });
+
+    await isAuthenticatedUser(request, NextResponse);
+
+    logger.debug('User authentication verified successfully', {
+      requestId,
+      articleId: id,
+      component: 'articles',
+      action: 'auth_verification_success',
+      operation: 'delete_article',
+    });
+
+    // ===== ÉTAPE 4: CONNEXION BASE DE DONNÉES =====
+    try {
+      client = await getClient();
+      logger.debug('Database connection successful', {
+        requestId,
+        articleId: id,
+        component: 'articles',
+        action: 'db_connection_success',
+        operation: 'delete_article',
+      });
+    } catch (dbConnectionError) {
+      const errorCategory = categorizeError(dbConnectionError);
+
+      logger.error('Database Connection Error during article deletion', {
+        category: errorCategory,
+        message: dbConnectionError.message,
+        timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
+        requestId,
+        articleId: id,
+        component: 'articles',
+        action: 'db_connection_failed',
+        operation: 'delete_article',
+      });
+
+      // Capturer l'erreur de connexion DB avec Sentry
+      captureDatabaseError(dbConnectionError, {
+        tags: {
+          component: 'articles',
+          action: 'db_connection_failed',
+          operation: 'connection',
+          entity: 'blog_article',
+        },
+        extra: {
+          requestId,
+          articleId: id,
+          timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
+          ip: anonymizeIp(extractRealIp(request)),
+          rateLimitingApplied: true,
+        },
+      });
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Database connection failed',
+          requestId,
+        },
+        {
+          status: 503,
+          headers: {
+            'X-Request-ID': requestId,
+          },
+        },
+      );
+    }
+
+    // ===== ÉTAPE 5: PARSING DU BODY POUR L'IMAGE ID =====
+    let body;
+    let imageID = null;
+
+    try {
+      body = await request.json();
+      imageID = body.imageID;
+
+      logger.debug('Request body parsed successfully', {
+        requestId,
+        articleId: id,
+        hasImageID: !!imageID,
+        component: 'articles',
+        action: 'body_parse_success',
+        operation: 'delete_article',
+      });
+    } catch (parseError) {
+      // Le body n'est pas obligatoire pour la suppression, continuer sans imageID
+      logger.debug('No valid JSON body provided, continuing without imageID', {
+        requestId,
+        articleId: id,
+        component: 'articles',
+        action: 'body_parse_optional',
+        operation: 'delete_article',
       });
     }
 
+    // ===== ÉTAPE 6: VÉRIFICATION DE L'EXISTENCE DE L'ARTICLE =====
+    let articleToDelete;
+    try {
+      logger.debug('Checking article existence', {
+        requestId,
+        articleId: id,
+        component: 'articles',
+        action: 'article_check_start',
+        operation: 'delete_article',
+      });
+
+      const checkResult = await client.query(
+        'SELECT article_id, article_title, article_image, is_active FROM admin.articles WHERE article_id = $1',
+        [id],
+      );
+
+      if (checkResult.rows.length === 0) {
+        logger.warn('Article not found for deletion', {
+          requestId,
+          articleId: id,
+          component: 'articles',
+          action: 'article_not_found',
+          operation: 'delete_article',
+        });
+
+        // Capturer l'article non trouvé avec Sentry
+        captureMessage('Article not found for deletion', {
+          level: 'warning',
+          tags: {
+            component: 'articles',
+            action: 'article_not_found',
+            error_category: 'not_found',
+            entity: 'blog_article',
+            operation: 'delete',
+          },
+          extra: {
+            requestId,
+            articleId: id,
+            ip: anonymizeIp(extractRealIp(request)),
+          },
+        });
+
+        if (client) await client.cleanup();
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'This article does not exist',
+            requestId,
+          },
+          {
+            status: 404,
+            headers: {
+              'X-Request-ID': requestId,
+            },
+          },
+        );
+      }
+
+      articleToDelete = checkResult.rows[0];
+
+      logger.debug('Article found for deletion', {
+        requestId,
+        articleId: id,
+        articleTitle: articleToDelete.article_title,
+        isActive: articleToDelete.is_active,
+        hasImage: !!articleToDelete.article_image,
+        component: 'articles',
+        action: 'article_check_success',
+        operation: 'delete_article',
+      });
+    } catch (checkError) {
+      const errorCategory = categorizeError(checkError);
+
+      logger.error('Article Check Error', {
+        category: errorCategory,
+        message: checkError.message,
+        requestId,
+        articleId: id,
+        component: 'articles',
+        action: 'article_check_failed',
+        operation: 'delete_article',
+      });
+
+      // Capturer l'erreur de vérification avec Sentry
+      captureDatabaseError(checkError, {
+        tags: {
+          component: 'articles',
+          action: 'article_check_failed',
+          operation: 'SELECT',
+          entity: 'blog_article',
+        },
+        extra: {
+          requestId,
+          articleId: id,
+          table: 'admin.articles',
+          queryType: 'article_existence_check',
+          postgresCode: checkError.code,
+          ip: anonymizeIp(extractRealIp(request)),
+        },
+      });
+
+      if (client) await client.cleanup();
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to verify article status',
+          message: 'Something went wrong! Please try again',
+          requestId,
+        },
+        {
+          status: 500,
+          headers: {
+            'X-Request-ID': requestId,
+          },
+        },
+      );
+    }
+
+    // ===== ÉTAPE 7: SUPPRESSION DE L'ARTICLE EN BASE DE DONNÉES =====
+    let deleteResult;
+    try {
+      logger.debug('Executing article deletion query', {
+        requestId,
+        articleId: id,
+        component: 'articles',
+        action: 'query_start',
+        operation: 'delete_article',
+        table: 'admin.articles',
+      });
+
+      deleteResult = await client.query(
+        `DELETE FROM admin.articles 
+        WHERE article_id = $1
+        RETURNING article_title, article_image`,
+        [id],
+      );
+
+      if (deleteResult.rowCount === 0) {
+        // Cela ne devrait pas arriver après nos vérifications, mais sécurité supplémentaire
+        logger.error('Article deletion failed - no rows affected', {
+          requestId,
+          articleId: id,
+          component: 'articles',
+          action: 'deletion_no_rows_affected',
+          operation: 'delete_article',
+        });
+
+        // Capturer l'échec inattendu avec Sentry
+        captureMessage('Article deletion failed - no rows affected', {
+          level: 'error',
+          tags: {
+            component: 'articles',
+            action: 'deletion_no_rows_affected',
+            error_category: 'database_inconsistency',
+            entity: 'blog_article',
+            operation: 'delete',
+          },
+          extra: {
+            requestId,
+            articleId: id,
+            ip: anonymizeIp(extractRealIp(request)),
+          },
+        });
+
+        if (client) await client.cleanup();
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              'Article could not be deleted. It may have already been deleted.',
+            error: 'Deletion condition not met',
+            requestId,
+          },
+          {
+            status: 400,
+            headers: {
+              'X-Request-ID': requestId,
+            },
+          },
+        );
+      }
+
+      logger.debug('Article deletion query executed successfully', {
+        requestId,
+        articleId: id,
+        articleTitle: deleteResult.rows[0].article_title,
+        component: 'articles',
+        action: 'query_success',
+        operation: 'delete_article',
+      });
+    } catch (deleteError) {
+      const errorCategory = categorizeError(deleteError);
+
+      logger.error('Article Deletion Error', {
+        category: errorCategory,
+        message: deleteError.message,
+        operation: 'DELETE FROM admin.articles',
+        table: 'admin.articles',
+        requestId,
+        articleId: id,
+        component: 'articles',
+        action: 'query_failed',
+      });
+
+      // Capturer l'erreur de suppression avec Sentry
+      captureDatabaseError(deleteError, {
+        tags: {
+          component: 'articles',
+          action: 'deletion_failed',
+          operation: 'DELETE',
+          entity: 'blog_article',
+        },
+        extra: {
+          requestId,
+          articleId: id,
+          table: 'admin.articles',
+          queryType: 'article_deletion',
+          postgresCode: deleteError.code,
+          postgresDetail: deleteError.detail ? '[Filtered]' : undefined,
+          ip: anonymizeIp(extractRealIp(request)),
+          rateLimitingApplied: true,
+        },
+      });
+
+      if (client) await client.cleanup();
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to delete article from database',
+          message: 'Something went wrong! Please try again',
+          requestId,
+        },
+        {
+          status: 500,
+          headers: {
+            'X-Request-ID': requestId,
+          },
+        },
+      );
+    }
+
+    // ===== ÉTAPE 8: SUPPRESSION DE L'IMAGE CLOUDINARY =====
+    const deletedArticle = deleteResult.rows[0];
+    const cloudinaryImageId =
+      imageID || articleToDelete.article_image || deletedArticle.article_image;
+
+    if (cloudinaryImageId) {
+      try {
+        logger.debug('Deleting image from Cloudinary', {
+          requestId,
+          articleId: id,
+          imageId: cloudinaryImageId,
+          component: 'articles',
+          action: 'cloudinary_delete_start',
+          operation: 'delete_article',
+        });
+
+        await cloudinary.uploader.destroy(cloudinaryImageId);
+
+        logger.debug('Image deleted from Cloudinary successfully', {
+          requestId,
+          articleId: id,
+          imageId: cloudinaryImageId,
+          component: 'articles',
+          action: 'cloudinary_delete_success',
+          operation: 'delete_article',
+        });
+      } catch (cloudError) {
+        logger.error('Error deleting image from Cloudinary', {
+          requestId,
+          articleId: id,
+          imageId: cloudinaryImageId,
+          error: cloudError.message,
+          component: 'articles',
+          action: 'cloudinary_delete_failed',
+          operation: 'delete_article',
+        });
+
+        // Capturer l'erreur Cloudinary avec Sentry (non critique car l'article est déjà supprimé)
+        captureException(cloudError, {
+          level: 'warning',
+          tags: {
+            component: 'articles',
+            action: 'cloudinary_delete_failed',
+            error_category: 'media_upload',
+            entity: 'blog_article',
+            operation: 'delete',
+          },
+          extra: {
+            requestId,
+            articleId: id,
+            imageId: cloudinaryImageId,
+            articleAlreadyDeleted: true,
+          },
+        });
+        // Ne pas faire échouer la suppression si Cloudinary échoue
+      }
+    } else {
+      logger.debug('No image to delete from Cloudinary', {
+        requestId,
+        articleId: id,
+        component: 'articles',
+        action: 'cloudinary_no_image',
+        operation: 'delete_article',
+      });
+    }
+
+    // ===== ÉTAPE 9: INVALIDATION DU CACHE APRÈS SUCCÈS =====
+    // Invalider le cache des articles après suppression réussie
+    const cacheInvalidation = invalidateArticlesCache(requestId, id);
+
+    // ===== ÉTAPE 10: SUCCÈS - LOG ET NETTOYAGE =====
+    const responseTime = Date.now() - startTime;
+
+    logger.info('Article deletion successful', {
+      articleId: id,
+      articleTitle: deletedArticle.article_title,
+      imageId: cloudinaryImageId,
+      response_time_ms: responseTime,
+      database_operations: 3, // connection + check + delete
+      cloudinary_operations: cloudinaryImageId ? 1 : 0,
+      cache_invalidated:
+        cacheInvalidation.listInvalidated ||
+        cacheInvalidation.singleInvalidated,
+      success: true,
+      requestId,
+      component: 'articles',
+      action: 'deletion_success',
+      entity: 'blog_article',
+      rateLimitingApplied: true,
+      operation: 'delete_article',
+    });
+
+    // Capturer le succès de la suppression avec Sentry
+    captureMessage('Article deletion completed successfully', {
+      level: 'info',
+      tags: {
+        component: 'articles',
+        action: 'deletion_success',
+        success: 'true',
+        entity: 'blog_article',
+        operation: 'delete',
+      },
+      extra: {
+        requestId,
+        articleId: id,
+        articleTitle: deletedArticle.article_title,
+        imageId: cloudinaryImageId,
+        responseTimeMs: responseTime,
+        databaseOperations: 3,
+        cloudinaryOperations: cloudinaryImageId ? 1 : 0,
+        cacheInvalidated:
+          cacheInvalidation.listInvalidated ||
+          cacheInvalidation.singleInvalidated,
+        ip: anonymizeIp(extractRealIp(request)),
+        rateLimitingApplied: true,
+      },
+    });
+
     if (client) await client.cleanup();
 
-    return NextResponse.json({
-      success: false,
-      message: 'Something goes wrong !Please try again',
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'Article and associated image deleted successfully',
+        article: {
+          id: id,
+          title: deletedArticle.article_title,
+        },
+        meta: {
+          requestId,
+          timestamp: new Date().toISOString(),
+          imageDeleted: !!cloudinaryImageId,
+        },
+      },
+      {
+        status: 200,
+        headers: {
+          'X-Request-ID': requestId,
+          'X-Response-Time': `${responseTime}ms`,
+        },
+      },
+    );
+  } catch (error) {
+    // ===== GESTION GLOBALE DES ERREURS =====
+    const errorCategory = categorizeError(error);
+    const responseTime = Date.now() - startTime;
+
+    logger.error('Global Delete Article Error', {
+      category: errorCategory,
+      response_time_ms: responseTime,
+      reached_global_handler: true,
+      error_name: error.name,
+      error_message: error.message,
+      stack_available: !!error.stack,
+      requestId,
+      articleId: id,
+      component: 'articles',
+      action: 'global_error_handler',
+      entity: 'blog_article',
+      operation: 'delete_article',
     });
-  } catch (e) {
+
+    // Capturer l'erreur globale avec Sentry
+    captureException(error, {
+      level: 'error',
+      tags: {
+        component: 'articles',
+        action: 'global_error_handler',
+        error_category: errorCategory,
+        critical: 'true',
+        entity: 'blog_article',
+        operation: 'delete',
+      },
+      extra: {
+        requestId,
+        articleId: id,
+        responseTimeMs: responseTime,
+        reachedGlobalHandler: true,
+        errorName: error.name,
+        stackAvailable: !!error.stack,
+        process: 'article_deletion',
+        ip: anonymizeIp(extractRealIp(request)),
+        rateLimitingApplied: true,
+      },
+    });
+
     if (client) await client.cleanup();
 
-    return NextResponse.json({
-      success: false,
-      message: 'Something goes wrong !Please try again',
-    });
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Internal server error',
+        message: 'Something went wrong! Please try again',
+        requestId,
+      },
+      {
+        status: 500,
+        headers: {
+          'X-Request-ID': requestId,
+          'X-Response-Time': `${responseTime}ms`,
+        },
+      },
+    );
   }
 }

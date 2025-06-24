@@ -547,160 +547,160 @@ export async function PUT(request, { params }) {
     }
 
     // ===== ÉTAPE 8: VÉRIFICATION DE L'UNICITÉ (pour les modifications) =====
-    if (
-      sanitizedPlatformName !== undefined ||
-      sanitizedPlatformNumber !== undefined
-    ) {
-      try {
-        let uniqueCheckQuery = `
-          SELECT platform_id, platform_name, platform_number 
-          FROM admin.platforms 
-          WHERE platform_id != $1 AND (
-        `;
+    // if (
+    //   sanitizedPlatformName !== undefined ||
+    //   sanitizedPlatformNumber !== undefined
+    // ) {
+    //   try {
+    //     let uniqueCheckQuery = `
+    //       SELECT platform_id, platform_name, platform_number
+    //       FROM admin.platforms
+    //       WHERE platform_id != $1 AND (
+    //     `;
 
-        const queryParams = [cleanedPlatformId];
-        const conditions = [];
-        let paramCounter = 2;
+    //     const queryParams = [cleanedPlatformId];
+    //     const conditions = [];
+    //     let paramCounter = 2;
 
-        if (sanitizedPlatformName !== undefined) {
-          conditions.push(`LOWER(platform_name) = LOWER($${paramCounter})`);
-          queryParams.push(sanitizedPlatformName);
-          paramCounter++;
-        }
+    //     if (sanitizedPlatformName !== undefined) {
+    //       conditions.push(`LOWER(platform_name) = LOWER($${paramCounter})`);
+    //       queryParams.push(sanitizedPlatformName);
+    //       paramCounter++;
+    //     }
 
-        if (sanitizedPlatformNumber !== undefined) {
-          conditions.push(`platform_number = $${paramCounter}`);
-          queryParams.push(sanitizedPlatformNumber);
-          paramCounter++;
-        }
+    //     if (sanitizedPlatformNumber !== undefined) {
+    //       conditions.push(`platform_number = $${paramCounter}`);
+    //       queryParams.push(sanitizedPlatformNumber);
+    //       paramCounter++;
+    //     }
 
-        uniqueCheckQuery += conditions.join(' OR ') + ')';
+    //     uniqueCheckQuery += conditions.join(' OR ') + ')';
 
-        logger.debug('Checking platform uniqueness for update', {
-          requestId,
-          platformId: cleanedPlatformId,
-          component: 'platforms',
-          action: 'uniqueness_check_start',
-          operation: 'edit_platform',
-          table: 'admin.platforms',
-        });
+    //     logger.debug('Checking platform uniqueness for update', {
+    //       requestId,
+    //       platformId: cleanedPlatformId,
+    //       component: 'platforms',
+    //       action: 'uniqueness_check_start',
+    //       operation: 'edit_platform',
+    //       table: 'admin.platforms',
+    //     });
 
-        const existingPlatform = await client.query(
-          uniqueCheckQuery,
-          queryParams,
-        );
+    //     const existingPlatform = await client.query(
+    //       uniqueCheckQuery,
+    //       queryParams,
+    //     );
 
-        if (existingPlatform.rows.length > 0) {
-          const conflictingPlatform = existingPlatform.rows[0];
-          let duplicateField = 'unknown';
+    //     if (existingPlatform.rows.length > 0) {
+    //       const conflictingPlatform = existingPlatform.rows[0];
+    //       let duplicateField = 'unknown';
 
-          if (
-            sanitizedPlatformName !== undefined &&
-            conflictingPlatform.platform_name.toLowerCase() ===
-              sanitizedPlatformName.toLowerCase()
-          ) {
-            duplicateField = 'platform_name';
-          } else if (
-            sanitizedPlatformNumber !== undefined &&
-            conflictingPlatform.platform_number === sanitizedPlatformNumber
-          ) {
-            duplicateField = 'platform_number';
-          }
+    //       if (
+    //         sanitizedPlatformName !== undefined &&
+    //         conflictingPlatform.platform_name.toLowerCase() ===
+    //           sanitizedPlatformName.toLowerCase()
+    //       ) {
+    //         duplicateField = 'platform_name';
+    //       } else if (
+    //         sanitizedPlatformNumber !== undefined &&
+    //         conflictingPlatform.platform_number === sanitizedPlatformNumber
+    //       ) {
+    //         duplicateField = 'platform_number';
+    //       }
 
-          logger.warn('Platform uniqueness violation detected during update', {
-            requestId,
-            platformId: cleanedPlatformId,
-            component: 'platforms',
-            action: 'uniqueness_violation',
-            operation: 'edit_platform',
-            duplicateField,
-            conflictingPlatformId: conflictingPlatform.platform_id,
-          });
+    //       logger.warn('Platform uniqueness violation detected during update', {
+    //         requestId,
+    //         platformId: cleanedPlatformId,
+    //         component: 'platforms',
+    //         action: 'uniqueness_violation',
+    //         operation: 'edit_platform',
+    //         duplicateField,
+    //         conflictingPlatformId: conflictingPlatform.platform_id,
+    //       });
 
-          // Capturer la violation d'unicité avec Sentry
-          captureMessage(
-            'Platform uniqueness violation detected during update',
-            {
-              level: 'warning',
-              tags: {
-                component: 'platforms',
-                action: 'uniqueness_violation',
-                error_category: 'business_logic',
-                entity: 'platform',
-                operation: 'update',
-              },
-              extra: {
-                requestId,
-                platformId: cleanedPlatformId,
-                duplicateField,
-                ip: anonymizeIp(extractRealIp(request)),
-              },
-            },
-          );
+    //       // Capturer la violation d'unicité avec Sentry
+    //       captureMessage(
+    //         'Platform uniqueness violation detected during update',
+    //         {
+    //           level: 'warning',
+    //           tags: {
+    //             component: 'platforms',
+    //             action: 'uniqueness_violation',
+    //             error_category: 'business_logic',
+    //             entity: 'platform',
+    //             operation: 'update',
+    //           },
+    //           extra: {
+    //             requestId,
+    //             platformId: cleanedPlatformId,
+    //             duplicateField,
+    //             ip: anonymizeIp(extractRealIp(request)),
+    //           },
+    //         },
+    //       );
 
-          if (client) await client.cleanup();
+    //       if (client) await client.cleanup();
 
-          const errorMessage =
-            duplicateField === 'platform_name'
-              ? 'A platform with this name already exists'
-              : 'A platform with this number already exists';
+    //       const errorMessage =
+    //         duplicateField === 'platform_name'
+    //           ? 'A platform with this name already exists'
+    //           : 'A platform with this number already exists';
 
-          return NextResponse.json(
-            {
-              error: errorMessage,
-              field: duplicateField,
-            },
-            { status: 409 },
-          );
-        }
+    //       return NextResponse.json(
+    //         {
+    //           error: errorMessage,
+    //           field: duplicateField,
+    //         },
+    //         { status: 409 },
+    //       );
+    //     }
 
-        logger.debug('Platform uniqueness check passed for update', {
-          requestId,
-          platformId: cleanedPlatformId,
-          component: 'platforms',
-          action: 'uniqueness_check_success',
-          operation: 'edit_platform',
-        });
-      } catch (uniqueCheckError) {
-        const errorCategory = categorizeError(uniqueCheckError);
+    //     logger.debug('Platform uniqueness check passed for update', {
+    //       requestId,
+    //       platformId: cleanedPlatformId,
+    //       component: 'platforms',
+    //       action: 'uniqueness_check_success',
+    //       operation: 'edit_platform',
+    //     });
+    //   } catch (uniqueCheckError) {
+    //     const errorCategory = categorizeError(uniqueCheckError);
 
-        logger.error('Platform Uniqueness Check Error during update', {
-          category: errorCategory,
-          message: uniqueCheckError.message,
-          operation: 'SELECT FROM platforms',
-          table: 'admin.platforms',
-          requestId,
-          platformId: cleanedPlatformId,
-          component: 'platforms',
-          action: 'uniqueness_check_failed',
-        });
+    //     logger.error('Platform Uniqueness Check Error during update', {
+    //       category: errorCategory,
+    //       message: uniqueCheckError.message,
+    //       operation: 'SELECT FROM platforms',
+    //       table: 'admin.platforms',
+    //       requestId,
+    //       platformId: cleanedPlatformId,
+    //       component: 'platforms',
+    //       action: 'uniqueness_check_failed',
+    //     });
 
-        // Capturer l'erreur de vérification d'unicité avec Sentry
-        captureDatabaseError(uniqueCheckError, {
-          tags: {
-            component: 'platforms',
-            action: 'uniqueness_check_failed',
-            operation: 'SELECT',
-            entity: 'platform',
-          },
-          extra: {
-            requestId,
-            platformId: cleanedPlatformId,
-            table: 'admin.platforms',
-            queryType: 'uniqueness_check_update',
-            postgresCode: uniqueCheckError.code,
-            postgresDetail: uniqueCheckError.detail ? '[Filtered]' : undefined,
-            ip: anonymizeIp(extractRealIp(request)),
-          },
-        });
+    //     // Capturer l'erreur de vérification d'unicité avec Sentry
+    //     captureDatabaseError(uniqueCheckError, {
+    //       tags: {
+    //         component: 'platforms',
+    //         action: 'uniqueness_check_failed',
+    //         operation: 'SELECT',
+    //         entity: 'platform',
+    //       },
+    //       extra: {
+    //         requestId,
+    //         platformId: cleanedPlatformId,
+    //         table: 'admin.platforms',
+    //         queryType: 'uniqueness_check_update',
+    //         postgresCode: uniqueCheckError.code,
+    //         postgresDetail: uniqueCheckError.detail ? '[Filtered]' : undefined,
+    //         ip: anonymizeIp(extractRealIp(request)),
+    //       },
+    //     });
 
-        if (client) await client.cleanup();
-        return NextResponse.json(
-          { error: 'Failed to verify platform uniqueness' },
-          { status: 500 },
-        );
-      }
-    }
+    //     if (client) await client.cleanup();
+    //     return NextResponse.json(
+    //       { error: 'Failed to verify platform uniqueness' },
+    //       { status: 500 },
+    //     );
+    //   }
+    // }
 
     // ===== ÉTAPE 9: MISE À JOUR EN BASE DE DONNÉES =====
     let result;
