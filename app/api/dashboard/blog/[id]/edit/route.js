@@ -1,92 +1,857 @@
 import { NextResponse } from 'next/server';
+import cloudinary from '@backend/cloudinary';
 import { getClient } from '@backend/dbConnect';
-import { addArticleSchema } from '@utils/schemas/articleSchema';
+import {
+  captureException,
+  captureMessage,
+  captureDatabaseError,
+} from '@/monitoring/sentry';
+import {
+  categorizeError,
+  generateRequestId,
+  extractRealIp,
+  anonymizeIp,
+} from '@/utils/helpers';
+import logger from '@/utils/logger';
+import isAuthenticatedUser from '@backend/authMiddleware';
+import { applyRateLimit } from '@backend/rateLimiter';
+import { sanitizeUpdateArticleInputs } from '@/utils/sanitizers/sanitizeArticleInputs';
+import {
+  updateArticleSchema,
+  articleIdSchema,
+} from '@/utils/schemas/articleSchema';
+import { dashboardCache, getDashboardCacheKey } from '@/utils/cache';
 
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute window
-const MAX_REQUESTS = 5; // Max 5 requests per minute
+// Force dynamic pour éviter la mise en cache statique
+export const dynamic = 'force-dynamic';
 
-let requestCounts = {};
+// ----- CONFIGURATION DU RATE LIMITING POUR LA MODIFICATION D'ARTICLES -----
 
-export async function PUT(req, { params }) {
-  let client;
+// Créer le middleware de rate limiting spécifique pour la modification d'articles
+const editArticleRateLimit = applyRateLimit('CONTENT_API', {
+  // Configuration personnalisée pour la modification d'articles
+  windowMs: 2 * 60 * 1000, // 2 minutes
+  max: 15, // 15 modifications par 2 minutes (plus restrictif que templates car contenu plus lourd)
+  message:
+    "Trop de tentatives de modification d'articles. Veuillez réessayer dans quelques minutes.",
+  skipSuccessfulRequests: false, // Compter toutes les modifications réussies
+  skipFailedRequests: false, // Compter aussi les échecs
+  prefix: 'edit_article', // Préfixe spécifique pour la modification d'articles
+
+  // Fonction personnalisée pour générer la clé (basée sur IP + ID de l'article)
+  keyGenerator: (req) => {
+    const ip = extractRealIp(req);
+    const url = req.url || req.nextUrl?.pathname || '';
+    const articleIdMatch = url.match(/blog\/([^/]+)\/edit/);
+    const articleId = articleIdMatch ? articleIdMatch[1] : 'unknown';
+    return `edit_article:ip:${ip}:article:${articleId}`;
+  },
+});
+
+// ----- FONCTION D'INVALIDATION DU CACHE -----
+const invalidateArticlesCache = (requestId, articleId) => {
   try {
-    const { id } = await params;
+    // Invalider le cache de la liste des articles
+    const listCacheKey = getDashboardCacheKey('articles_list', {
+      endpoint: 'dashboard_articles',
+      version: '1.0',
+    });
 
-    // Handle rate limiting
-    const ip = req.headers.get('x-forwarded-for') || req.socket.remoteAddress;
-    if (!ip) {
+    // Invalider le cache de l'article spécifique
+    const singleCacheKey = getDashboardCacheKey('single_article_view', {
+      articleId: articleId,
+      endpoint: 'single_article_view',
+      version: '1.0',
+    });
+
+    const listCacheInvalidated =
+      dashboardCache.blogArticles.delete(listCacheKey);
+    const singleCacheInvalidated =
+      dashboardCache.singleBlogArticle.delete(singleCacheKey);
+
+    logger.debug('Articles cache invalidation', {
+      requestId,
+      articleId,
+      component: 'articles',
+      action: 'cache_invalidation',
+      operation: 'edit_article',
+      listCacheKey,
+      singleCacheKey,
+      listInvalidated: listCacheInvalidated,
+      singleInvalidated: singleCacheInvalidated,
+    });
+
+    // Capturer l'invalidation du cache avec Sentry
+    captureMessage('Articles cache invalidated after modification', {
+      level: 'info',
+      tags: {
+        component: 'articles',
+        action: 'cache_invalidation',
+        entity: 'blog_article',
+        operation: 'update',
+      },
+      extra: {
+        requestId,
+        articleId,
+        listCacheKey,
+        singleCacheKey,
+        listInvalidated: listCacheInvalidated,
+        singleInvalidated: singleCacheInvalidated,
+      },
+    });
+
+    return {
+      listInvalidated: listCacheInvalidated,
+      singleInvalidated: singleCacheInvalidated,
+    };
+  } catch (cacheError) {
+    logger.warn('Failed to invalidate articles cache', {
+      requestId,
+      articleId,
+      component: 'articles',
+      action: 'cache_invalidation_failed',
+      operation: 'edit_article',
+      error: cacheError.message,
+    });
+
+    captureException(cacheError, {
+      level: 'warning',
+      tags: {
+        component: 'articles',
+        action: 'cache_invalidation_failed',
+        error_category: 'cache',
+        entity: 'blog_article',
+        operation: 'update',
+      },
+      extra: {
+        requestId,
+        articleId,
+      },
+    });
+
+    return { listInvalidated: false, singleInvalidated: false };
+  }
+};
+
+// ----- API ROUTE PRINCIPALE AVEC RATE LIMITING -----
+
+export async function PUT(request, { params }) {
+  let client;
+  const startTime = Date.now();
+  const requestId = generateRequestId();
+  const { id } = params;
+
+  logger.info('Edit Article API called', {
+    timestamp: new Date().toISOString(),
+    requestId,
+    articleId: id,
+    component: 'articles',
+    action: 'api_start',
+    method: 'PUT',
+    operation: 'edit_article',
+  });
+
+  // Capturer le début du processus de modification d'article
+  captureMessage('Edit article process started', {
+    level: 'info',
+    tags: {
+      component: 'articles',
+      action: 'process_start',
+      api_endpoint: '/api/dashboard/blog/[id]/edit',
+      entity: 'blog_article',
+      operation: 'update',
+    },
+    extra: {
+      requestId,
+      articleId: id,
+      timestamp: new Date().toISOString(),
+      method: 'PUT',
+    },
+  });
+
+  try {
+    // ===== ÉTAPE 1: VALIDATION DE L'ID DE L'ARTICLE =====
+    logger.debug('Validating article ID', {
+      requestId,
+      articleId: id,
+      component: 'articles',
+      action: 'id_validation_start',
+      operation: 'edit_article',
+    });
+
+    try {
+      await articleIdSchema.validate({ id }, { abortEarly: false });
+
+      logger.debug('Article ID validation passed', {
+        requestId,
+        articleId: id,
+        component: 'articles',
+        action: 'id_validation_success',
+        operation: 'edit_article',
+      });
+    } catch (idValidationError) {
+      const errorCategory = categorizeError(idValidationError);
+
+      logger.error('Article ID Validation Error', {
+        category: errorCategory,
+        articleId: id,
+        validation_errors: idValidationError.inner?.map(
+          (err) => err.message,
+        ) || [idValidationError.message],
+        requestId,
+        component: 'articles',
+        action: 'id_validation_failed',
+        operation: 'edit_article',
+      });
+
+      // Capturer l'erreur de validation d'ID avec Sentry
+      captureMessage('Article ID validation failed', {
+        level: 'warning',
+        tags: {
+          component: 'articles',
+          action: 'id_validation_failed',
+          error_category: 'validation',
+          entity: 'blog_article',
+          operation: 'update',
+        },
+        extra: {
+          requestId,
+          articleId: id,
+          validationErrors: idValidationError.inner?.map(
+            (err) => err.message,
+          ) || [idValidationError.message],
+        },
+      });
+
       return NextResponse.json(
-        { success: false, message: 'Unable to determine IP address.' },
-        { status: 400 },
+        {
+          success: false,
+          error: 'Invalid article ID format',
+          details: idValidationError.inner?.map((err) => err.message) || [
+            idValidationError.message,
+          ],
+          requestId,
+        },
+        {
+          status: 400,
+          headers: {
+            'X-Request-ID': requestId,
+          },
+        },
       );
     }
 
-    const currentTime = Date.now();
-    if (!requestCounts[ip]) {
-      requestCounts[ip] = { count: 1, firstRequestTime: currentTime };
-    } else {
-      const elapsedTime = currentTime - requestCounts[ip].firstRequestTime;
-      if (
-        elapsedTime < RATE_LIMIT_WINDOW &&
-        requestCounts[ip].count >= MAX_REQUESTS
-      ) {
-        return NextResponse.json(
-          { success: false, message: 'Rate limit exceeded. Try again later.' },
-          { status: 429 },
-        );
-      }
-      if (elapsedTime >= RATE_LIMIT_WINDOW) {
-        requestCounts[ip] = { count: 1, firstRequestTime: currentTime };
-      } else {
-        requestCounts[ip].count++;
-      }
+    // ===== ÉTAPE 2: APPLIQUER LE RATE LIMITING =====
+    logger.debug('Applying rate limiting for edit article API', {
+      requestId,
+      articleId: id,
+      component: 'articles',
+      action: 'rate_limit_start',
+      operation: 'edit_article',
+    });
+
+    const rateLimitResponse = await editArticleRateLimit(request);
+
+    // Si le rate limiter retourne une réponse, cela signifie que la limite est dépassée
+    if (rateLimitResponse) {
+      logger.warn('Edit article API rate limit exceeded', {
+        requestId,
+        articleId: id,
+        component: 'articles',
+        action: 'rate_limit_exceeded',
+        operation: 'edit_article',
+        ip: anonymizeIp(extractRealIp(request)),
+      });
+
+      // Capturer l'événement de rate limiting avec Sentry
+      captureMessage('Edit article API rate limit exceeded', {
+        level: 'warning',
+        tags: {
+          component: 'articles',
+          action: 'rate_limit_exceeded',
+          error_category: 'rate_limiting',
+          entity: 'blog_article',
+          operation: 'update',
+        },
+        extra: {
+          requestId,
+          articleId: id,
+          ip: anonymizeIp(extractRealIp(request)),
+          userAgent:
+            request.headers.get('user-agent')?.substring(0, 100) || 'unknown',
+        },
+      });
+
+      return rateLimitResponse; // Retourner directement la réponse 429
     }
 
-    const formData = await req.json();
-    const { title, text, imageUrl } = formData;
+    logger.debug('Rate limiting passed successfully', {
+      requestId,
+      articleId: id,
+      component: 'articles',
+      action: 'rate_limit_passed',
+      operation: 'edit_article',
+    });
 
-    // Trim inputs
-    const cleanedData = {
-      title: title?.trim(),
-      text: text?.trim(),
-      imageUrl: imageUrl?.trim(),
+    // ===== ÉTAPE 3: VÉRIFICATION AUTHENTIFICATION =====
+    logger.debug('Verifying user authentication', {
+      requestId,
+      articleId: id,
+      component: 'articles',
+      action: 'auth_verification_start',
+      operation: 'edit_article',
+    });
+
+    await isAuthenticatedUser(request, NextResponse);
+
+    logger.debug('User authentication verified successfully', {
+      requestId,
+      articleId: id,
+      component: 'articles',
+      action: 'auth_verification_success',
+      operation: 'edit_article',
+    });
+
+    // ===== ÉTAPE 4: CONNEXION BASE DE DONNÉES =====
+    try {
+      client = await getClient();
+      logger.debug('Database connection successful', {
+        requestId,
+        articleId: id,
+        component: 'articles',
+        action: 'db_connection_success',
+        operation: 'edit_article',
+      });
+    } catch (dbConnectionError) {
+      const errorCategory = categorizeError(dbConnectionError);
+
+      logger.error('Database Connection Error during article edit', {
+        category: errorCategory,
+        message: dbConnectionError.message,
+        timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
+        requestId,
+        articleId: id,
+        component: 'articles',
+        action: 'db_connection_failed',
+        operation: 'edit_article',
+      });
+
+      // Capturer l'erreur de connexion DB avec Sentry
+      captureDatabaseError(dbConnectionError, {
+        tags: {
+          component: 'articles',
+          action: 'db_connection_failed',
+          operation: 'connection',
+          entity: 'blog_article',
+        },
+        extra: {
+          requestId,
+          articleId: id,
+          timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
+          ip: anonymizeIp(extractRealIp(request)),
+          rateLimitingApplied: true,
+        },
+      });
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Database connection failed',
+          requestId,
+        },
+        {
+          status: 503,
+          headers: {
+            'X-Request-ID': requestId,
+          },
+        },
+      );
+    }
+
+    // ===== ÉTAPE 5: PARSING ET VALIDATION DU BODY =====
+    let body;
+    try {
+      body = await request.json();
+      logger.debug('Request body parsed successfully', {
+        requestId,
+        articleId: id,
+        component: 'articles',
+        action: 'body_parse_success',
+        operation: 'edit_article',
+      });
+    } catch (parseError) {
+      const errorCategory = categorizeError(parseError);
+
+      logger.error('JSON Parse Error during article edit', {
+        category: errorCategory,
+        message: parseError.message,
+        requestId,
+        articleId: id,
+        component: 'articles',
+        action: 'json_parse_error',
+        operation: 'edit_article',
+        headers: {
+          'content-type': request.headers.get('content-type'),
+          'user-agent': request.headers.get('user-agent')?.substring(0, 100),
+        },
+      });
+
+      // Capturer l'erreur de parsing avec Sentry
+      captureException(parseError, {
+        level: 'error',
+        tags: {
+          component: 'articles',
+          action: 'json_parse_error',
+          error_category: categorizeError(parseError),
+          operation: 'update',
+        },
+        extra: {
+          requestId,
+          articleId: id,
+          contentType: request.headers.get('content-type'),
+          userAgent: request.headers.get('user-agent')?.substring(0, 100),
+        },
+      });
+
+      if (client) await client.cleanup();
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid JSON in request body',
+          requestId,
+        },
+        {
+          status: 400,
+          headers: {
+            'X-Request-ID': requestId,
+          },
+        },
+      );
+    }
+
+    const { title, text, imageUrl, isActive, oldImageId } = body;
+
+    logger.debug('Article data extracted from request', {
+      requestId,
+      articleId: id,
+      component: 'articles',
+      action: 'data_extraction',
+      operation: 'edit_article',
+      hasTitle: !!title,
+      hasText: !!text,
+      hasImageUrl: !!imageUrl,
+      hasIsActive: isActive !== undefined,
+      hasOldImageId: !!oldImageId,
+    });
+
+    // ===== ÉTAPE 6: SANITIZATION DES INPUTS =====
+    logger.debug('Sanitizing article inputs', {
+      requestId,
+      articleId: id,
+      component: 'articles',
+      action: 'input_sanitization',
+      operation: 'edit_article',
+    });
+
+    // Préparer les données pour la sanitization
+    const dataToSanitize = {
+      title,
+      text,
+      imageUrl,
+      isActive,
     };
 
-    // Validate input
+    // Filtrer les valeurs undefined pour la sanitization
+    const filteredDataToSanitize = Object.fromEntries(
+      Object.entries(dataToSanitize).filter(
+        ([_, value]) => value !== undefined,
+      ),
+    );
+
+    const sanitizedInputs = sanitizeUpdateArticleInputs(filteredDataToSanitize);
+
+    // Récupérer les données sanitizées
+    const {
+      title: sanitizedTitle,
+      text: sanitizedText,
+      imageUrl: sanitizedImageUrl,
+      isActive: sanitizedIsActive,
+    } = sanitizedInputs;
+
+    const finalData = {
+      title: sanitizedTitle,
+      text: sanitizedText,
+      imageUrl: sanitizedImageUrl,
+      isActive: sanitizedIsActive,
+      oldImageId, // Non sanitizé car utilisé pour la logique interne
+    };
+
+    logger.debug('Input sanitization completed', {
+      requestId,
+      articleId: id,
+      component: 'articles',
+      action: 'input_sanitization_completed',
+      operation: 'edit_article',
+      fieldsCount: Object.keys(filteredDataToSanitize).length,
+    });
+
+    // ===== ÉTAPE 7: VALIDATION AVEC YUP =====
     try {
-      await addArticleSchema.validate(cleanedData, { abortEarly: false });
+      // Filtrer les champs undefined pour la validation
+      const dataToValidate = Object.fromEntries(
+        Object.entries({
+          title: sanitizedTitle,
+          text: sanitizedText,
+          imageUrl: sanitizedImageUrl,
+          isActive: sanitizedIsActive,
+        }).filter(([_, value]) => value !== undefined),
+      );
+
+      // Valider les données avec le schema Yup pour les mises à jour
+      await updateArticleSchema.validate(dataToValidate, {
+        abortEarly: false,
+      });
+
+      logger.debug('Article validation with Yup passed', {
+        requestId,
+        articleId: id,
+        component: 'articles',
+        action: 'yup_validation_success',
+        operation: 'edit_article',
+        validatedFields: Object.keys(dataToValidate),
+      });
     } catch (validationError) {
+      const errorCategory = categorizeError(validationError);
+
+      logger.error('Article Validation Error with Yup', {
+        category: errorCategory,
+        failed_fields: validationError.inner?.map((err) => err.path) || [],
+        total_errors: validationError.inner?.length || 0,
+        requestId,
+        articleId: id,
+        component: 'articles',
+        action: 'yup_validation_failed',
+        operation: 'edit_article',
+      });
+
+      // Capturer l'erreur de validation avec Sentry
+      captureMessage('Article validation failed with Yup schema', {
+        level: 'warning',
+        tags: {
+          component: 'articles',
+          action: 'yup_validation_failed',
+          error_category: 'validation',
+          entity: 'blog_article',
+          operation: 'update',
+        },
+        extra: {
+          requestId,
+          articleId: id,
+          failedFields: validationError.inner?.map((err) => err.path) || [],
+          totalErrors: validationError.inner?.length || 0,
+          validationErrors:
+            validationError.inner?.map((err) => ({
+              field: err.path,
+              message: err.message,
+            })) || [],
+        },
+      });
+
+      if (client) await client.cleanup();
+
+      const errors = {};
+      validationError.inner.forEach((error) => {
+        errors[error.path] = error.message;
+      });
+
       return NextResponse.json(
         {
           success: false,
           message: 'Validation failed',
-          errors: validationError.inner.map((err) => err.message),
+          errors,
+          requestId,
         },
-        { status: 422 },
+        {
+          status: 422,
+          headers: {
+            'X-Request-ID': requestId,
+          },
+        },
       );
     }
 
-    client = await getClient();
+    // ===== ÉTAPE 8: GESTION DE L'IMAGE CLOUDINARY =====
+    // Si l'image a changé, supprimer l'ancienne image de Cloudinary
+    if (oldImageId && sanitizedImageUrl && oldImageId !== sanitizedImageUrl) {
+      try {
+        logger.debug('Deleting old image from Cloudinary', {
+          requestId,
+          articleId: id,
+          oldImageId,
+          component: 'articles',
+          action: 'cloudinary_delete_start',
+          operation: 'edit_article',
+        });
 
-    const query = {
-      name: 'update-article',
-      text: `
+        await cloudinary.uploader.destroy(oldImageId);
+
+        logger.debug('Old image deleted from Cloudinary successfully', {
+          requestId,
+          articleId: id,
+          oldImageId,
+          component: 'articles',
+          action: 'cloudinary_delete_success',
+          operation: 'edit_article',
+        });
+      } catch (cloudError) {
+        logger.error('Error deleting old image from Cloudinary', {
+          requestId,
+          articleId: id,
+          oldImageId,
+          error: cloudError.message,
+          component: 'articles',
+          action: 'cloudinary_delete_failed',
+          operation: 'edit_article',
+        });
+
+        // Capturer l'erreur Cloudinary avec Sentry (non critique)
+        captureException(cloudError, {
+          level: 'warning',
+          tags: {
+            component: 'articles',
+            action: 'cloudinary_delete_failed',
+            error_category: 'media_upload',
+            entity: 'blog_article',
+            operation: 'update',
+          },
+          extra: {
+            requestId,
+            articleId: id,
+            oldImageId,
+          },
+        });
+        // Ne pas arrêter le processus pour une erreur Cloudinary
+      }
+    }
+
+    // ===== ÉTAPE 9: MISE À JOUR EN BASE DE DONNÉES =====
+    let result;
+    try {
+      // Construire la requête dynamiquement selon les champs fournis
+      const updateFields = [];
+      const updateValues = [];
+      let paramCounter = 1;
+
+      if (sanitizedTitle !== undefined) {
+        updateFields.push(`article_title = $${paramCounter}`);
+        updateValues.push(sanitizedTitle);
+        paramCounter++;
+      }
+
+      if (sanitizedText !== undefined) {
+        updateFields.push(`article_text = $${paramCounter}`);
+        updateValues.push(sanitizedText);
+        paramCounter++;
+      }
+
+      if (sanitizedImageUrl !== undefined) {
+        updateFields.push(`article_image = $${paramCounter}`);
+        updateValues.push(sanitizedImageUrl);
+        paramCounter++;
+      }
+
+      if (sanitizedIsActive !== undefined) {
+        updateFields.push(`is_active = $${paramCounter}`);
+        updateValues.push(sanitizedIsActive);
+        paramCounter++;
+      }
+
+      // Toujours mettre à jour la date de modification
+      updateFields.push(`article_updated = NOW()`);
+
+      // Ajouter l'ID de l'article à la fin
+      updateValues.push(id);
+
+      const queryText = `
         UPDATE admin.articles 
-        SET article_title = $1, article_text = $2, article_image = $3, is_active = $4 
-        WHERE article_id = $4 
-        RETURNING *
-      `,
-      values: [cleanedData.title, cleanedData.text, cleanedData.imageUrl, id],
-    };
+        SET ${updateFields.join(', ')}
+        WHERE article_id = $${paramCounter}
+        RETURNING 
+          article_id,
+          article_title,
+          article_text,
+          article_image,
+          is_active,
+          TO_CHAR(article_created, 'DD/MM/YYYY') as created,
+          TO_CHAR(article_updated, 'DD/MM/YYYY') as updated
+      `;
 
-    const { rows } = await client.query(query);
+      logger.debug('Executing article update query', {
+        requestId,
+        articleId: id,
+        component: 'articles',
+        action: 'query_start',
+        operation: 'edit_article',
+        table: 'admin.articles',
+        fieldsToUpdate: updateFields.length - 1, // -1 pour exclure article_updated
+      });
 
-    if (rows.length === 0) {
+      result = await client.query(queryText, updateValues);
+
+      if (result.rows.length === 0) {
+        logger.warn('Article not found for update', {
+          requestId,
+          articleId: id,
+          component: 'articles',
+          action: 'article_not_found',
+          operation: 'edit_article',
+        });
+
+        // Capturer l'article non trouvé avec Sentry
+        captureMessage('Article not found for update', {
+          level: 'warning',
+          tags: {
+            component: 'articles',
+            action: 'article_not_found',
+            error_category: 'not_found',
+            entity: 'blog_article',
+            operation: 'update',
+          },
+          extra: {
+            requestId,
+            articleId: id,
+            ip: anonymizeIp(extractRealIp(request)),
+          },
+        });
+
+        if (client) await client.cleanup();
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'Article not found',
+            requestId,
+          },
+          {
+            status: 404,
+            headers: {
+              'X-Request-ID': requestId,
+            },
+          },
+        );
+      }
+
+      logger.debug('Article update query executed successfully', {
+        requestId,
+        articleId: id,
+        component: 'articles',
+        action: 'query_success',
+        operation: 'edit_article',
+        updatedFields: updateFields.length - 1,
+      });
+    } catch (updateError) {
+      const errorCategory = categorizeError(updateError);
+
+      logger.error('Article Update Error', {
+        category: errorCategory,
+        message: updateError.message,
+        operation: 'UPDATE admin.articles',
+        table: 'admin.articles',
+        requestId,
+        articleId: id,
+        component: 'articles',
+        action: 'query_failed',
+      });
+
+      // Capturer l'erreur de mise à jour avec Sentry
+      captureDatabaseError(updateError, {
+        tags: {
+          component: 'articles',
+          action: 'update_failed',
+          operation: 'UPDATE',
+          entity: 'blog_article',
+        },
+        extra: {
+          requestId,
+          articleId: id,
+          table: 'admin.articles',
+          queryType: 'article_update',
+          postgresCode: updateError.code,
+          postgresDetail: updateError.detail ? '[Filtered]' : undefined,
+          ip: anonymizeIp(extractRealIp(request)),
+          rateLimitingApplied: true,
+        },
+      });
+
+      if (client) await client.cleanup();
       return NextResponse.json(
-        { success: false, message: 'Article not found' },
-        { status: 404 },
+        {
+          success: false,
+          error: 'Failed to update article',
+          message: updateError.message,
+          requestId,
+        },
+        {
+          status: 500,
+          headers: {
+            'X-Request-ID': requestId,
+          },
+        },
       );
     }
+
+    // ===== ÉTAPE 10: INVALIDATION DU CACHE APRÈS SUCCÈS =====
+    const updatedArticle = result.rows[0];
+
+    // Invalider le cache des articles après modification réussie
+    const cacheInvalidation = invalidateArticlesCache(requestId, id);
+
+    // ===== ÉTAPE 11: SUCCÈS - LOG ET NETTOYAGE =====
+    const responseTime = Date.now() - startTime;
+
+    logger.info('Article update successful', {
+      articleId: id,
+      articleTitle: updatedArticle.article_title,
+      response_time_ms: responseTime,
+      database_operations: 2, // connection + update
+      cache_invalidated:
+        cacheInvalidation.listInvalidated ||
+        cacheInvalidation.singleInvalidated,
+      success: true,
+      requestId,
+      component: 'articles',
+      action: 'update_success',
+      entity: 'blog_article',
+      rateLimitingApplied: true,
+      operation: 'edit_article',
+      sanitizationApplied: true,
+      yupValidationApplied: true,
+    });
+
+    // Capturer le succès de la mise à jour avec Sentry
+    captureMessage('Article update completed successfully', {
+      level: 'info',
+      tags: {
+        component: 'articles',
+        action: 'update_success',
+        success: 'true',
+        entity: 'blog_article',
+        operation: 'update',
+      },
+      extra: {
+        requestId,
+        articleId: id,
+        articleTitle: updatedArticle.article_title,
+        responseTimeMs: responseTime,
+        databaseOperations: 2,
+        cacheInvalidated:
+          cacheInvalidation.listInvalidated ||
+          cacheInvalidation.singleInvalidated,
+        ip: anonymizeIp(extractRealIp(request)),
+        rateLimitingApplied: true,
+        sanitizationApplied: true,
+        yupValidationApplied: true,
+      },
+    });
 
     if (client) await client.cleanup();
 
@@ -94,19 +859,83 @@ export async function PUT(req, { params }) {
       {
         success: true,
         message: 'Article updated successfully',
-        data: rows[0],
+        data: updatedArticle,
+        meta: {
+          requestId,
+          timestamp: new Date().toISOString(),
+          fieldsUpdated: Object.keys(finalData).filter(
+            (key) => finalData[key] !== undefined && key !== 'oldImageId',
+          ).length,
+        },
       },
-      { status: 200 },
+      {
+        status: 200,
+        headers: {
+          'X-Request-ID': requestId,
+          'X-Response-Time': `${responseTime}ms`,
+        },
+      },
     );
   } catch (error) {
+    // ===== GESTION GLOBALE DES ERREURS =====
+    const errorCategory = categorizeError(error);
+    const responseTime = Date.now() - startTime;
+
+    logger.error('Global Edit Article Error', {
+      category: errorCategory,
+      response_time_ms: responseTime,
+      reached_global_handler: true,
+      error_name: error.name,
+      error_message: error.message,
+      stack_available: !!error.stack,
+      requestId,
+      articleId: id,
+      component: 'articles',
+      action: 'global_error_handler',
+      entity: 'blog_article',
+      operation: 'edit_article',
+    });
+
+    // Capturer l'erreur globale avec Sentry
+    captureException(error, {
+      level: 'error',
+      tags: {
+        component: 'articles',
+        action: 'global_error_handler',
+        error_category: errorCategory,
+        critical: 'true',
+        entity: 'blog_article',
+        operation: 'update',
+      },
+      extra: {
+        requestId,
+        articleId: id,
+        responseTimeMs: responseTime,
+        reachedGlobalHandler: true,
+        errorName: error.name,
+        stackAvailable: !!error.stack,
+        process: 'article_update',
+        ip: anonymizeIp(extractRealIp(request)),
+        rateLimitingApplied: true,
+      },
+    });
+
     if (client) await client.cleanup();
-    console.error('Server Error:', error);
+
     return NextResponse.json(
       {
         success: false,
-        message: 'Internal server error',
+        error: 'Internal server error',
+        message: 'Failed to update article',
+        requestId,
       },
-      { status: 500 },
+      {
+        status: 500,
+        headers: {
+          'X-Request-ID': requestId,
+          'X-Response-Time': `${responseTime}ms`,
+        },
+      },
     );
   }
 }
