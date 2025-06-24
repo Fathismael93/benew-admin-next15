@@ -88,7 +88,6 @@ export const updateArticleSchema = yup
 
     imageUrl: yup
       .string()
-      .required('Article image is required')
       .min(1, 'Invalid article image')
       .max(200, 'Article image ID is too long')
       .matches(/^[a-zA-Z0-9._/-]+$/, 'Invalid article image format')
