@@ -496,6 +496,7 @@ export async function POST(request) {
           article_text,
           article_image
         ) VALUES ($1, $2, $3)
+        RETURNING article_id, article_title
       `;
 
       const values = [sanitizedTitle, sanitizedText, sanitizedImageUrl];
@@ -561,8 +562,6 @@ export async function POST(request) {
         { status: 500 },
       );
     }
-
-    console.log('Article added successfully', result);
 
     // ===== ÉTAPE 9: INVALIDATION DU CACHE APRÈS SUCCÈS =====
     const newArticleId = result.rows[0].article_id;

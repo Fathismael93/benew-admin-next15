@@ -60,7 +60,7 @@ const CreatePostPage = () => {
         setIsSuccess(true);
         // Redirect after a short delay
         setTimeout(() => {
-          redirect('/dashboard/blog/');
+          redirect('/dashboard/blog');
         }, 1500);
       }
     } catch (error) {
