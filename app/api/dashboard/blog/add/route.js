@@ -562,7 +562,7 @@ export async function POST(request) {
       );
     }
 
-    console.log('Article added successfully', result.rows);
+    console.log('Article added successfully', result);
 
     // ===== ÉTAPE 9: INVALIDATION DU CACHE APRÈS SUCCÈS =====
     const newArticleId = result.rows[0].article_id;
