@@ -1,7 +1,5 @@
 // ===== FICHIER: utils/sanitizers/sanitizeArticleInputs.js =====
 
-import DOMPurify from 'isomorphic-dompurify';
-
 /**
  * Sanitize les données du formulaire d'ajout d'article
  * @param {Object} formData - Les données du formulaire à sanitizer
@@ -28,78 +26,37 @@ export const sanitizeArticleInputs = (formData) => {
   const sanitizeContent = (content) => {
     if (typeof content !== 'string') return content;
 
-    // Configuration DOMPurify pour le contenu d'article
-    const purifyConfig = {
-      ALLOWED_TAGS: [
-        'p',
-        'br',
-        'strong',
-        'em',
-        'u',
-        'h1',
-        'h2',
-        'h3',
-        'h4',
-        'h5',
-        'h6',
-        'ul',
-        'ol',
-        'li',
-        'blockquote',
-        'a',
-        'img',
-        'code',
-        'pre',
-        'table',
-        'thead',
-        'tbody',
-        'tr',
-        'th',
-        'td',
-        'div',
-        'span',
-      ],
-      ALLOWED_ATTR: [
-        'href',
-        'target',
-        'rel',
-        'src',
-        'alt',
-        'title',
-        'class',
-        'data-*',
-        'style',
-      ],
-      ALLOWED_URI_REGEXP:
-        /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|cid|xmpp|xxx):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
-      ALLOW_DATA_ATTR: true,
-      ALLOW_UNKNOWN_PROTOCOLS: false,
-      RETURN_DOM: false,
-      RETURN_DOM_FRAGMENT: false,
-      RETURN_DOM_IMPORT: false,
-      SANITIZE_DOM: true,
-      KEEP_CONTENT: true,
-      IN_PLACE: false,
-      USE_PROFILES: false,
-    };
-
-    // Sanitize avec DOMPurify
-    let sanitized = DOMPurify.sanitize(content, purifyConfig);
-
-    // Nettoyages supplémentaires
-    sanitized = sanitized
-      // Supprime les espaces multiples dans le texte
-      .replace(/\s+/g, ' ')
-      // Supprime les paragraphes vides
-      .replace(/<p(\s[^>]*)?>(\s|&nbsp;)*<\/p>/gi, '')
-      // Nettoie les attributs style suspects
-      .replace(
-        /style\s*=\s*["'][^"']*(?:javascript|expression|behavior|binding)[^"']*["']/gi,
-        '',
-      )
-      .trim();
-
-    return sanitized;
+    return (
+      content
+        // Supprime complètement les balises script
+        .replace(/<script[^>]*>.*?<\/script>/gis, '')
+        // Supprime les balises potentiellement dangereuses
+        .replace(
+          /<(iframe|object|embed|form|input|button|select|textarea)[^>]*>.*?<\/\1>/gis,
+          '',
+        )
+        // Supprime les attributs d'événements JavaScript
+        .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '')
+        // Supprime les protocoles JavaScript
+        .replace(/javascript\s*:/gi, '')
+        .replace(/vbscript\s*:/gi, '')
+        // Supprime les expressions CSS dangereuses
+        .replace(/expression\s*\(/gi, '')
+        .replace(/behavior\s*:/gi, '')
+        .replace(/binding\s*:/gi, '')
+        // Nettoie les attributs style suspects
+        .replace(
+          /style\s*=\s*["'][^"']*(?:javascript|expression|behavior|binding)[^"']*["']/gi,
+          '',
+        )
+        // Supprime les espaces multiples
+        .replace(/\s+/g, ' ')
+        // Supprime les paragraphes vides
+        .replace(/<p(\s[^>]*)?>(\s|&nbsp;)*<\/p>/gi, '')
+        // Supprime les caractères de contrôle
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+        .trim()
+    );
   };
 
   // Fonction pour sanitizer l'ID d'image Cloudinary
@@ -248,16 +205,21 @@ export const sanitizeArticleInputsStrict = (formData) => {
 export const extractPlainTextFromHTML = (htmlContent) => {
   if (typeof htmlContent !== 'string') return '';
 
-  // Utilise DOMPurify pour enlever tout le HTML
-  const plainText = DOMPurify.sanitize(htmlContent, {
-    ALLOWED_TAGS: [],
-    ALLOWED_ATTR: [],
-    KEEP_CONTENT: true,
-  });
-
-  return plainText
-    .replace(/\s+/g, ' ') // Remplace les espaces multiples
-    .trim();
+  return (
+    htmlContent
+      // Supprime toutes les balises HTML
+      .replace(/<[^>]*>/g, '')
+      // Décode les entités HTML basiques
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&#039;/g, "'")
+      .replace(/&nbsp;/g, ' ')
+      // Remplace les espaces multiples
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
 };
 
 /**
@@ -276,6 +238,10 @@ export const isHTMLContentSafe = (htmlContent) => {
     /data:text\/html/gi,
     /eval\s*\(/gi,
     /expression\s*\(/gi,
+    /<iframe/gi,
+    /<object/gi,
+    /<embed/gi,
+    /<form/gi,
   ];
 
   return !dangerous.some((pattern) => pattern.test(htmlContent));
@@ -291,22 +257,21 @@ export const sanitizeArticleMetadata = (metadata) => {
 
   const sanitized = {};
 
-  // Description/excerpt
+  // Description/excerpt - supprime le HTML
   if (metadata.description) {
-    sanitized.description = DOMPurify.sanitize(metadata.description, {
-      ALLOWED_TAGS: [],
-      ALLOWED_ATTR: [],
-      KEEP_CONTENT: true,
-    }).slice(0, 300);
+    sanitized.description = metadata.description
+      .replace(/<[^>]*>/g, '') // Supprime HTML
+      .replace(/[<>'"&]/g, '') // Supprime caractères suspects
+      .slice(0, 300);
   }
 
-  // Tags
+  // Tags - même logique que templateName
   if (Array.isArray(metadata.tags)) {
     sanitized.tags = metadata.tags
       .filter((tag) => typeof tag === 'string')
       .map((tag) => tag.replace(/[^a-zA-Z0-9\s-]/g, '').trim())
       .filter((tag) => tag.length > 0)
-      .slice(0, 10); // Limite à 10 tags
+      .slice(0, 10);
   }
 
   // Catégorie
