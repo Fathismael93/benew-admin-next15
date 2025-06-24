@@ -392,10 +392,10 @@ export async function DELETE(request, { params }) {
       });
     }
 
-    // ===== ÉTAPE 6: VÉRIFICATION DE L'EXISTENCE DE L'ARTICLE =====
+    // ===== ÉTAPE 6: VÉRIFICATION DE L'EXISTENCE ET DE L'ÉTAT DE L'ARTICLE =====
     let articleToDelete;
     try {
-      logger.debug('Checking article existence', {
+      logger.debug('Checking article existence and status', {
         requestId,
         articleId: id,
         component: 'articles',
@@ -452,7 +452,50 @@ export async function DELETE(request, { params }) {
 
       articleToDelete = checkResult.rows[0];
 
-      logger.debug('Article found for deletion', {
+      // NOUVELLE VÉRIFICATION: Vérifier que l'article est inactif (condition obligatoire pour la suppression)
+      if (articleToDelete.is_active === true) {
+        logger.warn('Attempted to delete active article', {
+          requestId,
+          articleId: id,
+          articleTitle: articleToDelete.article_title,
+          isActive: articleToDelete.is_active,
+          component: 'articles',
+          action: 'active_article_deletion_blocked',
+          operation: 'delete_article',
+        });
+
+        // Capturer la tentative de suppression d'un article actif avec Sentry
+        captureMessage('Attempted to delete active article', {
+          level: 'warning',
+          tags: {
+            component: 'articles',
+            action: 'active_article_deletion_blocked',
+            error_category: 'business_rule_violation',
+            entity: 'blog_article',
+            operation: 'delete',
+          },
+          extra: {
+            requestId,
+            articleId: id,
+            articleTitle: articleToDelete.article_title,
+            isActive: articleToDelete.is_active,
+            ip: anonymizeIp(extractRealIp(request)),
+          },
+        });
+
+        if (client) await client.cleanup();
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              'Cannot delete active article. Please deactivate the article first.',
+            error: 'Article is currently active',
+          },
+          { status: 400 },
+        );
+      }
+
+      logger.debug('Article validation passed - inactive article found', {
         requestId,
         articleId: id,
         articleTitle: articleToDelete.article_title,
@@ -522,9 +565,11 @@ export async function DELETE(request, { params }) {
         table: 'admin.articles',
       });
 
+      // MODIFICATION: Supprimer uniquement si is_active = false (sécurité supplémentaire)
       deleteResult = await client.query(
         `DELETE FROM admin.articles 
         WHERE article_id = $1
+        AND is_active = false
         RETURNING article_title, article_image`,
         [id],
       );
@@ -561,7 +606,7 @@ export async function DELETE(request, { params }) {
           {
             success: false,
             message:
-              'Article could not be deleted. It may have already been deleted.',
+              'Article could not be deleted. It may be active or already deleted.',
             error: 'Deletion condition not met',
             requestId,
           },
