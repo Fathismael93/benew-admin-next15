@@ -494,7 +494,7 @@ export async function POST(request) {
         INSERT INTO admin.articles (
           article_title,
           article_text,
-          article_image,
+          article_image
         ) VALUES ($1, $2, $3)
       `;
 
