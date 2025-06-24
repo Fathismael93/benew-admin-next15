@@ -431,6 +431,11 @@ export async function PUT(request, { params }) {
     }
 
     const { title, text, imageUrl, isActive, oldImageId } = body;
+    console.log('title', title);
+    console.log('text', text);
+    console.log('imageUrl', imageUrl);
+    console.log('isActive', isActive);
+    console.log('oldImageId', oldImageId);
 
     logger.debug('Article data extracted from request', {
       requestId,
