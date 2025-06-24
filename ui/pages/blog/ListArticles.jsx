@@ -353,14 +353,14 @@ const ListArticles = ({ data }) => {
                   </div>
 
                   <PostCard
-                    blog_id={article.article_id}
-                    title={article.article_title}
-                    picture={article.article_image}
+                    blog_id={article.articleId}
+                    title={article.articleTitle}
+                    picture={article.articleImage}
                     created={article.created}
                     updated={article.updated}
-                    isActive={article.is_active}
+                    isActive={article.isActive}
                     deleteArticle={() =>
-                      deleteArticle(article.article_id, article.article_image)
+                      deleteArticle(article.articleId, article.articleImage)
                     }
                   />
 
