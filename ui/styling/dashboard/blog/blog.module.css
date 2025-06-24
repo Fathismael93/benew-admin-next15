@@ -849,11 +849,6 @@
   background-color: rgba(93, 87, 201, 0.1);
 }
 
-/* Amélioration des tooltips */
-[title] {
-  position: relative;
-}
-
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;
