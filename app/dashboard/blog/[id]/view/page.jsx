@@ -1,24 +1,26 @@
 /* eslint-disable no-unused-vars */
 
 import SingleArticle from '@/ui/pages/blog/SingleArticle';
+import { articleIDSchema } from '@utils/schemas/articleSchema';
+import axios from 'axios';
 
 async function getSinglePost(id) {
-  let data = [];
+  let data;
   try {
-    // await articleIDSchema.validate({ id });
+    await articleIDSchema.validate({ id });
 
-    // await axios
-    //   .get(
-    //     `https://benew-admin-next15.vercel.app/api/dashboard/blog/${id}/view`,
-    //   )
-    //   .then((response) => {
-    //     data = response.data.data;
-    //   })
-    //   .catch((e) => {
-    //     console.log(e);
-    //   });
+    await axios
+      .get(
+        `https://benew-admin-next15.vercel.app/api/dashboard/blog/${id}/view`,
+      )
+      .then((response) => {
+        data = response.data.data;
+      })
+      .catch((e) => {
+        console.log(e);
+      });
 
-    // console.log(data);
+    console.log(data);
 
     return data;
   } catch (error) {

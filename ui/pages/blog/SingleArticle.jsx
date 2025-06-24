@@ -83,7 +83,7 @@ const SingleArticle = ({ article }) => {
           </div>
         </div>
       ) : (
-        <h2 className="error-center">{errorMessage}</h2>
+        <h2 className="error-center">{'Une erreur est survenue !'}</h2>
       )}
     </section>
   );

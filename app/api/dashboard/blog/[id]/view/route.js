@@ -367,7 +367,6 @@ export async function GET(req, { params }) {
             TO_CHAR(article_updated, 'DD/MM/YYYY') as updated
           FROM admin.articles 
           WHERE article_id = $1
-            AND is_active = true
         `,
         values: [id],
       };
