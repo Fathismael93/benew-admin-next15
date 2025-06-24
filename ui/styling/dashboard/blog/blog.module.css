@@ -1,34 +1,882 @@
+/* Container principal */
 .container {
-    background-color: var(--bgSoft);
-    padding: 20px;
-    border-radius: 10px;
-    margin-top: 20px;
+  background-color: var(--bgSoft);
+  padding: 2rem;
+  border-radius: 12px;
+  margin-top: 20px;
+  max-width: 100%;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Header Section */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+  gap: 1rem;
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.pageTitle {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.stats {
+  display: flex;
+  gap: 2rem;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.statNumber {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.statNumber.active {
+  color: #4ade80;
+}
+
+.statNumber.inactive {
+  color: #f87171;
+}
+
+.statLabel {
+  font-size: 0.875rem;
+  color: var(--textSoft);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.headerRight {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.refreshButton {
+  padding: 0.75rem;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1.25rem;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.refreshButton:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.refreshButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
   }
-  
-  .top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 20px;
+  to {
+    transform: rotate(360deg);
   }
-  
-  .addButton {
-    padding: 10px;
-    background-color: #5d57c9;
-    color: var(--text);
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 1rem;
+}
+
+.addButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: #5d57c9;
+  color: var(--text);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.addButton:hover {
+  background-color: #6b63d1;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(93, 87, 201, 0.4);
+}
+
+/* Controls Section */
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.searchAndFilters {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex: 1;
+}
+
+.searchWrapper {
+  position: relative;
+  flex: 1;
+  max-width: 400px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--textSoft);
+  font-size: 1.25rem;
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 3rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: #5d57c9;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.searchInput::placeholder {
+  color: var(--textSoft);
+}
+
+.filters {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.filterSelect,
+.sortSelect {
+  padding: 0.75rem 1rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 140px;
+}
+
+.filterSelect:focus,
+.sortSelect:focus {
+  outline: none;
+  border-color: #5d57c9;
+}
+
+.filterSelect option,
+.sortSelect option {
+  background-color: var(--bgSoft);
+  color: var(--text);
+}
+
+.viewControls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.bulkSelect {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.selectAllCheckbox {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: #5d57c9;
+}
+
+.selectAllLabel {
+  font-size: 0.875rem;
+  color: var(--textSoft);
+  white-space: nowrap;
+}
+
+.viewModeToggle {
+  display: flex;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.viewModeButton {
+  padding: 0.75rem;
+  background-color: transparent;
+  border: none;
+  color: var(--textSoft);
+  cursor: pointer;
+  font-size: 1.25rem;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.viewModeButton:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.viewModeButton.active {
+  background-color: #5d57c9;
+  color: white;
+}
+
+/* Bulk Actions Bar */
+.bulkActionsBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background-color: rgba(93, 87, 201, 0.1);
+  border: 1px solid rgba(93, 87, 201, 0.3);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
   }
-  
-  .bottom {
-    width: 100%;
-    padding: 10px;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
-  
-  .dashboardContainer {
-    display: flex;
+}
+
+.bulkActionsText {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.bulkActions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.bulkActionButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+}
+
+.bulkActionButton:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.bulkActionButton.danger {
+  background-color: rgba(248, 113, 113, 0.2);
+  color: #f87171;
+}
+
+.bulkActionButton.danger:hover {
+  background-color: rgba(248, 113, 113, 0.3);
+}
+
+/* Results Info */
+.resultsInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+  color: var(--textSoft);
+}
+
+.resultsCount {
+  font-weight: 500;
+}
+
+.searchInfo {
+  color: #5d57c9;
+  font-weight: 500;
+}
+
+/* Articles Container */
+.articlesContainer {
+  width: 100%;
+}
+
+.articlesGrid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.gridView {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+.listView {
+  grid-template-columns: 1fr;
+}
+
+.articleWrapper {
+  position: relative;
+  background-color: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  padding: 1rem;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.articleWrapper:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+.articleSelection {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 10;
+}
+
+.articleCheckbox {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: #5d57c9;
+}
+
+.articleCard {
+  position: relative;
+  padding-top: 0.5rem;
+}
+
+.articleStatus {
+  position: absolute;
+  top: -0.5rem;
+  right: 0;
+  z-index: 5;
+}
+
+.statusBadge {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.statusBadge.active {
+  background-color: rgba(74, 222, 128, 0.2);
+  color: #4ade80;
+}
+
+.statusBadge.inactive {
+  background-color: rgba(248, 113, 113, 0.2);
+  color: #f87171;
+}
+
+.articleActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.actionButton {
+  padding: 0.5rem;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.actionButton:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.actionButton.danger {
+  background-color: rgba(248, 113, 113, 0.2);
+  color: #f87171;
+}
+
+.actionButton.danger:hover {
+  background-color: rgba(248, 113, 113, 0.3);
+}
+
+/* Loading State */
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  gap: 1rem;
+  color: var(--textSoft);
+}
+
+.loadingSpinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(93, 87, 201, 0.3);
+  border-top: 3px solid #5d57c9;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Empty State */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+  gap: 1rem;
+}
+
+.emptyIcon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.emptyTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.emptyDescription {
+  font-size: 1rem;
+  color: var(--textSoft);
+  margin: 0;
+  max-width: 400px;
+}
+
+.emptyActionButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: #5d57c9;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  margin-top: 1rem;
+}
+
+.emptyActionButton:hover {
+  background-color: #6b63d1;
+  transform: translateY(-2px);
+}
+
+/* Modal */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modalContent {
+  background-color: var(--bgSoft);
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 400px;
+  width: 90%;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modalTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 1rem 0;
+}
+
+.modalText {
+  color: var(--textSoft);
+  margin: 0 0 2rem 0;
+  line-height: 1.5;
+}
+
+.modalActions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.modalCancelButton {
+  padding: 0.75rem 1.5rem;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+}
+
+.modalCancelButton:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.modalDeleteButton {
+  padding: 0.75rem 1.5rem;
+  background-color: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.modalDeleteButton:hover {
+  background-color: #b91c1c;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .container {
+    padding: 1.5rem;
+  }
+
+  .header {
     flex-direction: column;
-    gap: 0.8rem;
+    align-items: flex-start;
+    gap: 1.5rem;
   }
+
+  .headerRight {
+    align-self: stretch;
+    justify-content: flex-end;
+  }
+
+  .stats {
+    gap: 1.5rem;
+  }
+
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .searchAndFilters {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .filters {
+    flex-wrap: wrap;
+  }
+
+  .viewControls {
+    justify-content: space-between;
+  }
+
+  .gridView {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+    margin-top: 1rem;
+  }
+
+  .pageTitle {
+    font-size: 1.5rem;
+  }
+
+  .stats {
+    gap: 1rem;
+  }
+
+  .statNumber {
+    font-size: 1.25rem;
+  }
+
+  .statLabel {
+    font-size: 0.75rem;
+  }
+
+  .addButton span {
+    display: none;
+  }
+
+  .searchInput {
+    font-size: 0.875rem;
+  }
+
+  .filters {
+    gap: 0.5rem;
+  }
+
+  .filterSelect,
+  .sortSelect {
+    min-width: 120px;
+    font-size: 0.75rem;
+  }
+
+  .bulkActionsBar {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .bulkActions {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .gridView {
+    grid-template-columns: 1fr;
+  }
+
+  .articleWrapper {
+    padding: 0.75rem;
+  }
+
+  .modalContent {
+    padding: 1.5rem;
+    margin: 1rem;
+  }
+
+  .modalActions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .modalCancelButton,
+  .modalDeleteButton {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 0.75rem;
+  }
+
+  .pageTitle {
+    font-size: 1.25rem;
+  }
+
+  .stats {
+    flex-direction: row;
+    gap: 0.75rem;
+  }
+
+  .statItem {
+    flex: 1;
+  }
+
+  .headerRight {
+    gap: 0.5rem;
+  }
+
+  .addButton {
+    padding: 0.75rem;
+  }
+
+  .refreshButton {
+    padding: 0.75rem;
+  }
+
+  .searchAndFilters {
+    gap: 0.75rem;
+  }
+
+  .viewModeToggle {
+    order: -1;
+  }
+
+  .bulkSelect {
+    flex: 1;
+  }
+
+  .selectAllLabel {
+    font-size: 0.75rem;
+  }
+
+  .articleActions {
+    gap: 0.25rem;
+  }
+
+  .actionButton {
+    padding: 0.4rem;
+    font-size: 0.875rem;
+  }
+}
+
+/* Animations et transitions supplémentaires */
+.articleWrapper {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Focus states pour accessibilité */
+.searchInput:focus,
+.filterSelect:focus,
+.sortSelect:focus,
+.selectAllCheckbox:focus,
+.articleCheckbox:focus,
+.viewModeButton:focus,
+.actionButton:focus,
+.addButton:focus,
+.refreshButton:focus {
+  box-shadow: 0 0 0 3px rgba(93, 87, 201, 0.3);
+}
+
+/* Hover effects pour les cartes */
+.articleWrapper:hover .actionButton {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.actionButton {
+  opacity: 0.7;
+  transform: translateY(2px);
+  transition: all 0.3s ease;
+}
+
+/* États de sélection */
+.articleWrapper:has(.articleCheckbox:checked) {
+  border-color: #5d57c9;
+  background-color: rgba(93, 87, 201, 0.1);
+}
+
+/* Amélioration des tooltips */
+[title] {
+  position: relative;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Print styles */
+@media print {
+  .container {
+    background: white;
+    color: black;
+    box-shadow: none;
+  }
+
+  .controls,
+  .bulkActionsBar,
+  .articleActions,
+  .articleSelection {
+    display: none;
+  }
+
+  .articleWrapper {
+    break-inside: avoid;
+    margin-bottom: 1rem;
+    border: 1px solid #ccc;
+  }
+}
