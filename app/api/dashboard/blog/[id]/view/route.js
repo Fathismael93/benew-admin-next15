@@ -14,12 +14,6 @@ import {
 import logger from '@/utils/logger';
 import { applyRateLimit } from '@backend/rateLimiter';
 import { articleIdSchema } from '@utils/schemas/articleSchema';
-import {
-  dashboardCache,
-  getDashboardCacheKey,
-  getCacheHeaders,
-  cacheEvents,
-} from '@/utils/cache';
 
 // Force dynamic pour éviter la mise en cache statique
 export const dynamic = 'force-dynamic';
@@ -205,97 +199,6 @@ export async function GET(req, { params }) {
         },
       );
     }
-
-    // ===== ÉTAPE 3: VÉRIFICATION DU CACHE =====
-    const cacheKey = getDashboardCacheKey('single_article_view', {
-      articleId: id,
-      endpoint: 'single_article_view',
-      version: '1.0',
-    });
-
-    logger.debug('Checking cache for single article', {
-      requestId,
-      component: 'single_article',
-      action: 'cache_check_start',
-      cacheKey,
-      articleId: id,
-    });
-
-    // Vérifier si l'article est en cache
-    const cachedArticle = dashboardCache.singleBlogArticle.get(cacheKey);
-
-    if (cachedArticle) {
-      const responseTime = Date.now() - startTime;
-
-      logger.info('Single article served from cache', {
-        articleId: id,
-        response_time_ms: responseTime,
-        cache_hit: true,
-        requestId,
-        component: 'single_article',
-        action: 'cache_hit',
-        entity: 'blog_article',
-        rateLimitingApplied: true,
-      });
-
-      // Capturer le succès du cache avec Sentry
-      captureMessage('Single article served from cache successfully', {
-        level: 'info',
-        tags: {
-          component: 'single_article',
-          action: 'cache_hit',
-          success: 'true',
-          entity: 'blog_article',
-        },
-        extra: {
-          requestId,
-          articleId: id,
-          responseTimeMs: responseTime,
-          cacheKey,
-          ip: anonymizeIp(extractRealIp(req)),
-          rateLimitingApplied: true,
-        },
-      });
-
-      // Émettre un événement de cache hit
-      cacheEvents.emit('dashboard_hit', {
-        key: cacheKey,
-        cache: dashboardCache.singleBlogArticle,
-        entityType: 'single_blog_article',
-        requestId,
-        articleId: id,
-      });
-
-      // Retourner l'article en cache avec headers appropriés
-      return NextResponse.json(
-        {
-          success: true,
-          message: 'Article retrieved successfully',
-          data: cachedArticle,
-          meta: {
-            requestId,
-            timestamp: new Date().toISOString(),
-            fromCache: true,
-          },
-        },
-        {
-          status: 200,
-          headers: {
-            'X-Request-ID': requestId,
-            'X-Response-Time': `${responseTime}ms`,
-            'X-Cache-Status': 'HIT',
-            ...getCacheHeaders('singleBlogArticle'),
-          },
-        },
-      );
-    }
-
-    logger.debug('Cache miss, fetching from database', {
-      requestId,
-      component: 'single_article',
-      action: 'cache_miss',
-      articleId: id,
-    });
 
     // ===== ÉTAPE 4: CONNEXION BASE DE DONNÉES =====
     try {
@@ -546,48 +449,6 @@ export async function GET(req, { params }) {
       hasImage: !!sanitizedArticle.article_image,
     });
 
-    // ===== ÉTAPE 8: MISE EN CACHE DES DONNÉES =====
-    logger.debug('Caching article data', {
-      requestId,
-      component: 'single_article',
-      action: 'cache_set_start',
-      articleId: id,
-    });
-
-    // Mettre l'article en cache
-    const cacheSuccess = dashboardCache.singleBlogArticle.set(
-      cacheKey,
-      sanitizedArticle,
-    );
-
-    if (cacheSuccess) {
-      logger.debug('Article data cached successfully', {
-        requestId,
-        component: 'single_article',
-        action: 'cache_set_success',
-        articleId: id,
-        cacheKey,
-      });
-
-      // Émettre un événement de cache set
-      cacheEvents.emit('dashboard_set', {
-        key: cacheKey,
-        cache: dashboardCache.singleBlogArticle,
-        entityType: 'single_blog_article',
-        requestId,
-        articleId: id,
-        size: 1,
-      });
-    } else {
-      logger.warn('Failed to cache article data', {
-        requestId,
-        component: 'single_article',
-        action: 'cache_set_failed',
-        articleId: id,
-        cacheKey,
-      });
-    }
-
     // ===== ÉTAPE 9: SUCCÈS - LOG ET NETTOYAGE =====
     const responseTime = Date.now() - startTime;
 
@@ -602,8 +463,6 @@ export async function GET(req, { params }) {
       action: 'fetch_success',
       entity: 'blog_article',
       rateLimitingApplied: true,
-      cacheMiss: true,
-      cacheSet: cacheSuccess,
     });
 
     // Capturer le succès de la récupération avec Sentry
@@ -623,8 +482,6 @@ export async function GET(req, { params }) {
         databaseOperations: 2,
         ip: anonymizeIp(extractRealIp(req)),
         rateLimitingApplied: true,
-        cacheMiss: true,
-        cacheSet: cacheSuccess,
       },
     });
 
@@ -646,8 +503,6 @@ export async function GET(req, { params }) {
         headers: {
           'X-Request-ID': requestId,
           'X-Response-Time': `${responseTime}ms`,
-          'X-Cache-Status': 'MISS',
-          ...getCacheHeaders('singleBlogArticle'),
         },
       },
     );

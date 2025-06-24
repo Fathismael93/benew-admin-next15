@@ -53,17 +53,8 @@ const invalidateArticlesCache = (requestId, articleId) => {
       version: '1.0',
     });
 
-    // Invalider le cache de l'article spécifique
-    const singleCacheKey = getDashboardCacheKey('single_article_view', {
-      articleId: articleId,
-      endpoint: 'single_article_view',
-      version: '1.0',
-    });
-
     const listCacheInvalidated =
       dashboardCache.blogArticles.delete(listCacheKey);
-    const singleCacheInvalidated =
-      dashboardCache.singleBlogArticle.delete(singleCacheKey);
 
     logger.debug('Articles cache invalidation', {
       requestId,
@@ -72,9 +63,7 @@ const invalidateArticlesCache = (requestId, articleId) => {
       action: 'cache_invalidation',
       operation: 'delete_article',
       listCacheKey,
-      singleCacheKey,
       listInvalidated: listCacheInvalidated,
-      singleInvalidated: singleCacheInvalidated,
     });
 
     // Capturer l'invalidation du cache avec Sentry
@@ -90,15 +79,12 @@ const invalidateArticlesCache = (requestId, articleId) => {
         requestId,
         articleId,
         listCacheKey,
-        singleCacheKey,
         listInvalidated: listCacheInvalidated,
-        singleInvalidated: singleCacheInvalidated,
       },
     });
 
     return {
       listInvalidated: listCacheInvalidated,
-      singleInvalidated: singleCacheInvalidated,
     };
   } catch (cacheError) {
     logger.warn('Failed to invalidate articles cache', {
@@ -125,7 +111,7 @@ const invalidateArticlesCache = (requestId, articleId) => {
       },
     });
 
-    return { listInvalidated: false, singleInvalidated: false };
+    return { listInvalidated: false };
   }
 };
 
@@ -788,9 +774,7 @@ export async function DELETE(request, { params }) {
         responseTimeMs: responseTime,
         databaseOperations: 3,
         cloudinaryOperations: cloudinaryImageId ? 1 : 0,
-        cacheInvalidated:
-          cacheInvalidation.listInvalidated ||
-          cacheInvalidation.singleInvalidated,
+        cacheInvalidated: cacheInvalidation.listInvalidated,
         ip: anonymizeIp(extractRealIp(request)),
         rateLimitingApplied: true,
       },

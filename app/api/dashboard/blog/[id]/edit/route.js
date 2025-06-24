@@ -58,17 +58,8 @@ const invalidateArticlesCache = (requestId, articleId) => {
       version: '1.0',
     });
 
-    // Invalider le cache de l'article spécifique
-    const singleCacheKey = getDashboardCacheKey('single_article_view', {
-      articleId: articleId,
-      endpoint: 'single_article_view',
-      version: '1.0',
-    });
-
     const listCacheInvalidated =
       dashboardCache.blogArticles.delete(listCacheKey);
-    const singleCacheInvalidated =
-      dashboardCache.singleBlogArticle.delete(singleCacheKey);
 
     logger.debug('Articles cache invalidation', {
       requestId,
@@ -77,9 +68,7 @@ const invalidateArticlesCache = (requestId, articleId) => {
       action: 'cache_invalidation',
       operation: 'edit_article',
       listCacheKey,
-      singleCacheKey,
       listInvalidated: listCacheInvalidated,
-      singleInvalidated: singleCacheInvalidated,
     });
 
     // Capturer l'invalidation du cache avec Sentry
@@ -95,15 +84,12 @@ const invalidateArticlesCache = (requestId, articleId) => {
         requestId,
         articleId,
         listCacheKey,
-        singleCacheKey,
         listInvalidated: listCacheInvalidated,
-        singleInvalidated: singleCacheInvalidated,
       },
     });
 
     return {
       listInvalidated: listCacheInvalidated,
-      singleInvalidated: singleCacheInvalidated,
     };
   } catch (cacheError) {
     logger.warn('Failed to invalidate articles cache', {
@@ -130,7 +116,7 @@ const invalidateArticlesCache = (requestId, articleId) => {
       },
     });
 
-    return { listInvalidated: false, singleInvalidated: false };
+    return { listInvalidated: false };
   }
 };
 
@@ -431,11 +417,6 @@ export async function PUT(request, { params }) {
     }
 
     const { title, text, imageUrl, isActive, oldImageId } = body;
-    console.log('title', title);
-    console.log('text', text);
-    console.log('imageUrl', imageUrl);
-    console.log('isActive', isActive);
-    console.log('oldImageId', oldImageId);
 
     logger.debug('Article data extracted from request', {
       requestId,
@@ -466,8 +447,6 @@ export async function PUT(request, { params }) {
       imageUrl,
       isActive,
     };
-
-    console.log('Data to sanitize:', dataToSanitize);
 
     // Filtrer les valeurs undefined pour la sanitization
     const filteredDataToSanitize = Object.fromEntries(
@@ -502,8 +481,6 @@ export async function PUT(request, { params }) {
       operation: 'edit_article',
       fieldsCount: Object.keys(filteredDataToSanitize).length,
     });
-
-    console.log('Sanitized Inputs:', sanitizedInputs);
 
     // ===== ÉTAPE 7: VALIDATION AVEC YUP =====
     try {
@@ -823,9 +800,7 @@ export async function PUT(request, { params }) {
       articleTitle: updatedArticle.article_title,
       response_time_ms: responseTime,
       database_operations: 2, // connection + update
-      cache_invalidated:
-        cacheInvalidation.listInvalidated ||
-        cacheInvalidation.singleInvalidated,
+      cache_invalidated: cacheInvalidation.listInvalidated,
       success: true,
       requestId,
       component: 'articles',

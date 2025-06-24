@@ -52,24 +52,13 @@ const invalidateArticlesCache = (requestId) => {
     const listCacheInvalidated =
       dashboardCache.blogArticles.delete(listCacheKey);
 
-    // Invalider aussi le cache des articles individuels si nécessaire
-    const singleCacheKey = getDashboardCacheKey('single_article', {
-      endpoint: 'dashboard_blog_single',
-      version: '1.0',
-    });
-
-    const singleCacheInvalidated =
-      dashboardCache.singleBlogArticle.delete(singleCacheKey);
-
     logger.debug('Articles cache invalidation', {
       requestId,
       component: 'blog',
       action: 'cache_invalidation',
       operation: 'add_article',
       listCacheKey,
-      singleCacheKey,
       listInvalidated: listCacheInvalidated,
-      singleInvalidated: singleCacheInvalidated,
     });
 
     // Capturer l'invalidation du cache avec Sentry
@@ -84,15 +73,12 @@ const invalidateArticlesCache = (requestId) => {
       extra: {
         requestId,
         listCacheKey,
-        singleCacheKey,
         listInvalidated: listCacheInvalidated,
-        singleInvalidated: singleCacheInvalidated,
       },
     });
 
     return {
       listInvalidated: listCacheInvalidated,
-      singleInvalidated: singleCacheInvalidated,
     };
   } catch (cacheError) {
     logger.warn('Failed to invalidate articles cache', {
@@ -119,7 +105,6 @@ const invalidateArticlesCache = (requestId) => {
 
     return {
       listInvalidated: false,
-      singleInvalidated: false,
     };
   }
 };
@@ -578,9 +563,7 @@ export async function POST(request) {
       articleTitle: newArticleTitle,
       response_time_ms: responseTime,
       database_operations: 2, // connection + insert
-      cache_invalidated:
-        cacheInvalidationResult.listInvalidated ||
-        cacheInvalidationResult.singleInvalidated,
+      cache_invalidated: cacheInvalidationResult.listInvalidated,
       success: true,
       requestId,
       component: 'blog',
