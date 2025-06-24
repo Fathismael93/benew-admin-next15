@@ -849,11 +849,6 @@
   background-color: rgba(93, 87, 201, 0.1);
 }
 
-/* Smooth scrolling */
-html {
-  scroll-behavior: smooth;
-}
-
 /* Print styles */
 @media print {
   .container {
