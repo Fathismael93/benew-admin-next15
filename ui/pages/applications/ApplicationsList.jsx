@@ -20,9 +20,6 @@ function ApplicationsList({ data }) {
     setApplications(data);
   }, [deleteId, isDeleting]);
 
-  console.log('Applications: ');
-  console.log(applications);
-
   const handleDelete = async (id, application_images) => {
     if (confirm('Are you sure you want to delete this application?')) {
       setDeleteId(id);
@@ -112,6 +109,7 @@ function ApplicationsList({ data }) {
                   Edit
                 </Link>
                 <button
+                  disabled={app.is_active || isDeleting}
                   className={`${styles.actionButton} ${styles.deleteButton}`}
                   onClick={() =>
                     handleDelete(app.application_id, app.application_images)

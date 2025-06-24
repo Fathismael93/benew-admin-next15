@@ -110,23 +110,15 @@ const EditArticle = ({ data }) => {
       // Validation complète
       await updateArticleSchema.validate(formData, { abortEarly: false });
 
-      // Préparer toutes les données (modifiées + non-modifiées)
-      const changedData = { ...formData };
+      // Préparer les données modifiées uniquement
+      const changedData = {};
+      Object.keys(formData).forEach((key) => {
+        if (formData[key] !== originalData[key]) {
+          changedData[key] = formData[key];
+        }
+      });
 
-      // Ajouter l'ancien imageId si l'image a changé (pour la suppression Cloudinary)
-      if (
-        formData.imageUrl !== originalData.imageUrl &&
-        originalData.imageUrl
-      ) {
-        changedData.oldImageId = originalData.imageUrl;
-      }
-
-      // Vérifier s'il y a vraiment des changements
-      const hasRealChanges = Object.keys(formData).some(
-        (key) => formData[key] !== originalData[key],
-      );
-
-      if (!hasRealChanges) {
+      if (Object.keys(changedData).length === 0) {
         setErrors({ general: 'Aucune modification détectée.' });
         setIsLoading(false);
         return;

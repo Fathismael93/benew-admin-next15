@@ -395,13 +395,6 @@ export async function PUT(request, { params }) {
       oldImageId,
     } = body;
 
-    console.log('templateName', templateName);
-    console.log('templateImageId', templateImageId);
-    console.log('templateHasWeb', templateHasWeb);
-    console.log('templateHasMobile', templateHasMobile);
-    console.log('isActive', isActive);
-    console.log('oldImageId', oldImageId);
-
     logger.debug('Template data extracted from request', {
       requestId,
       templateId: id,
