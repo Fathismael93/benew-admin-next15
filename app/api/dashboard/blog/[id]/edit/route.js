@@ -462,6 +462,8 @@ export async function PUT(request, { params }) {
       isActive,
     };
 
+    console.log('Data to sanitize:', dataToSanitize);
+
     // Filtrer les valeurs undefined pour la sanitization
     const filteredDataToSanitize = Object.fromEntries(
       Object.entries(dataToSanitize).filter(
