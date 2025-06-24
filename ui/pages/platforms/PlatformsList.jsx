@@ -127,6 +127,7 @@ const PlatformsList = ({ data }) => {
                   </button>
                 </Link>
                 <button
+                  disabled={platform.is_active || isDeleting}
                   className={`${styles.actionButton} ${styles.deleteButton}`}
                   onClick={() => handleDelete(platform.platform_id)}
                 >
