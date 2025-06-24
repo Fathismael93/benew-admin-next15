@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 import { MdAdd } from 'react-icons/md';
@@ -8,9 +8,11 @@ import { MdAdd } from 'react-icons/md';
 import styles from '@/ui/styling/dashboard/blog/blog.module.css';
 import Search from '@/ui/components/dashboard/search';
 import PostCard from '@/ui/components/dashboard/PostCard';
+import { useRouter } from 'next/navigation';
 
 const ListArticles = ({ data }) => {
   const [articles, setArticles] = useState(data);
+  const router = useRouter();
 
   useEffect(() => {
     setArticles(data);
@@ -28,7 +30,7 @@ const ListArticles = ({ data }) => {
 
       if (response.ok) {
         // Remove the template from the UI without refreshing
-        setIsSuccess(true);
+        router.refresh();
         window.location.reload();
       } else {
         console.error('Failed to delete template');
