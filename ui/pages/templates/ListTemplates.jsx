@@ -25,7 +25,6 @@ import Search from '@/ui/components/dashboard/search';
 const ListTemplates = ({ data: initialData }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteId, setDeleteId] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState(''); // 'active' ou 'confirm'
   const [templateToDelete, setTemplateToDelete] = useState(null);
@@ -107,13 +106,6 @@ const ListTemplates = ({ data: initialData }) => {
           return prevTemplates;
         });
       }
-
-      // Retirer de la liste des supprimés
-      // setDeletedTemplates((prev) => {
-      //   const newSet = new Set(prev);
-      //   newSet.delete(templateId);
-      //   return newSet;
-      // });
     },
     [initialData],
   );
@@ -123,7 +115,6 @@ const ListTemplates = ({ data: initialData }) => {
 
     const templateId = templateToDelete.template_id;
 
-    setDeleteId(templateId);
     setIsDeleting(true);
     setShowModal(false);
 
@@ -169,7 +160,6 @@ const ListTemplates = ({ data: initialData }) => {
       alert('Erreur de connexion lors de la suppression du template');
     } finally {
       setIsDeleting(false);
-      setDeleteId(null);
       setTemplateToDelete(null);
       router.refresh(); // Rafraîchir la page pour mettre à jour l'état
     }
@@ -351,7 +341,7 @@ const ListTemplates = ({ data: initialData }) => {
                       {template.template_name}
                     </h3>
                     <div className={styles.platforms}>
-                      <MdMonitor />
+                      {template.template_has_web && <MdMonitor />}
                       {template.template_has_mobile && <MdPhoneIphone />}
                     </div>
                   </div>
@@ -395,10 +385,6 @@ const ListTemplates = ({ data: initialData }) => {
                         template.is_active ? styles.disabledButton : ''
                       }`}
                       onClick={() => handleDeleteClick(template)}
-                      // disabled={
-                      //   (isDeleting && deleteId === template.template_id) ||
-                      //   deletedTemplates.has(template.template_id)
-                      // }
                       title={
                         template.is_active
                           ? 'Ce template est actif et ne peut pas être supprimé'
