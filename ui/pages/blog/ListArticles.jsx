@@ -46,15 +46,15 @@ const ListArticles = ({ data }) => {
     // Apply search filter
     if (searchTerm) {
       result = result.filter((article) =>
-        article.article_title?.toLowerCase().includes(searchTerm.toLowerCase()),
+        article.articleTitle?.toLowerCase().includes(searchTerm.toLowerCase()),
       );
     }
 
     // Apply status filter
     if (filterStatus !== 'all') {
       result = result.filter((article) => {
-        if (filterStatus === 'active') return article.is_active;
-        if (filterStatus === 'inactive') return !article.is_active;
+        if (filterStatus === 'active') return article.isActive;
+        if (filterStatus === 'inactive') return !article.isActive;
         return true;
       });
     }
@@ -67,7 +67,7 @@ const ListArticles = ({ data }) => {
         case 'oldest':
           return new Date(a.created) - new Date(b.created);
         case 'title':
-          return (a.article_title || '').localeCompare(b.article_title || '');
+          return (a.articleTitle || '').localeCompare(b.articleTitle || '');
         default:
           return 0;
       }
@@ -101,7 +101,7 @@ const ListArticles = ({ data }) => {
       if (response.ok) {
         // Remove article from local state
         setArticles((prev) =>
-          prev.filter((article) => article.article_id !== articleId),
+          prev.filter((article) => article.articleId !== articleId),
         );
         setSelectedArticles((prev) => {
           const newSet = new Set(prev);
@@ -143,7 +143,7 @@ const ListArticles = ({ data }) => {
       setSelectedArticles(new Set());
       setShowBulkActions(false);
     } else {
-      setSelectedArticles(new Set(processedArticles.map((a) => a.article_id)));
+      setSelectedArticles(new Set(processedArticles.map((a) => a.articleId)));
       setShowBulkActions(true);
     }
   };
@@ -158,7 +158,7 @@ const ListArticles = ({ data }) => {
   // Stats calculation
   const stats = useMemo(() => {
     const total = articles.length;
-    const active = articles.filter((a) => a.is_active).length;
+    const active = articles.filter((a) => a.isActive).length;
     const inactive = total - active;
     return { total, active, inactive };
   }, [articles]);
@@ -325,19 +325,19 @@ const ListArticles = ({ data }) => {
             className={`${styles.articlesGrid} ${viewMode === 'list' ? styles.listView : styles.gridView}`}
           >
             {processedArticles.map((article) => (
-              <div key={article.article_id} className={styles.articleWrapper}>
+              <div key={article.articleId} className={styles.articleWrapper}>
                 <div className={styles.articleSelection}>
                   <input
                     type="checkbox"
-                    checked={selectedArticles.has(article.article_id)}
-                    onChange={() => toggleArticleSelection(article.article_id)}
+                    checked={selectedArticles.has(article.articleId)}
+                    onChange={() => toggleArticleSelection(article.articleId)}
                     className={styles.articleCheckbox}
                   />
                 </div>
 
                 <div className={styles.articleCard}>
                   <div className={styles.articleStatus}>
-                    {article.is_active ? (
+                    {article.isActive ? (
                       <span
                         className={`${styles.statusBadge} ${styles.active}`}
                       >
@@ -365,7 +365,7 @@ const ListArticles = ({ data }) => {
                   />
 
                   <div className={styles.articleActions}>
-                    <Link href={`/dashboard/blog/edit/${article.article_id}`}>
+                    <Link href={`/dashboard/blog/edit/${article.articleId}`}>
                       <button
                         className={styles.actionButton}
                         title="Edit article"
@@ -376,7 +376,7 @@ const ListArticles = ({ data }) => {
                     <button
                       className={`${styles.actionButton} ${styles.danger}`}
                       onClick={() =>
-                        deleteArticle(article.article_id, article.article_image)
+                        deleteArticle(article.articleId, article.articleImage)
                       }
                       title="Delete article"
                     >
