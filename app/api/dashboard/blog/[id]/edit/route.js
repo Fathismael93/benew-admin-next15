@@ -496,6 +496,8 @@ export async function PUT(request, { params }) {
       fieldsCount: Object.keys(filteredDataToSanitize).length,
     });
 
+    console.log('Sanitized Inputs:', sanitizedInputs);
+
     // ===== ÉTAPE 7: VALIDATION AVEC YUP =====
     try {
       // Filtrer les champs undefined pour la validation
