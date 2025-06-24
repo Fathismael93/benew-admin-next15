@@ -134,6 +134,19 @@
   background-color: #e53935;
 }
 
+.actionButton.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  background-color: rgba(244, 67, 54, 0.3) !important;
+  transform: none !important;
+}
+
+.actionButton.disabled:hover {
+  background-color: rgba(244, 67, 54, 0.3) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
 /* États actif/inactif pour les plateformes */
 .platformCard.active {
   border-left: 4px solid #4caf50; /* Vert pour actif */

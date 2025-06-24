@@ -110,9 +110,17 @@ function ApplicationsList({ data }) {
                 </Link>
                 <button
                   disabled={app.is_active || isDeleting}
-                  className={`${styles.actionButton} ${styles.deleteButton}`}
+                  className={`${styles.actionButton} ${styles.deleteButton} ${
+                    app.is_active ? styles.disabled : ''
+                  }`}
                   onClick={() =>
+                    !app.is_active &&
                     handleDelete(app.application_id, app.application_images)
+                  }
+                  title={
+                    app.is_active
+                      ? 'Cannot delete active application. Please deactivate first.'
+                      : 'Delete application'
                   }
                 >
                   Delete

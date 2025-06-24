@@ -218,10 +218,16 @@
   transform: translateY(-2px);
 }
 
-.actionButton:disabled {
-  opacity: 0.5;
+.actionButton.disabled {
+  opacity: 0.3;
   cursor: not-allowed;
-  transform: none;
+  background: rgba(239, 68, 68, 0.3) !important;
+  transform: none !important;
+}
+
+.actionButton.disabled:hover {
+  background: rgba(239, 68, 68, 0.3) !important;
+  transform: none !important;
 }
 
 /* ===== TITRE ===== */

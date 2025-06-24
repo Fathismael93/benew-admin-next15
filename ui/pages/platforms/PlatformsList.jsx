@@ -128,8 +128,17 @@ const PlatformsList = ({ data }) => {
                 </Link>
                 <button
                   disabled={platform.is_active || isDeleting}
-                  className={`${styles.actionButton} ${styles.deleteButton}`}
-                  onClick={() => handleDelete(platform.platform_id)}
+                  className={`${styles.actionButton} ${styles.deleteButton} ${
+                    platform.is_active ? styles.disabled : ''
+                  }`}
+                  onClick={() =>
+                    !platform.is_active && handleDelete(platform.platform_id)
+                  }
+                  title={
+                    platform.is_active
+                      ? 'Cannot delete active platform. Please deactivate first.'
+                      : 'Delete platform'
+                  }
                 >
                   Delete
                 </button>

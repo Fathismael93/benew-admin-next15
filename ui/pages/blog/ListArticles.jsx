@@ -374,11 +374,19 @@ const ListArticles = ({ data }) => {
                       </button>
                     </Link>
                     <button
-                      className={`${styles.actionButton} ${styles.danger}`}
+                      className={`${styles.actionButton} ${styles.danger} ${
+                        article.isActive ? styles.disabled : ''
+                      }`}
                       onClick={() =>
+                        !article.isActive &&
                         deleteArticle(article.articleId, article.articleImage)
                       }
-                      title="Delete article"
+                      disabled={article.isActive}
+                      title={
+                        article.isActive
+                          ? 'Cannot delete active article. Please deactivate first.'
+                          : 'Delete article'
+                      }
                     >
                       <MdDelete />
                     </button>

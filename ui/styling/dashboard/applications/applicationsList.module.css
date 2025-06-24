@@ -297,6 +297,19 @@
   box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
 }
 
+.actionButton.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  background-color: rgba(244, 67, 54, 0.3) !important;
+  transform: none !important;
+}
+
+.actionButton.disabled:hover {
+  background-color: rgba(244, 67, 54, 0.3) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
 /* Styles pour les cartes inactives - Désaturation légère */
 .inactiveCard .applicationDetails h2 {
   color: rgba(255, 255, 255, 0.8);

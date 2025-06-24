@@ -181,9 +181,16 @@ const SingleArticle = ({ article }) => {
             </Link>
 
             <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className={`${styles.actionButton} ${styles.deleteButton}`}
-              disabled={isLoading}
+              onClick={() => !data.is_active && setShowDeleteConfirm(true)}
+              className={`${styles.actionButton} ${styles.deleteButton} ${
+                data.is_active ? styles.disabled : ''
+              }`}
+              disabled={isLoading || data.is_active}
+              title={
+                data.is_active
+                  ? 'Cannot delete active article. Please deactivate first.'
+                  : 'Delete article'
+              }
             >
               🗑️ Supprimer
             </button>

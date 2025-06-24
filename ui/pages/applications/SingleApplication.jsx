@@ -212,8 +212,16 @@ function SingleApplication({ data }) {
           Edit
         </Link>
         <button
-          className={`${styles.actionButton} ${styles.deleteButton}`}
-          onClick={handleDelete}
+          className={`${styles.actionButton} ${styles.deleteButton} ${
+            application.is_active ? styles.disabled : ''
+          }`}
+          onClick={() => !application.is_active && handleDelete()}
+          disabled={application.is_active}
+          title={
+            application.is_active
+              ? 'Cannot delete active application. Please deactivate first.'
+              : 'Delete application'
+          }
         >
           Delete
         </button>
