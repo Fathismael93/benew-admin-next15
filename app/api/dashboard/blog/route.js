@@ -283,8 +283,8 @@ export async function GET(req) {
           article_title,
           article_image,
           is_active,
-          TO_CHAR(article_created_at, 'YYYY-MM-DD') AS created,
-          TO_CHAR(article_updated_at, 'YYYY-MM-DD HH24:MI:SS') AS updated
+          TO_CHAR(article_created, 'YYYY-MM-DD') AS created,
+          TO_CHAR(article_updated, 'YYYY-MM-DD HH24:MI:SS') AS updated
         FROM admin.articles
         ORDER BY article_created DESC, article_id DESC
       `;
