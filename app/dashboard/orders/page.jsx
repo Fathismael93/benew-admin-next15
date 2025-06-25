@@ -7,10 +7,7 @@ async function getOrders() {
   await axios
     .get('https://benew-admin-next15.vercel.app/api/dashboard/orders')
     .then((response) => {
-      console.log('REESPONSE IN SERVER COMPONENT OrdersPage');
-      console.log(response);
-
-      // orders = response.data.orders;
+      orders = response.data.orders;
     })
     .catch((error) => console.log(error));
 
