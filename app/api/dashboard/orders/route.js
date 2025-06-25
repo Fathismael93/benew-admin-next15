@@ -455,9 +455,9 @@ export async function GET(req) {
       success: true,
       data: {
         orders: sanitizedOrders,
+        count: sanitizedOrders.length,
       },
       meta: {
-        count: sanitizedOrders.length,
         requestId,
         timestamp: new Date().toISOString(),
         fromCache: false,
