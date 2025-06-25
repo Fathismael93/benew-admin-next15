@@ -22,6 +22,7 @@ import {
 import styles from '@ui/styling/dashboard/orders/editOrder.module.css'; // Assurez-vous que le chemin est correct
 
 const EditOrder = ({ order }) => {
+  console.log('EditOrder order:', order);
   const [currentStatus, setCurrentStatus] = useState(
     order.order_payment_status,
   );
