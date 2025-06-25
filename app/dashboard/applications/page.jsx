@@ -11,13 +11,13 @@ import {
 import {
   categorizeError,
   generateRequestId,
-  anonymizeIp,
+  // anonymizeIp,
 } from '@/utils/helpers';
 import logger from '@/utils/logger';
 import {
   dashboardCache,
   getDashboardCacheKey,
-  invalidateDashboardCache,
+  // invalidateDashboardCache,
 } from '@/utils/cache';
 
 // Configuration de revalidation pour cette page
