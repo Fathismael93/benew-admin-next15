@@ -9,7 +9,7 @@ export async function POST(req) {
     client = await getClient();
 
     await client.query(
-      `UPDATE orders 
+      `UPDATE admin.orders 
        SET order_payment_status = $1 
        WHERE order_id = $2;`,
       [order_payment_status, orderId],
