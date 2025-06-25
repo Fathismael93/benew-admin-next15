@@ -22,7 +22,6 @@ import {
 import styles from '@ui/styling/dashboard/orders/editOrder.module.css'; // Assurez-vous que le chemin est correct
 
 const EditOrder = ({ order }) => {
-  console.log('EditOrder order:', order);
   const [currentStatus, setCurrentStatus] = useState(
     order.order_payment_status,
   );
@@ -349,11 +348,11 @@ const EditOrder = ({ order }) => {
 
           <div className={styles.paymentCard}>
             <div className={styles.paymentField}>
-              <span className={styles.fieldLabel}>Nom sur la carte :</span>
+              <span className={styles.fieldLabel}>Nom du paiement :</span>
               <span className={styles.fieldValue}>{order.payment.name}</span>
             </div>
             <div className={styles.paymentField}>
-              <span className={styles.fieldLabel}>Numéro de carte :</span>
+              <span className={styles.fieldLabel}>Numéro du paiement :</span>
               <span className={styles.fieldValue}>{order.payment.number}</span>
             </div>
             <div className={styles.paymentField}>
@@ -361,7 +360,7 @@ const EditOrder = ({ order }) => {
               <span className={styles.fieldValue}>{order.platform.name}</span>
             </div>
             <div className={styles.paymentField}>
-              <span className={styles.fieldLabel}>Type :</span>
+              <span className={styles.fieldLabel}>Numero :</span>
               <span className={styles.fieldValue}>{order.platform.number}</span>
             </div>
           </div>

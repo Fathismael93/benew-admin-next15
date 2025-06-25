@@ -7,7 +7,6 @@ async function getSingleOrder(id) {
   await axios
     .get(`https://benew-admin-next15.vercel.app/api/dashboard/orders/${id}`)
     .then((response) => {
-      console.log('response :', response);
       data = response.data.data.order;
     })
     .catch((e) => {
