@@ -7,9 +7,8 @@ async function getOrders() {
   await axios
     .get('https://benew-admin-next15.vercel.app/api/dashboard/orders')
     .then((response) => {
-      console.log('Orders fetched successfully:', response);
-      orders = response.data.orders;
-      totalOrders = response.data.count;
+      orders = response.data.data.orders;
+      totalOrders = response.data.data.count;
     })
     .catch((error) => console.log(error));
 
