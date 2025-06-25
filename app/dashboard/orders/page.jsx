@@ -1,17 +1,18 @@
 import OrdersList from '@/ui/pages/orders/OrdersList';
+import axios from 'axios';
 
 async function getOrders() {
   let orders = [];
 
-  // await axios
-  //   .get('https://benew-admin-next15.vercel.app/api/dashboard/orders')
-  //   .then((response) => {
-  //     console.log('REESPONSE IN SERVER COMPONENT OrdersPage');
-  //     console.log(response);
+  await axios
+    .get('https://benew-admin-next15.vercel.app/api/dashboard/orders')
+    .then((response) => {
+      console.log('REESPONSE IN SERVER COMPONENT OrdersPage');
+      console.log(response);
 
-  //     orders = response.data.orders;
-  //   })
-  //   .catch((error) => console.log(error));
+      orders = response.data.orders;
+    })
+    .catch((error) => console.log(error));
 
   return orders;
 }
