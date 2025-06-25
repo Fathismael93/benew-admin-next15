@@ -1,0 +1,847 @@
+/* ===== CONTAINER PRINCIPAL ===== */
+.container {
+  background-color: var(--bgSoft);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin: 20px 0;
+}
+
+/* ===== MESSAGE DE NOTIFICATION ===== */
+.message {
+  padding: 16px 24px;
+  margin: 0;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: slideDown 0.3s ease-out;
+}
+
+.message.success {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.message.error {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ===== EN-TÊTE ===== */
+.header {
+  background: linear-gradient(135deg, #2e374a 0%, #3a4558 100%);
+  padding: 32px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.orderInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+}
+
+.orderIdSection {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.headerIcon {
+  font-size: 32px;
+  color: #4f46e5;
+  background: rgba(79, 70, 229, 0.15);
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.orderId {
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.orderDate {
+  font-size: 14px;
+  color: var(--textSoft);
+  margin: 4px 0 0 0;
+}
+
+.priceSection {
+  text-align: right;
+}
+
+.price {
+  font-size: 36px;
+  font-weight: 800;
+  color: #10b981;
+  text-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+}
+
+/* ===== SECTION STATUT ===== */
+.statusSection {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.statusHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.statusHeader h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.editButton {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s ease;
+}
+
+.editButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(79, 70, 229, 0.3);
+}
+
+.editButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ===== EDITEUR DE STATUT ===== */
+.statusEditor {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.statusOptions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.statusOption {
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.statusRadio {
+  display: none;
+}
+
+.statusOptionContent {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.statusOptionContent::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--status-color);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 0;
+}
+
+.statusOption:hover .statusOptionContent {
+  border-color: var(--status-color);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.statusOption.selected .statusOptionContent {
+  border-color: var(--status-color);
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.02);
+}
+
+.statusOption.selected .statusOptionContent::before {
+  opacity: 0.1;
+}
+
+.statusOptionIcon {
+  font-size: 20px;
+  color: var(--status-color);
+  z-index: 1;
+  position: relative;
+}
+
+.statusOptionLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  z-index: 1;
+  position: relative;
+}
+
+.statusActions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.saveButton {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.saveButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+}
+
+.saveButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.cancelButton {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--textSoft);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.cancelButton:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.cancelButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.loadingIcon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== STATUT ACTUEL ===== */
+.currentStatus {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid var(--status-color);
+  border-radius: 12px;
+  padding: 12px 20px;
+  margin-bottom: 8px;
+}
+
+.statusIcon {
+  font-size: 20px;
+  color: var(--status-color);
+}
+
+.statusText {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.statusDate {
+  font-size: 14px;
+  color: var(--textSoft);
+  margin: 8px 0 0 0;
+  font-style: italic;
+}
+
+/* ===== CONTENU PRINCIPAL ===== */
+.content {
+  padding: 24px;
+  display: grid;
+  gap: 24px;
+}
+
+/* ===== SECTIONS ===== */
+.section {
+  background-color: var(--bg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.section:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.sectionHeader {
+  background: rgba(255, 255, 255, 0.03);
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sectionIcon {
+  font-size: 20px;
+  color: #4f46e5;
+}
+
+.sectionHeader h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+/* ===== CARTE PRODUIT ===== */
+.productCard {
+  padding: 24px;
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.productImage {
+  flex-shrink: 0;
+}
+
+.productImg {
+  width: 120px;
+  height: 120px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.productImg:hover {
+  transform: scale(1.05);
+  border-color: rgba(79, 70, 229, 0.5);
+}
+
+.productDetails {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.productName {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.productMeta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.productCategory {
+  background: rgba(79, 70, 229, 0.15);
+  color: #4f46e5;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.productLevel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--textSoft);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.starIcon {
+  color: #f59e0b;
+  font-size: 16px;
+}
+
+.productDescription {
+  color: var(--textSoft);
+  line-height: 1.5;
+  font-size: 14px;
+  margin: 0;
+}
+
+.productPricing {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.priceItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.priceLabel {
+  font-size: 12px;
+  color: var(--textSoft);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.priceValue {
+  font-size: 18px;
+  font-weight: 700;
+  color: #10b981;
+}
+
+.productLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #4f46e5;
+  text-decoration: none;
+  font-weight: 500;
+  padding: 8px 16px;
+  border: 1px solid rgba(79, 70, 229, 0.3);
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  width: fit-content;
+}
+
+.productLink:hover {
+  background: rgba(79, 70, 229, 0.1);
+  border-color: rgba(79, 70, 229, 0.5);
+  transform: translateY(-2px);
+}
+
+.linkIcon {
+  font-size: 16px;
+}
+
+/* ===== CARTES INFORMATIONS ===== */
+.clientCard,
+.paymentCard,
+.datesCard {
+  padding: 24px;
+  display: grid;
+  gap: 16px;
+}
+
+.clientField,
+.paymentField,
+.dateField {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.clientField:last-child,
+.paymentField:last-child,
+.dateField:last-child {
+  border-bottom: none;
+}
+
+.fieldLabel {
+  font-size: 14px;
+  color: var(--textSoft);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.fieldValue {
+  font-size: 15px;
+  color: var(--text);
+  font-weight: 500;
+  text-align: right;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1024px) {
+  .content {
+    grid-template-columns: 1fr;
+  }
+
+  .productCard {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .productDetails {
+    align-items: center;
+  }
+
+  .productMeta {
+    justify-content: center;
+  }
+
+  .productPricing {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    margin: 16px 0;
+    border-radius: 8px;
+  }
+
+  .header {
+    padding: 20px;
+  }
+
+  .orderInfo {
+    flex-direction: column;
+    gap: 20px;
+    align-items: flex-start;
+  }
+
+  .priceSection {
+    text-align: left;
+  }
+
+  .price {
+    font-size: 28px;
+  }
+
+  .orderId {
+    font-size: 20px;
+  }
+
+  .statusSection {
+    padding: 20px;
+  }
+
+  .statusOptions {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .statusActions {
+    flex-direction: column;
+  }
+
+  .saveButton,
+  .cancelButton {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .content {
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .sectionHeader {
+    padding: 16px 20px;
+  }
+
+  .productCard,
+  .clientCard,
+  .paymentCard,
+  .datesCard {
+    padding: 20px;
+  }
+
+  .productImg {
+    width: 100px;
+    height: 100px;
+  }
+
+  .productName {
+    font-size: 20px;
+  }
+
+  .clientField,
+  .paymentField,
+  .dateField {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    text-align: left;
+  }
+
+  .fieldValue {
+    text-align: left;
+    font-weight: 400;
+  }
+
+  .productPricing {
+    gap: 16px;
+  }
+
+  .priceValue {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    padding: 16px;
+  }
+
+  .orderIdSection {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .headerIcon {
+    font-size: 24px;
+    padding: 8px;
+  }
+
+  .orderId {
+    font-size: 18px;
+  }
+
+  .price {
+    font-size: 24px;
+  }
+
+  .statusSection {
+    padding: 16px;
+  }
+
+  .statusHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .editButton {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .sectionHeader {
+    padding: 12px 16px;
+  }
+
+  .sectionHeader h2 {
+    font-size: 16px;
+  }
+
+  .productCard,
+  .clientCard,
+  .paymentCard,
+  .datesCard {
+    padding: 16px;
+  }
+
+  .productImg {
+    width: 80px;
+    height: 80px;
+  }
+
+  .productName {
+    font-size: 18px;
+  }
+
+  .productCategory {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+
+  .productMeta {
+    gap: 12px;
+  }
+
+  .productPricing {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .priceValue {
+    font-size: 14px;
+  }
+}
+
+/* ===== ANIMATIONS SUPPLÉMENTAIRES ===== */
+.section {
+  animation: slideUp 0.6s ease-out;
+  animation-fill-mode: both;
+}
+
+.section:nth-child(1) {
+  animation-delay: 0.1s;
+}
+.section:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.section:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.section:nth-child(4) {
+  animation-delay: 0.4s;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== ÉTATS DE FOCUS ET ACCESSIBILITÉ ===== */
+.editButton:focus,
+.saveButton:focus,
+.cancelButton:focus {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+}
+
+.statusRadio:focus + .statusOptionContent {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+}
+
+.productLink:focus {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+}
+
+/* ===== AMÉLIORATIONS VISUELLES ===== */
+.header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #4f46e5, #7c3aed, #ec4899);
+  border-radius: 12px 12px 0 0;
+}
+
+.section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #4f46e5, #7c3aed);
+  border-radius: 12px 12px 0 0;
+}
+
+/* ===== ÉTATS DE STATUT SPÉCIFIQUES ===== */
+.statusBadge[style*='--status-color: #10b981'] {
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.statusBadge[style*='--status-color: #f59e0b'] {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.statusBadge[style*='--status-color: #6b7280'] {
+  background: rgba(107, 114, 128, 0.1);
+}
+
+.statusBadge[style*='--status-color: #ef4444'] {
+  background: rgba(239, 68, 68, 0.1);
+}
