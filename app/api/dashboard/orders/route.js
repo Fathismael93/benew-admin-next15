@@ -16,9 +16,9 @@ export async function GET() {
         applications.application_name,
         applications.application_category,
         applications.application_images
-      FROM orders
-      JOIN applications ON orders.order_application_id = applications.application_id
-      ORDER BY orders.order_created DESC;`,
+      FROM admin.orders
+      JOIN catalog.applications ON admin.orders.order_application_id = catalog.applications.application_id
+      ORDER BY admin.orders.order_created DESC;`,
     );
 
     console.log('RESULT OF ORDERS', result.rows);
