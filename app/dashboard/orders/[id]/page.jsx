@@ -336,11 +336,7 @@ async function getOrderFromDatabase(orderId) {
           
           -- Données de la plateforme de paiement
           p.platform_name,
-          p.platform_type,
-          p.platform_description,
-          p.platform_fee_percentage,
-          p.platform_currency,
-          p.platform_status
+          p.platform_number
           
         FROM admin.orders o
         JOIN catalog.applications a ON o.order_application_id = a.application_id
