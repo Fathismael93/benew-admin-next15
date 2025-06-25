@@ -362,13 +362,7 @@ const EditOrder = ({ order }) => {
             </div>
             <div className={styles.paymentField}>
               <span className={styles.fieldLabel}>Type :</span>
-              <span className={styles.fieldValue}>{order.platform.type}</span>
-            </div>
-            <div className={styles.paymentField}>
-              <span className={styles.fieldLabel}>Frais plateforme :</span>
-              <span className={styles.fieldValue}>
-                {order.platform.fee_percentage}% en {order.platform.currency}
-              </span>
+              <span className={styles.fieldValue}>{order.platform.number}</span>
             </div>
           </div>
         </div>

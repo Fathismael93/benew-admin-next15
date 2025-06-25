@@ -290,11 +290,7 @@ export async function GET(req, { params }) {
           
           -- Données de la plateforme de paiement
           p.platform_name,
-          p.platform_type,
-          p.platform_description,
-          p.platform_fee_percentage,
-          p.platform_currency,
-          p.platform_status
+          p.platform_number,
           
         FROM admin.orders o
         JOIN catalog.applications a ON o.order_application_id = a.application_id
@@ -486,11 +482,7 @@ export async function GET(req, { params }) {
       platform: {
         id: orderData.order_platform_id,
         name: orderData.platform_name || '[No Name]',
-        type: orderData.platform_type,
-        description: orderData.platform_description,
-        fee_percentage: parseFloat(orderData.platform_fee_percentage) || 0,
-        currency: orderData.platform_currency || 'EUR',
-        status: orderData.platform_status,
+        number: orderData.platform_number,
       },
     };
 
