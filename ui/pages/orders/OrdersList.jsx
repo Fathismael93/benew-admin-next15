@@ -6,6 +6,7 @@ import styles from '@/ui/styling/dashboard/orders/orders.module.css';
 import Search from '@/ui/components/dashboard/search';
 
 const OrdersList = ({ data }) => {
+  console.log('OrdersList component initialized with data:', data);
   const [orders, setOrders] = useState(data);
 
   const handleStatusChange = async (orderId, currentStatus) => {
