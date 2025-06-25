@@ -1,7 +1,9 @@
+/* eslint-disable no-unused-vars */
 'use client';
 
 import { useState, useMemo } from 'react';
 import { CldImage } from 'next-cloudinary';
+import Link from 'next/link';
 import {
   MdFilterList,
   MdSort,
@@ -10,6 +12,10 @@ import {
   MdPending,
   MdCheckCircle,
   MdRefresh,
+  MdError,
+  MdUndo,
+  MdVisibility,
+  MdArrowForward,
 } from 'react-icons/md';
 import styles from '@/ui/styling/dashboard/orders/orders.module.css';
 import Search from '@/ui/components/dashboard/search';
@@ -22,23 +28,31 @@ const OrdersList = ({ data, totalOrders }) => {
   const [sortBy, setSortBy] = useState('created_desc');
   const [loading, setLoading] = useState(false);
 
-  // Statistiques calculées
+  // Statistiques calculées avec les 4 statuts
   const stats = useMemo(() => {
     const totalRevenue = orders.reduce(
       (sum, order) => sum + order.order_price,
       0,
     );
     const paidOrders = orders.filter(
-      (order) => order.order_payment_status,
+      (order) => order.order_payment_status === 'paid',
     ).length;
-    const unpaidOrders = orders.length - paidOrders;
-    const averageOrder = orders.length > 0 ? totalRevenue / orders.length : 0;
+    const unpaidOrders = orders.filter(
+      (order) => order.order_payment_status === 'unpaid',
+    ).length;
+    const refundedOrders = orders.filter(
+      (order) => order.order_payment_status === 'refunded',
+    ).length;
+    const failedOrders = orders.filter(
+      (order) => order.order_payment_status === 'failed',
+    ).length;
 
     return {
       totalRevenue,
       paidOrders,
       unpaidOrders,
-      averageOrder,
+      refundedOrders,
+      failedOrders,
     };
   }, [orders]);
 
@@ -63,9 +77,7 @@ const OrdersList = ({ data, totalOrders }) => {
     // Filtrer par statut
     if (statusFilter !== 'all') {
       filtered = filtered.filter((order) => {
-        if (statusFilter === 'paid') return order.order_payment_status;
-        if (statusFilter === 'unpaid') return !order.order_payment_status;
-        return true;
+        return order.order_payment_status === statusFilter;
       });
     }
 
@@ -92,9 +104,8 @@ const OrdersList = ({ data, totalOrders }) => {
     setFilteredOrders(filtered);
   }, [orders, searchTerm, statusFilter, sortBy]);
 
-  const handleStatusChange = async (orderId, currentStatus) => {
+  const handleStatusChange = async (orderId, newStatus) => {
     setLoading(true);
-    const updatedStatus = !currentStatus;
 
     try {
       const response = await fetch('/api/dashboard/orders/update-payment', {
@@ -102,14 +113,14 @@ const OrdersList = ({ data, totalOrders }) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ orderId, order_payment_status: updatedStatus }),
+        body: JSON.stringify({ orderId, order_payment_status: newStatus }),
       });
 
       if (response.ok) {
         setOrders((prevOrders) =>
           prevOrders.map((order) =>
             order.order_id === orderId
-              ? { ...order, order_payment_status: updatedStatus }
+              ? { ...order, order_payment_status: newStatus }
               : order,
           ),
         );
@@ -125,11 +136,78 @@ const OrdersList = ({ data, totalOrders }) => {
   };
 
   const getStatusIcon = (status) => {
-    return status ? (
-      <MdCheckCircle className={styles.statusIconPaid} />
-    ) : (
-      <MdPending className={styles.statusIconPending} />
-    );
+    switch (status) {
+      case 'paid':
+        return <MdCheckCircle className={styles.statusIconPaid} />;
+      case 'unpaid':
+        return <MdPending className={styles.statusIconPending} />;
+      case 'refunded':
+        return <MdUndo className={styles.statusIconRefunded} />;
+      case 'failed':
+        return <MdError className={styles.statusIconFailed} />;
+      default:
+        return <MdPending className={styles.statusIconPending} />;
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'paid':
+        return 'Payée';
+      case 'unpaid':
+        return 'En attente';
+      case 'refunded':
+        return 'Remboursée';
+      case 'failed':
+        return 'Échouée';
+      default:
+        return 'En attente';
+    }
+  };
+
+  const getStatusClass = (status) => {
+    switch (status) {
+      case 'paid':
+        return styles.statusPaid;
+      case 'unpaid':
+        return styles.statusPending;
+      case 'refunded':
+        return styles.statusRefunded;
+      case 'failed':
+        return styles.statusFailed;
+      default:
+        return styles.statusPending;
+    }
+  };
+
+  const getNextStatus = (currentStatus) => {
+    switch (currentStatus) {
+      case 'unpaid':
+        return 'paid';
+      case 'paid':
+        return 'refunded';
+      case 'refunded':
+        return 'unpaid';
+      case 'failed':
+        return 'unpaid';
+      default:
+        return 'paid';
+    }
+  };
+
+  const getStatusActionText = (currentStatus) => {
+    switch (currentStatus) {
+      case 'unpaid':
+        return 'Marquer comme payée';
+      case 'paid':
+        return 'Marquer comme remboursée';
+      case 'refunded':
+        return 'Marquer comme impayée';
+      case 'failed':
+        return 'Marquer comme impayée';
+      default:
+        return 'Changer le statut';
+    }
   };
 
   const formatPrice = (price) => {
@@ -195,6 +273,32 @@ const OrdersList = ({ data, totalOrders }) => {
               <span className={styles.statLabel}>En Attente</span>
             </div>
           </div>
+
+          {(stats.refundedOrders > 0 || stats.failedOrders > 0) && (
+            <>
+              <div className={styles.statCard}>
+                <div className={styles.statIcon}>
+                  <MdUndo />
+                </div>
+                <div className={styles.statContent}>
+                  <span className={styles.statValue}>
+                    {stats.refundedOrders}
+                  </span>
+                  <span className={styles.statLabel}>Remboursées</span>
+                </div>
+              </div>
+
+              <div className={styles.statCard}>
+                <div className={styles.statIcon}>
+                  <MdError />
+                </div>
+                <div className={styles.statContent}>
+                  <span className={styles.statValue}>{stats.failedOrders}</span>
+                  <span className={styles.statLabel}>Échouées</span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -221,9 +325,8 @@ const OrdersList = ({ data, totalOrders }) => {
               <option value="all">Tous les statuts</option>
               <option value="paid">Payées</option>
               <option value="unpaid">En attente</option>
-              <option value="processing">En cours</option>
-              <option value="refunded">Rembourses</option>
-              <option value="failed">Echoue</option>
+              <option value="refunded">Remboursées</option>
+              <option value="failed">Échouées</option>
             </select>
           </div>
 
@@ -267,16 +370,12 @@ const OrdersList = ({ data, totalOrders }) => {
                       {formatDate(order.order_created)}
                     </span>
                   </div>
-                  <div className={styles.orderStatus}>
+                  <div
+                    className={`${styles.orderStatus} ${getStatusClass(order.order_payment_status)}`}
+                  >
                     {getStatusIcon(order.order_payment_status)}
-                    <span
-                      className={`${styles.statusText} ${
-                        order.order_payment_status
-                          ? styles.statusPaid
-                          : styles.statusPending
-                      }`}
-                    >
-                      {order.order_payment_status ? 'Payée' : 'En attente'}
+                    <span className={styles.statusText}>
+                      {getStatusText(order.order_payment_status)}
                     </span>
                   </div>
                 </div>
@@ -307,30 +406,62 @@ const OrdersList = ({ data, totalOrders }) => {
                 </div>
 
                 <div className={styles.orderActions}>
-                  <label className={styles.statusToggle}>
-                    <input
-                      type="checkbox"
-                      checked={order.order_payment_status}
-                      onChange={() =>
+                  <div className={styles.actionButtons}>
+                    {/* Bouton pour voir les détails */}
+                    <Link
+                      href={`/dashboard/orders/${order.order_id}`}
+                      className={styles.detailsButton}
+                    >
+                      <MdVisibility />
+                      <span>Voir détails</span>
+                      <MdArrowForward className={styles.arrowIcon} />
+                    </Link>
+
+                    {/* Bouton pour changer le statut */}
+                    <button
+                      onClick={() =>
                         handleStatusChange(
                           order.order_id,
-                          order.order_payment_status,
+                          getNextStatus(order.order_payment_status),
                         )
                       }
                       disabled={loading}
-                      className={styles.statusCheckbox}
-                    />
-                    <span className={styles.statusSlider}></span>
-                    <span className={styles.statusLabel}>
+                      className={`${styles.statusButton} ${styles[`statusButton${order.order_payment_status.charAt(0).toUpperCase() + order.order_payment_status.slice(1)}`]}`}
+                    >
                       {loading ? (
-                        <MdRefresh className={styles.loadingIcon} />
-                      ) : order.order_payment_status ? (
-                        'Marquer comme impayée'
+                        <>
+                          <MdRefresh className={styles.loadingIcon} />
+                          <span>Mise à jour...</span>
+                        </>
                       ) : (
-                        'Marquer comme payée'
+                        <>
+                          {getStatusIcon(
+                            getNextStatus(order.order_payment_status),
+                          )}
+                          <span>
+                            {getStatusActionText(order.order_payment_status)}
+                          </span>
+                        </>
                       )}
-                    </span>
-                  </label>
+                    </button>
+                  </div>
+
+                  {/* Dropdown pour changer vers n'importe quel statut */}
+                  <div className={styles.statusDropdown}>
+                    <select
+                      value={order.order_payment_status}
+                      onChange={(e) =>
+                        handleStatusChange(order.order_id, e.target.value)
+                      }
+                      disabled={loading}
+                      className={styles.statusSelect}
+                    >
+                      <option value="unpaid">En attente</option>
+                      <option value="paid">Payée</option>
+                      <option value="refunded">Remboursée</option>
+                      <option value="failed">Échouée</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             ))}
