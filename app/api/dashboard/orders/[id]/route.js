@@ -290,7 +290,7 @@ export async function GET(req, { params }) {
           
           -- Données de la plateforme de paiement
           p.platform_name,
-          p.platform_number,
+          p.platform_number
           
         FROM admin.orders o
         JOIN catalog.applications a ON o.order_application_id = a.application_id
