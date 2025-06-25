@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -8,10 +7,8 @@ import {
   MdSort,
   MdTrendingUp,
   MdShoppingCart,
-  MdPayment,
   MdPending,
   MdCheckCircle,
-  MdError,
   MdRefresh,
 } from 'react-icons/md';
 import styles from '@/ui/styling/dashboard/orders/orders.module.css';
@@ -224,6 +221,9 @@ const OrdersList = ({ data, totalOrders }) => {
               <option value="all">Tous les statuts</option>
               <option value="paid">Payées</option>
               <option value="unpaid">En attente</option>
+              <option value="processing">En cours</option>
+              <option value="refunded">Rembourses</option>
+              <option value="failed">Echoue</option>
             </select>
           </div>
 
