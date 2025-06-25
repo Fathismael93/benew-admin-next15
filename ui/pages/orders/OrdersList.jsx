@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { CldImage } from 'next-cloudinary';
 import styles from '@/ui/styling/dashboard/orders/orders.module.css';
 import Search from '@/ui/components/dashboard/search';
 
-const OrdersList = ({ data }) => {
+const OrdersList = ({ data, totalOrders }) => {
   console.log('OrdersList component initialized with data:', data);
   const [orders, setOrders] = useState(data);
 
