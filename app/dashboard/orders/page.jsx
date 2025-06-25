@@ -10,7 +10,7 @@ async function getOrders() {
       console.log('REESPONSE IN SERVER COMPONENT OrdersPage');
       console.log(response);
 
-      orders = response.data.orders;
+      // orders = response.data.orders;
     })
     .catch((error) => console.log(error));
 
