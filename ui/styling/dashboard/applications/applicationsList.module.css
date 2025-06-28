@@ -350,3 +350,182 @@
     gap: 0.5rem;
   }
 }
+
+/* Ajoutez ces styles à la fin de votre fichier applicationsList.module.css */
+
+/* Section titre avec icône de catégorie */
+.titleSection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.titleSection h2 {
+  margin: 0;
+  flex: 1;
+  font-size: 1.2rem;
+  color: var(--text);
+}
+
+/* Container pour l'icône de catégorie */
+.categoryIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  margin-left: 12px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.categoryIcon:hover {
+  transform: scale(1.1);
+}
+
+/* Icône mobile - Style vert */
+.mobileIcon {
+  font-size: 18px;
+  color: #10b981;
+  background: linear-gradient(
+    135deg,
+    rgba(16, 185, 129, 0.15),
+    rgba(34, 197, 94, 0.15)
+  );
+  padding: 7px;
+  border-radius: 6px;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  transition: all 0.2s ease;
+}
+
+/* Icône web - Style bleu */
+.webIcon {
+  font-size: 18px;
+  color: #3b82f6;
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.15),
+    rgba(37, 99, 235, 0.15)
+  );
+  padding: 7px;
+  border-radius: 6px;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  transition: all 0.2s ease;
+}
+
+/* Effet hover pour les icônes */
+.categoryIcon:hover .mobileIcon {
+  background: linear-gradient(
+    135deg,
+    rgba(16, 185, 129, 0.25),
+    rgba(34, 197, 94, 0.25)
+  );
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+.categoryIcon:hover .webIcon {
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.25),
+    rgba(37, 99, 235, 0.25)
+  );
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+/* Section top avec le filtre */
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 20px 0;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* État sans résultats */
+.noResults {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  background-color: var(--bg);
+  border-radius: 12px;
+  border: 2px dashed rgba(255, 255, 255, 0.1);
+}
+
+.noResults p {
+  font-size: 1.1rem;
+  color: var(--textSoft);
+  margin-bottom: 20px;
+  max-width: 400px;
+}
+
+.clearFiltersButton {
+  padding: 12px 24px;
+  background-color: #5d57c9;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.clearFiltersButton:hover {
+  background-color: #6b66d6;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(93, 87, 201, 0.3);
+}
+
+/* Responsive - Adaptation mobile */
+@media (max-width: 768px) {
+  .top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .titleSection {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .categoryIcon {
+    margin-left: 0;
+    align-self: flex-end;
+    width: 28px;
+    height: 28px;
+  }
+
+  .mobileIcon,
+  .webIcon {
+    font-size: 16px;
+    padding: 6px;
+  }
+
+  .noResults {
+    padding: 40px 16px;
+  }
+
+  .noResults p {
+    font-size: 1rem;
+  }
+}
+
+/* Animation pour cartes inactives */
+.inactiveCard .categoryIcon {
+  opacity: 0.7;
+}
+
+.inactiveCard:hover .categoryIcon {
+  opacity: 1;
+}
