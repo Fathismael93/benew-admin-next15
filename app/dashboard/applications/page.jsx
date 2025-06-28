@@ -279,6 +279,7 @@ async function getApplicationsFromDatabase() {
       application_id: application.application_id,
       application_name: application.application_name || '[No Name]',
       application_images: application.application_images,
+      application_category: application.application_category || 'web',
       application_fee: parseFloat(application.application_fee) || 0,
       application_rent: parseFloat(application.application_rent) || 0,
       application_link: application.application_link,
