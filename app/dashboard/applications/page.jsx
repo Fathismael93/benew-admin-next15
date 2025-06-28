@@ -167,7 +167,8 @@ async function getApplicationsFromDatabase() {
         SELECT 
           application_id, 
           application_name, 
-          application_images, 
+          application_images,
+          application_category, 
           application_fee, 
           application_rent, 
           application_link, 
