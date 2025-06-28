@@ -5,10 +5,10 @@ import { useRouter } from 'next/navigation';
 import { CldImage } from 'next-cloudinary';
 import axios from 'axios';
 import styles from '@/ui/styling/dashboard/applications/applicationsList.module.css';
-import Search from '@/ui/components/dashboard/search';
 import AppFilters from '@ui/components/dashboard/AppFilters';
 import Link from 'next/link';
 import { MdAdd, MdMonitor, MdPhoneIphone } from 'react-icons/md';
+import AppSearch from '@ui/components/dashboard/search/AppSearch';
 
 function ApplicationsList({ data }) {
   const [applications, setApplications] = useState(data);
@@ -47,7 +47,7 @@ function ApplicationsList({ data }) {
   return (
     <div className={styles.applicationsContainer}>
       <div className={styles.top}>
-        <Search
+        <AppSearch
           placeholder="Search for an application..."
           value={searchTerm}
           onChange={handleSearchChange}
