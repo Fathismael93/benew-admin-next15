@@ -84,7 +84,7 @@ function ApplicationsList({ data }) {
                 <p className={styles.applicationType}>
                   Level: {app.application_level}
                 </p>
-                <p>Category: {app.application_category}j</p>
+                <p>Category: {app.application_category}</p>
                 <p>Fee: {app.application_fee} Fdj</p>
                 <p>Rent: {app.application_rent} Fdj/month</p>
                 <a
