@@ -7,10 +7,9 @@ import axios from 'axios';
 import styles from '@/ui/styling/dashboard/applications/applicationsList.module.css';
 import Search from '@/ui/components/dashboard/search';
 import Link from 'next/link';
-import { MdAdd, MdMonitor, MdPhoneIphone } from 'react-icons/md';
+import { MdAdd } from 'react-icons/md';
 
 function ApplicationsList({ data }) {
-  console.log("What's the problem !");
   const [applications, setApplications] = useState(data);
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -81,20 +80,11 @@ function ApplicationsList({ data }) {
                 />
               </div>
               <div className={styles.applicationDetails}>
-                <div className={styles.titleSection}>
-                  <h2>{app.application_name}</h2>
-                  <div className={styles.categoryIcon}>
-                    {app.application_category === 'mobile' && (
-                      <MdPhoneIphone className={styles.mobileIcon} />
-                    )}
-                    {app.application_category === 'web' && (
-                      <MdMonitor className={styles.webIcon} />
-                    )}
-                  </div>
-                </div>
+                <h2>{app.application_name}</h2>
                 <p className={styles.applicationType}>
                   Level: {app.application_level}
                 </p>
+                <p>Category: {app.application_category}j</p>
                 <p>Fee: {app.application_fee} Fdj</p>
                 <p>Rent: {app.application_rent} Fdj/month</p>
                 <a
