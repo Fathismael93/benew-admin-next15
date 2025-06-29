@@ -167,13 +167,13 @@ async function getApplicationsFromDatabase(filters = {}) {
 
     if (filters.application_name) {
       conditions.push(`application_name ILIKE $${paramCount}`);
-      values.push(`%${filters.name}%`);
+      values.push(`%${filters.application_name}%`);
       paramCount++;
     }
 
     if (filters.category) {
       conditions.push(`application_category = $${paramCount}`);
-      values.push(`%${filters.name}%`);
+      values.push(`%${filters.category}%`);
       paramCount++;
     }
 
@@ -185,7 +185,7 @@ async function getApplicationsFromDatabase(filters = {}) {
 
     if (filters.status !== undefined) {
       conditions.push(`is_active = $${paramCount}`);
-      values.push(filters.active === 'true');
+      values.push(filters.status === 'true');
       paramCount++;
     }
 
