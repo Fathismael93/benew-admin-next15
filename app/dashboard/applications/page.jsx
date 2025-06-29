@@ -161,49 +161,49 @@ async function getApplicationsFromDatabase(filters = {}) {
     }
 
     // Construction dynamique de la clause WHERE
-    const conditions = [];
-    const values = [];
-    let paramCount = 1;
+    // const conditions = [];
+    // const values = [];
+    // let paramCount = 1;
 
-    // Recherche par nom (reste identique)
-    if (filters.application_name) {
-      conditions.push(`application_name ILIKE $${paramCount}`);
-      values.push(`%${filters.application_name}%`);
-      paramCount++;
-    }
+    // // Recherche par nom (reste identique)
+    // if (filters.application_name) {
+    //   conditions.push(`application_name ILIKE $${paramCount}`);
+    //   values.push(`%${filters.application_name}%`);
+    //   paramCount++;
+    // }
 
-    // Filtre par catégorie (MULTIPLE)
-    if (filters.category && filters.category.length > 0) {
-      const categoryPlaceholders = filters.category
-        .map(() => `$${paramCount++}`)
-        .join(', ');
-      conditions.push(`application_category IN (${categoryPlaceholders})`);
-      values.push(...filters.category);
-    }
+    // // Filtre par catégorie (MULTIPLE)
+    // if (filters.category && filters.category.length > 0) {
+    //   const categoryPlaceholders = filters.category
+    //     .map(() => `$${paramCount++}`)
+    //     .join(', ');
+    //   conditions.push(`application_category IN (${categoryPlaceholders})`);
+    //   values.push(...filters.category);
+    // }
 
-    // Filtre par level (MULTIPLE)
-    if (filters.level && filters.level.length > 0) {
-      const levelPlaceholders = filters.level
-        .map(() => `$${paramCount++}`)
-        .join(', ');
-      conditions.push(`application_level IN (${levelPlaceholders})`);
-      values.push(...filters.level);
-    }
+    // // Filtre par level (MULTIPLE)
+    // if (filters.level && filters.level.length > 0) {
+    //   const levelPlaceholders = filters.level
+    //     .map(() => `$${paramCount++}`)
+    //     .join(', ');
+    //   conditions.push(`application_level IN (${levelPlaceholders})`);
+    //   values.push(...filters.level);
+    // }
 
-    // Filtre par status (MULTIPLE)
-    if (filters.status && filters.status.length > 0) {
-      const statusPlaceholders = filters.status
-        .map(() => `$${paramCount++}`)
-        .join(', ');
-      conditions.push(`is_active IN (${statusPlaceholders})`);
-      // Convertir les strings en booleans
-      values.push(...filters.status.map((s) => s === 'true'));
-    }
+    // // Filtre par status (MULTIPLE)
+    // if (filters.status && filters.status.length > 0) {
+    //   const statusPlaceholders = filters.status
+    //     .map(() => `$${paramCount++}`)
+    //     .join(', ');
+    //   conditions.push(`is_active IN (${statusPlaceholders})`);
+    //   // Convertir les strings en booleans
+    //   values.push(...filters.status.map((s) => s === 'true'));
+    // }
 
-    const whereClause =
-      conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    // const whereClause =
+    //   conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    console.log('Where clause:', whereClause);
+    // console.log('Where clause:', whereClause);
 
     // ===== ÉTAPE 3: EXÉCUTION DE LA REQUÊTE =====
     let result;
@@ -223,7 +223,6 @@ async function getApplicationsFromDatabase(filters = {}) {
           sales_count,
           updated_at
         FROM catalog.applications
-        ${whereClause}
         ORDER BY created_at DESC
       `;
 
