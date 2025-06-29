@@ -63,6 +63,7 @@ const OrdersList = ({ data, totalOrders }) => {
     setLoading(true);
 
     try {
+      console.log('📞 [DEBUG] Fetching API to update status...');
       const response = await fetch('/api/dashboard/orders/update-payment', {
         method: 'POST',
         headers: {
