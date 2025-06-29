@@ -12,7 +12,6 @@ import AppSearch from '@ui/components/dashboard/search/AppSearch';
 
 function ApplicationsList({ data }) {
   const [applications, setApplications] = useState(data);
-  const [searchTerm, setSearchTerm] = useState('');
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
@@ -20,11 +19,6 @@ function ApplicationsList({ data }) {
   useEffect(() => {
     setApplications(data);
   }, [data, deleteId, isDeleting]);
-
-  // Fonction pour gérer le changement de recherche
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-  };
 
   const handleDelete = async (id, application_images) => {
     if (confirm('Are you sure you want to delete this application?')) {
@@ -47,11 +41,7 @@ function ApplicationsList({ data }) {
   return (
     <div className={styles.applicationsContainer}>
       <div className={styles.top}>
-        <AppSearch
-          placeholder="Search for an application..."
-          value={searchTerm}
-          onChange={handleSearchChange}
-        />
+        <AppSearch placeholder="Search for an application..." />
         <AppFilters />
         <Link href="/dashboard/applications/add">
           <button className={styles.addButton} type="button">
