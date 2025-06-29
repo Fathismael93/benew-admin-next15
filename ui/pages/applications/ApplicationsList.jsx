@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { MdAdd, MdMonitor, MdPhoneIphone } from 'react-icons/md';
 import AppSearch from '@ui/components/dashboard/search/AppSearch';
 
-function ApplicationsList({ data }) {
+function ApplicationsList({ data, searchParams = {} }) {
   const [applications, setApplications] = useState(data);
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);

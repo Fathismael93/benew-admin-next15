@@ -29,7 +29,7 @@ export const dynamic = 'force-dynamic'; // Force le rendu dynamique
  * Cette fonction remplace l'appel API et s'exécute directement côté serveur
  * @returns {Promise<Array>} Liste des applications ou tableau vide en cas d'erreur
  */
-async function getApplicationsFromDatabase() {
+async function getApplicationsFromDatabase(filters = {}) {
   let client;
   const startTime = Date.now();
   const requestId = generateRequestId();
@@ -160,6 +160,38 @@ async function getApplicationsFromDatabase() {
       return [];
     }
 
+    // Construction dynamique de la clause WHERE
+    const conditions = [];
+    const values = [];
+    let paramCount = 1;
+
+    if (filters.application_name) {
+      conditions.push(`application_name ILIKE $${paramCount}`);
+      values.push(`%${filters.name}%`);
+      paramCount++;
+    }
+
+    if (filters.category) {
+      conditions.push(`application_category = $${paramCount}`);
+      values.push(`%${filters.name}%`);
+      paramCount++;
+    }
+
+    if (filters.level) {
+      conditions.push(`application_level = $${paramCount}`);
+      values.push(filters.level);
+      paramCount++;
+    }
+
+    if (filters.status !== undefined) {
+      conditions.push(`is_active = $${paramCount}`);
+      values.push(filters.active === 'true');
+      paramCount++;
+    }
+
+    const whereClause =
+      conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
     // ===== ÉTAPE 3: EXÉCUTION DE LA REQUÊTE =====
     let result;
     try {
@@ -178,6 +210,7 @@ async function getApplicationsFromDatabase() {
           sales_count,
           updated_at
         FROM catalog.applications
+        ${whereClause}
         ORDER BY created_at DESC
       `;
 
@@ -189,7 +222,7 @@ async function getApplicationsFromDatabase() {
         operation: 'SELECT',
       });
 
-      result = await client.query(applicationsQuery);
+      result = await client.query(applicationsQuery, values);
 
       logger.debug(
         'Applications query executed successfully (Server Component)',
@@ -489,7 +522,7 @@ async function checkAuthentication() {
  * Server Component principal pour la page des applications
  * Cette fonction s'exécute côté serveur et remplace l'appel API
  */
-const ApplicationsPage = async () => {
+const ApplicationsPage = async ({ searchParams }) => {
   try {
     // ===== ÉTAPE 1: VÉRIFICATION AUTHENTIFICATION =====
     const session = await checkAuthentication();
@@ -500,7 +533,7 @@ const ApplicationsPage = async () => {
     }
 
     // ===== ÉTAPE 2: RÉCUPÉRATION DES APPLICATIONS =====
-    const applications = await getApplicationsFromDatabase();
+    const applications = await getApplicationsFromDatabase(searchParams);
 
     // ===== ÉTAPE 3: RENDU DE LA PAGE =====
     logger.info('Applications page rendering (Server Component)', {
@@ -511,7 +544,7 @@ const ApplicationsPage = async () => {
       timestamp: new Date().toISOString(),
     });
 
-    return <ApplicationsList data={applications} />;
+    return <ApplicationsList data={applications} searchParams={searchParams} />;
   } catch (error) {
     // Gestion des erreurs au niveau de la page
     logger.error('Applications page error (Server Component)', {
@@ -537,7 +570,7 @@ const ApplicationsPage = async () => {
 
     // En cas d'erreur critique, afficher une page avec des données vides
     // plutôt que de faire planter complètement l'application
-    return <ApplicationsList data={[]} />;
+    return <ApplicationsList data={[]} searchParams={searchParams} />;
   }
 };
 
