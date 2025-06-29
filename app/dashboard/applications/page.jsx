@@ -234,7 +234,7 @@ async function getApplicationsFromDatabase(filters = {}) {
         operation: 'SELECT',
       });
 
-      result = await client.query(applicationsQuery, values);
+      result = await client.query(applicationsQuery);
 
       logger.debug(
         'Applications query executed successfully (Server Component)',
