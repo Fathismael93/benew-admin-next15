@@ -165,34 +165,43 @@ async function getApplicationsFromDatabase(filters = {}) {
     const values = [];
     let paramCount = 1;
 
+    // Recherche par nom (reste identique)
     if (filters.application_name) {
       conditions.push(`application_name ILIKE $${paramCount}`);
       values.push(`%${filters.application_name}%`);
       paramCount++;
     }
 
-    if (filters.category) {
-      conditions.push(`application_category = $${paramCount}`);
-      values.push(`%${filters.category}%`);
-      paramCount++;
+    // Filtre par catégorie (MULTIPLE)
+    if (filters.category && filters.category.length > 0) {
+      const categoryPlaceholders = filters.category
+        .map(() => `$${paramCount++}`)
+        .join(', ');
+      conditions.push(`application_category IN (${categoryPlaceholders})`);
+      values.push(...filters.category);
     }
 
-    if (filters.level) {
-      conditions.push(`application_level = $${paramCount}`);
-      values.push(filters.level);
-      paramCount++;
+    // Filtre par level (MULTIPLE)
+    if (filters.level && filters.level.length > 0) {
+      const levelPlaceholders = filters.level
+        .map(() => `$${paramCount++}`)
+        .join(', ');
+      conditions.push(`application_level IN (${levelPlaceholders})`);
+      values.push(...filters.level);
     }
 
-    if (filters.status !== undefined) {
-      conditions.push(`is_active = $${paramCount}`);
-      values.push(filters.status === 'true');
-      paramCount++;
+    // Filtre par status (MULTIPLE)
+    if (filters.status && filters.status.length > 0) {
+      const statusPlaceholders = filters.status
+        .map(() => `$${paramCount++}`)
+        .join(', ');
+      conditions.push(`is_active IN (${statusPlaceholders})`);
+      // Convertir les strings en booleans
+      values.push(...filters.status.map((s) => s === 'true'));
     }
 
     const whereClause =
       conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-
-    console.log('Where clause:', whereClause);
 
     // ===== ÉTAPE 3: EXÉCUTION DE LA REQUÊTE =====
     let result;
