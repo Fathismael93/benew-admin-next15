@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useTransition } from 'react';
 import { CldImage } from 'next-cloudinary';
 import Link from 'next/link';
 import {
@@ -18,6 +18,10 @@ import {
 import styles from '@/ui/styling/dashboard/orders/orders.module.css';
 import OrderSearch from '@/ui/components/dashboard/search/OrderSearch';
 import OrderFilters from '@/ui/components/dashboard/OrderFilters';
+import {
+  updateOrderPaymentStatus,
+  getFilteredOrders,
+} from '@/app/dashboard/orders/actions';
 
 const OrdersList = ({
   data,
@@ -27,6 +31,7 @@ const OrdersList = ({
 }) => {
   const [orders, setOrders] = useState(data);
   const [loading, setLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   // Statistiques calculées avec les 4 statuts
   const stats = useMemo(() => {
@@ -56,19 +61,19 @@ const OrdersList = ({
     };
   }, [orders]);
 
+  // Nouvelle fonction utilisant la Server Action pour la mise à jour du statut
   const handleStatusChange = async (orderId, newStatus) => {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/dashboard/orders/update-payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ orderId, order_payment_status: newStatus }),
-      });
+      // Utiliser la Server Action au lieu de l'API route
+      const result = await updateOrderPaymentStatus(
+        orderId.toString(),
+        newStatus,
+      );
 
-      if (response.ok) {
+      if (result.success) {
+        // Mettre à jour l'état local immédiatement pour l'UX
         setOrders((prevOrders) =>
           prevOrders.map((order) =>
             order.order_id === orderId
@@ -76,15 +81,77 @@ const OrdersList = ({
               : order,
           ),
         );
+
+        // Optionnel : Rafraîchir les données depuis le serveur après la mise à jour
+        // pour s'assurer que les données sont synchronisées
+        if (onFilterChange) {
+          startTransition(() => {
+            // Déclencher un re-fetch des données filtrées
+            handleRefreshData();
+          });
+        }
+
+        // TODO: Ajouter une notification de succès
+        console.log('Statut mis à jour avec succès:', result);
       } else {
         throw new Error('Failed to update status');
       }
     } catch (error) {
       console.error('Error updating payment status:', error);
+
+      // Rétablir l'état précédent en cas d'erreur
+      setOrders((prevOrders) =>
+        prevOrders.map((order) =>
+          order.order_id === orderId ? { ...order } : order,
+        ),
+      );
+
       // TODO: Ajouter une notification d'erreur
+      alert('Erreur lors de la mise à jour du statut. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Nouvelle fonction pour rafraîchir les données avec les filtres actuels
+  const handleRefreshData = async () => {
+    if (!onFilterChange) return;
+
+    try {
+      // Utiliser la Server Action pour récupérer les données filtrées
+      const result = await getFilteredOrders(currentFilters);
+
+      if (result && result.orders) {
+        setOrders(result.orders);
+        // Si le parent a besoin du total mis à jour, on pourrait l'exposer via une callback
+      }
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      // Ne pas afficher d'erreur pour le refresh automatique
+    }
+  };
+
+  // Nouvelle fonction pour gérer les changements de filtres
+  const handleFilterChange = async (newFilters) => {
+    if (!onFilterChange) return;
+
+    // Déclencher la transition pour montrer l'état de chargement
+    startTransition(async () => {
+      try {
+        // Utiliser la Server Action pour filtrer
+        const result = await getFilteredOrders(newFilters);
+
+        if (result && result.orders) {
+          setOrders(result.orders);
+        }
+
+        // Notifier le parent du changement de filtres
+        onFilterChange(newFilters);
+      } catch (error) {
+        console.error('Error filtering data:', error);
+        // TODO: Ajouter une notification d'erreur
+      }
+    });
   };
 
   const getStatusIcon = (status) => {
@@ -182,6 +249,9 @@ const OrdersList = ({
   // Vérifier si on a des filtres actifs
   const hasActiveFilters = Object.keys(currentFilters).length > 0;
 
+  // Déterminer si on est en état de chargement
+  const isLoading = loading || isPending;
+
   return (
     <div className={styles.container}>
       {/* En-tête avec statistiques */}
@@ -263,7 +333,7 @@ const OrdersList = ({
           <div className={styles.searchWrapper}>
             <OrderSearch
               placeholder="Rechercher par nom ou prénom du client..."
-              onFilterChange={onFilterChange}
+              onFilterChange={handleFilterChange}
               currentFilters={currentFilters}
             />
           </div>
@@ -271,11 +341,19 @@ const OrdersList = ({
 
         <div className={styles.filtersSection}>
           <OrderFilters
-            onFilterChange={onFilterChange}
+            onFilterChange={handleFilterChange}
             currentFilters={currentFilters}
           />
         </div>
       </div>
+
+      {/* Indicateur de chargement pour les filtres */}
+      {isPending && (
+        <div className={styles.loadingIndicator}>
+          <MdRefresh className={styles.loadingIcon} />
+          <span>Filtrage en cours...</span>
+        </div>
+      )}
 
       {/* Résultats */}
       <div className={styles.resultsHeader}>
@@ -311,13 +389,20 @@ const OrdersList = ({
                 <div className={styles.orderBody}>
                   <div className={styles.productSection}>
                     <div className={styles.productImage}>
-                      <CldImage
-                        src={order.application_images[0]}
-                        alt={order.application_name}
-                        width={80}
-                        height={80}
-                        className={styles.orderImage}
-                      />
+                      {order.application_images &&
+                      order.application_images.length > 0 ? (
+                        <CldImage
+                          src={order.application_images[0]}
+                          alt={order.application_name}
+                          width={80}
+                          height={80}
+                          className={styles.orderImage}
+                        />
+                      ) : (
+                        <div className={styles.noImage}>
+                          <MdShoppingCart />
+                        </div>
+                      )}
                     </div>
                     <div className={styles.productInfo}>
                       <h3 className={styles.productName}>
@@ -353,10 +438,10 @@ const OrdersList = ({
                           getNextStatus(order.order_payment_status),
                         )
                       }
-                      disabled={loading}
+                      disabled={isLoading}
                       className={`${styles.statusButton} ${styles[`statusButton${order.order_payment_status.charAt(0).toUpperCase() + order.order_payment_status.slice(1)}`]}`}
                     >
-                      {loading ? (
+                      {isLoading ? (
                         <>
                           <MdRefresh className={styles.loadingIcon} />
                           <span>Mise à jour...</span>
@@ -381,7 +466,7 @@ const OrdersList = ({
                       onChange={(e) =>
                         handleStatusChange(order.order_id, e.target.value)
                       }
-                      disabled={loading}
+                      disabled={isLoading}
                       className={styles.statusSelect}
                     >
                       <option value="unpaid">En attente</option>
