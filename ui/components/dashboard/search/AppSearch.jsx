@@ -1,50 +1,62 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
 import { MdSearch } from 'react-icons/md';
 import styles from './search.module.css';
 
-function AppSearch({ placeholder }) {
+function AppSearch({ placeholder, onFilterChange, currentFilters = {} }) {
   const [searchTerm, setSearchTerm] = useState('');
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const debounceRef = useRef(null);
 
-  // Initialiser le terme de recherche depuis l'URL au chargement
+  // Initialiser le terme de recherche depuis les filtres actuels
   useEffect(() => {
-    const applicationName = searchParams.get('application_name') || '';
+    const applicationName = currentFilters.application_name || '';
     setSearchTerm(applicationName);
-  }, [searchParams]);
+  }, [currentFilters.application_name]);
 
-  // Fonction pour mettre à jour l'URL avec le terme de recherche
-  const updateURL = (term) => {
-    const params = new URLSearchParams(searchParams);
+  // Fonction pour notifier le changement de filtre
+  const notifyFilterChange = (term) => {
+    if (onFilterChange) {
+      const newFilters = {
+        ...currentFilters,
+        application_name: term.trim() || undefined,
+      };
 
-    if (term.trim()) {
-      params.set('application_name', term);
-    } else {
-      params.delete('application_name');
+      // Nettoyer les valeurs undefined
+      Object.keys(newFilters).forEach((key) => {
+        if (newFilters[key] === undefined) {
+          delete newFilters[key];
+        }
+      });
+
+      onFilterChange(newFilters);
     }
-
-    const queryString = params.toString();
-    const newURL = queryString ? `?${queryString}` : window.location.pathname;
-
-    router.push(newURL, { scroll: false });
   };
 
-  // Gérer le changement dans l'input
+  // Gérer le changement dans l'input avec debouncing
   const handleSearchChange = (e) => {
     const value = e.target.value;
     setSearchTerm(value);
 
-    // Utiliser un debounce pour éviter trop de requêtes
-    const timeoutId = setTimeout(() => {
-      updateURL(value);
-    }, 500);
-
     // Nettoyer le timeout précédent
-    return () => clearTimeout(timeoutId);
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    // Créer un nouveau timeout
+    debounceRef.current = setTimeout(() => {
+      notifyFilterChange(value);
+    }, 300); // Debounce réduit à 300ms pour plus de réactivité
   };
+
+  // Nettoyer le timeout au démontage du composant
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className={styles.container}>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { CldImage } from 'next-cloudinary';
 import axios from 'axios';
@@ -9,9 +9,12 @@ import AppFilters from '@ui/components/dashboard/AppFilters';
 import Link from 'next/link';
 import { MdAdd, MdMonitor, MdPhoneIphone } from 'react-icons/md';
 import AppSearch from '@ui/components/dashboard/search/AppSearch';
+import { getFilteredApplications } from '@app/dashboard/applications/actions';
 
 function ApplicationsList({ data, searchParams = {} }) {
   const [applications, setApplications] = useState(data);
+  const [isPending, startTransition] = useTransition();
+  const [currentFilters, setCurrentFilters] = useState({});
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
@@ -19,6 +22,21 @@ function ApplicationsList({ data, searchParams = {} }) {
   useEffect(() => {
     setApplications(data);
   }, [data, deleteId, isDeleting]);
+
+  // Nouvelle fonction pour gérer les filtres
+  const handleFilterChange = (newFilters) => {
+    setCurrentFilters(newFilters);
+
+    startTransition(async () => {
+      try {
+        const filteredData = await getFilteredApplications(newFilters);
+        setApplications(filteredData);
+      } catch (error) {
+        console.error('Filter error:', error);
+        // Garder les données actuelles en cas d'erreur
+      }
+    });
+  };
 
   const handleDelete = async (id, application_images) => {
     if (confirm('Are you sure you want to delete this application?')) {
@@ -41,14 +59,25 @@ function ApplicationsList({ data, searchParams = {} }) {
   return (
     <div className={styles.applicationsContainer}>
       <div className={styles.top}>
-        <AppSearch placeholder="Search for an application..." />
-        <AppFilters />
+        <AppSearch
+          placeholder="Search for an application..."
+          onFilterChange={handleFilterChange}
+          currentFilters={currentFilters}
+        />
+        <AppFilters
+          onFilterChange={handleFilterChange}
+          currentFilters={currentFilters}
+        />
         <Link href="/dashboard/applications/add">
           <button className={styles.addButton} type="button">
             <MdAdd /> Add Application
           </button>
         </Link>
       </div>
+
+      {/* Indicateur de loading */}
+      {isPending && <div className={styles.loading}>Filtering...</div>}
+
       <div className={styles.applicationsGrid}>
         {applications && applications.length > 0 ? (
           applications.map((app) => (
