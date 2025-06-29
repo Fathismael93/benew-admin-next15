@@ -489,7 +489,7 @@ async function checkAuthentication() {
  * Server Component principal pour la page des applications
  * Cette fonction s'exécute côté serveur et remplace l'appel API
  */
-const ApplicationsPage = async ({ searchParams }) => {
+const ApplicationsPage = async () => {
   try {
     // ===== ÉTAPE 1: VÉRIFICATION AUTHENTIFICATION =====
     const session = await checkAuthentication();
@@ -500,7 +500,7 @@ const ApplicationsPage = async ({ searchParams }) => {
     }
 
     // ===== ÉTAPE 2: RÉCUPÉRATION DES APPLICATIONS =====
-    const applications = await getApplicationsFromDatabase(searchParams);
+    const applications = await getApplicationsFromDatabase();
 
     // ===== ÉTAPE 3: RENDU DE LA PAGE =====
     logger.info('Applications page rendering (Server Component)', {
@@ -511,7 +511,7 @@ const ApplicationsPage = async ({ searchParams }) => {
       timestamp: new Date().toISOString(),
     });
 
-    return <ApplicationsList data={applications} searchParams={searchParams} />;
+    return <ApplicationsList data={applications} />;
   } catch (error) {
     // Gestion des erreurs au niveau de la page
     logger.error('Applications page error (Server Component)', {
@@ -537,7 +537,7 @@ const ApplicationsPage = async ({ searchParams }) => {
 
     // En cas d'erreur critique, afficher une page avec des données vides
     // plutôt que de faire planter complètement l'application
-    return <ApplicationsList data={[]} searchParams={searchParams} />;
+    return <ApplicationsList data={[]} />;
   }
 };
 

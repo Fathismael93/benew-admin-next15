@@ -11,10 +11,11 @@ import { MdAdd, MdMonitor, MdPhoneIphone } from 'react-icons/md';
 import AppSearch from '@ui/components/dashboard/search/AppSearch';
 import { getFilteredApplications } from '@app/dashboard/applications/actions';
 
-function ApplicationsList({ data, searchParams = {} }) {
+function ApplicationsList({ data }) {
   const [applications, setApplications] = useState(data);
   const [isPending, startTransition] = useTransition();
   const [currentFilters, setCurrentFilters] = useState({});
+  const [error, setError] = useState(null);
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
@@ -23,9 +24,10 @@ function ApplicationsList({ data, searchParams = {} }) {
     setApplications(data);
   }, [data, deleteId, isDeleting]);
 
-  // Nouvelle fonction pour gérer les filtres
+  // Fonction pour gérer les filtres avec gestion d'erreur améliorée
   const handleFilterChange = (newFilters) => {
     setCurrentFilters(newFilters);
+    setError(null); // Reset l'erreur
 
     startTransition(async () => {
       try {
@@ -33,7 +35,24 @@ function ApplicationsList({ data, searchParams = {} }) {
         setApplications(filteredData);
       } catch (error) {
         console.error('Filter error:', error);
+        setError('Failed to filter applications. Please try again.');
         // Garder les données actuelles en cas d'erreur
+      }
+    });
+  };
+
+  // Fonction pour effacer tous les filtres
+  const clearAllFilters = () => {
+    setCurrentFilters({});
+    setError(null);
+
+    startTransition(async () => {
+      try {
+        const allData = await getFilteredApplications({});
+        setApplications(allData);
+      } catch (error) {
+        console.error('Clear filters error:', error);
+        setError('Failed to clear filters. Please refresh the page.');
       }
     });
   };
@@ -42,19 +61,29 @@ function ApplicationsList({ data, searchParams = {} }) {
     if (confirm('Are you sure you want to delete this application?')) {
       setDeleteId(id);
       setIsDeleting(true);
-      const response = await axios.delete(
-        `/api/dashboard/applications/${id}/delete`,
-        {
-          data: { id, application_images }, // Send id and application_images in the body
-        },
-      );
 
-      if (response.data.success) {
+      try {
+        const response = await axios.delete(
+          `/api/dashboard/applications/${id}/delete`,
+          {
+            data: { id, application_images },
+          },
+        );
+
+        if (response.data.success) {
+          setIsDeleting(false);
+          router.push('/dashboard/applications');
+        }
+      } catch (error) {
+        console.error('Delete error:', error);
         setIsDeleting(false);
-        router.push('/dashboard/applications'); // Refresh the page to reflect changes
+        setError('Failed to delete application. Please try again.');
       }
     }
   };
+
+  // Vérifier si on a des filtres actifs
+  const hasActiveFilters = Object.keys(currentFilters).length > 0;
 
   return (
     <div className={styles.applicationsContainer}>
@@ -75,8 +104,27 @@ function ApplicationsList({ data, searchParams = {} }) {
         </Link>
       </div>
 
-      {/* Indicateur de loading */}
-      {isPending && <div className={styles.loading}>Filtering...</div>}
+      {/* Indicateur de loading avec animation */}
+      {isPending && (
+        <div className={styles.loading}>
+          <span className={styles.loadingSpinner}></span>
+          Filtering applications...
+        </div>
+      )}
+
+      {/* Affichage des erreurs */}
+      {error && (
+        <div className={styles.error}>
+          <span className={styles.errorIcon}>⚠️</span>
+          {error}
+          <button
+            className={styles.retryButton}
+            onClick={() => handleFilterChange(currentFilters)}
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       <div className={styles.applicationsGrid}>
         {applications && applications.length > 0 ? (
@@ -105,11 +153,12 @@ function ApplicationsList({ data, searchParams = {} }) {
                 <CldImage
                   width="300"
                   height="200"
-                  src={app.application_images[0]} // First image in the array
+                  src={app.application_images[0]}
                   alt={`${app.application_name} image`}
                   className={styles.image}
                 />
               </div>
+
               <div className={styles.applicationDetails}>
                 <div className={styles.titleSection}>
                   <h2>{app.application_name}</h2>
@@ -135,6 +184,7 @@ function ApplicationsList({ data, searchParams = {} }) {
                   Visit Application
                 </a>
               </div>
+
               <div className={styles.applicationActions}>
                 <Link
                   href={`/dashboard/applications/${app.application_id}`}
@@ -163,14 +213,30 @@ function ApplicationsList({ data, searchParams = {} }) {
                       : 'Delete application'
                   }
                 >
-                  Delete
+                  {isDeleting && deleteId === app.application_id
+                    ? 'Deleting...'
+                    : 'Delete'}
                 </button>
               </div>
             </div>
           ))
         ) : (
           <div className={styles.noResults}>
-            <p>No applications available.</p>
+            <div className={styles.noResultsIcon}>📂</div>
+            <p>
+              {hasActiveFilters
+                ? 'No applications match your current filters.'
+                : 'No applications available.'}
+            </p>
+            {hasActiveFilters && (
+              <button
+                className={styles.clearFiltersButton}
+                onClick={clearAllFilters}
+                disabled={isPending}
+              >
+                Clear All Filters
+              </button>
+            )}
           </div>
         )}
       </div>
