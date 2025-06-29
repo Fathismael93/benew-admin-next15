@@ -20,32 +20,61 @@ import {
 import { CldImage } from 'next-cloudinary';
 
 import styles from '@/ui/styling/dashboard/templates/templates.module.css';
-import Search from '@/ui/components/dashboard/search';
+import TemplateSearch from '@/ui/components/dashboard/search/TemplateSearch';
+import TemplateFilters from '@/ui/components/dashboard/TemplateFilters';
 
 const ListTemplates = ({ data: initialData }) => {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState({});
   const [isDeleting, setIsDeleting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState(''); // 'active' ou 'confirm'
   const [templateToDelete, setTemplateToDelete] = useState(null);
   const [templates, setTemplates] = useState(initialData);
-  // const [deletedTemplates, setDeletedTemplates] = useState(new Set()); // Pour rollback
 
   const router = useRouter();
 
   // Mise à jour des templates quand les props changent (après navigation)
   useEffect(() => {
     setTemplates(initialData);
-    // setDeletedTemplates(new Set()); // Reset des suppressions optimistes
   }, [initialData]);
 
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-  };
+  // Fonction pour gérer les changements de filtres
+  const handleFiltersChange = useCallback((newFilters) => {
+    setFilters(newFilters);
+  }, []);
 
-  const filteredTemplates = templates?.filter((template) =>
-    template.template_name.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  // Appliquer les filtres aux templates
+  const filteredTemplates = templates?.filter((template) => {
+    // Filtre par nom
+    if (filters.template_name) {
+      const matchesName = template.template_name
+        .toLowerCase()
+        .includes(filters.template_name.toLowerCase());
+      if (!matchesName) return false;
+    }
+
+    // Filtre par support mobile
+    if (filters.template_has_mobile && filters.template_has_mobile.length > 0) {
+      const mobileValues = filters.template_has_mobile.map(
+        (val) => val === 'true',
+      );
+      if (!mobileValues.includes(template.template_has_mobile)) return false;
+    }
+
+    // Filtre par support web
+    if (filters.template_has_web && filters.template_has_web.length > 0) {
+      const webValues = filters.template_has_web.map((val) => val === 'true');
+      if (!webValues.includes(template.template_has_web)) return false;
+    }
+
+    // Filtre par statut actif
+    if (filters.is_active && filters.is_active.length > 0) {
+      const activeValues = filters.is_active.map((val) => val === 'true');
+      if (!activeValues.includes(template.is_active)) return false;
+    }
+
+    return true;
+  });
 
   const handleDeleteClick = (template) => {
     setTemplateToDelete(template);
@@ -60,27 +89,8 @@ const ListTemplates = ({ data: initialData }) => {
     setShowModal(true);
   };
 
-  // Fonction pour mise à jour optimiste des templates
-  // const optimisticUpdateTemplate = useCallback((templateId, updates) => {
-  //   setTemplates((prevTemplates) =>
-  //     prevTemplates.map((template) =>
-  //       template.template_id === templateId
-  //         ? { ...template, ...updates }
-  //         : template,
-  //     ),
-  //   );
-  // }, []);
-
-  // Fonction pour ajout optimiste d'un template
-  // const optimisticAddTemplate = useCallback((newTemplate) => {
-  //   setTemplates((prevTemplates) => [...prevTemplates, newTemplate]);
-  // }, []);
-
   // Fonction pour suppression optimiste avec rollback
   const optimisticDeleteTemplate = useCallback((templateId) => {
-    // Marquer comme supprimé pour rollback potentiel
-    // setDeletedTemplates((prev) => new Set(prev).add(templateId));
-
     // Supprimer de l'UI
     setTemplates((prevTemplates) =>
       prevTemplates.filter((template) => template.template_id !== templateId),
@@ -183,7 +193,7 @@ const ListTemplates = ({ data: initialData }) => {
   // Fonction pour actualiser manuellement la liste (utile pour les cas edge)
   const refreshTemplates = useCallback(() => {
     window.location.reload();
-  }, [router]);
+  }, []);
 
   // Modal de confirmation/avertissement
   const renderModal = () => {
@@ -268,11 +278,17 @@ const ListTemplates = ({ data: initialData }) => {
   return (
     <div className={styles.container}>
       <div className={styles.top}>
-        <Search
-          placeholder="Search for a template..."
-          value={searchTerm}
-          onChange={handleSearchChange}
-        />
+        <div className={styles.searchAndFilters}>
+          <TemplateSearch
+            placeholder="Search for a template..."
+            onFilterChange={handleFiltersChange}
+            currentFilters={filters}
+          />
+          <TemplateFilters
+            onFilterChange={handleFiltersChange}
+            currentFilters={filters}
+          />
+        </div>
         <div className={styles.headerActions}>
           <button
             className={styles.refreshButton}
@@ -293,6 +309,10 @@ const ListTemplates = ({ data: initialData }) => {
           <div className={styles.noTemplates}>
             <p>No templates found. Add your first template.</p>
           </div>
+        ) : filteredTemplates?.length === 0 ? (
+          <div className={styles.noTemplates}>
+            <p>No templates match your current filters.</p>
+          </div>
         ) : (
           <div className={styles.grid}>
             {filteredTemplates?.map((template) => (
@@ -300,12 +320,6 @@ const ListTemplates = ({ data: initialData }) => {
                 key={template.template_id}
                 className={`${styles.card} ${
                   template.is_active ? styles.activeCard : styles.inactiveCard
-                } ${
-                  '' /*
-                  deletedTemplates.has(template.template_id)
-                    ? styles.deletingCard
-                    : ''
-                */
                 }`}
               >
                 <div className={styles.imageContainer}>
@@ -375,7 +389,6 @@ const ListTemplates = ({ data: initialData }) => {
                     <Link href={`/dashboard/templates/${template.template_id}`}>
                       <button
                         className={`${styles.actionButton} ${styles.editButton}`}
-                        // disabled={deletedTemplates.has(template.template_id)}
                       >
                         <MdEdit />
                       </button>

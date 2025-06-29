@@ -10,6 +10,15 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 20px;
+  gap: 20px;
+}
+
+/* Nouveau conteneur pour search et filters */
+.searchAndFilters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
 }
 
 .addButton {
@@ -485,4 +494,27 @@
   opacity: 0.6;
   transform: scale(0.98);
   transition: all 0.3s ease;
+}
+
+/* Responsive pour la nouvelle structure */
+@media (max-width: 768px) {
+  .top {
+    flex-direction: column;
+    gap: 15px;
+    align-items: stretch;
+  }
+
+  .searchAndFilters {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .headerActions {
+    justify-content: center;
+  }
+
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 15px;
+  }
 }
