@@ -508,6 +508,9 @@ export async function getFilteredOrders(filters = {}) {
         parametersCount: values.length,
       });
 
+      console.log('Executing main query:', mainQuery);
+      console.log('Executing count query:', countQuery);
+
       // Exécution avec timeout intégré
       const mainQueryPromise = client.query(mainQuery, values);
       const countQueryPromise = client.query(countQuery, values);
