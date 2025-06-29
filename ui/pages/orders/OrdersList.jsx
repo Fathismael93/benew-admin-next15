@@ -20,15 +20,12 @@ import OrderSearch from '@/ui/components/dashboard/search/OrderSearch';
 import OrderFilters from '@/ui/components/dashboard/OrderFilters';
 import { getFilteredOrders } from '@/app/dashboard/orders/actions';
 
-const OrdersList = ({
-  data,
-  totalOrders,
-  onFilterChange,
-  currentFilters = {},
-}) => {
+const OrdersList = ({ data, totalOrders }) => {
   const [orders, setOrders] = useState(data);
   const [loading, setLoading] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [currentFilters, setCurrentFilters] = useState({});
+  const [error, setError] = useState(null);
 
   // Statistiques calculées avec les 4 statuts
   const stats = useMemo(() => {
@@ -81,15 +78,6 @@ const OrdersList = ({
           ),
         );
 
-        // Optionnel : Rafraîchir les données depuis le serveur après la mise à jour
-        // pour s'assurer que les données sont synchronisées
-        if (onFilterChange) {
-          startTransition(() => {
-            // Déclencher un re-fetch des données filtrées
-            handleRefreshData();
-          });
-        }
-
         // TODO: Ajouter une notification de succès
         console.log('Statut mis à jour avec succès');
       } else {
@@ -112,42 +100,11 @@ const OrdersList = ({
     }
   };
 
-  // Ajouter plus de logs pour debug
-  const handleRefreshData = async () => {
-    console.log('🔄 [DEBUG] handleRefreshData called');
-
-    if (!onFilterChange) {
-      console.log('❌ [DEBUG] onFilterChange not available in refresh');
-      return;
-    }
-
-    try {
-      console.log('📞 [DEBUG] Refreshing with filters:', currentFilters);
-      // Utiliser la Server Action pour récupérer les données filtrées
-      const result = await getFilteredOrders(currentFilters);
-
-      console.log('✅ [DEBUG] Refresh result:', result);
-
-      if (result && result.orders) {
-        setOrders(result.orders);
-        console.log(
-          '✅ [DEBUG] Orders refreshed, count:',
-          result.orders.length,
-        );
-      }
-    } catch (error) {
-      console.error('❌ [DEBUG] Error refreshing data:', error);
-    }
-  };
-
   // Ajouter des logs pour debug
   const handleFilterChange = async (newFilters) => {
     console.log('🔄 [DEBUG] handleFilterChange called with:', newFilters);
-
-    if (!onFilterChange) {
-      console.log('❌ [DEBUG] onFilterChange not available');
-      return;
-    }
+    setCurrentFilters(newFilters);
+    setError(null); // Réinitialiser l'erreur
 
     // Déclencher la transition pour montrer l'état de chargement
     startTransition(async () => {
@@ -165,9 +122,6 @@ const OrdersList = ({
             result.orders.length,
           );
         }
-
-        // Notifier le parent du changement de filtres
-        onFilterChange(newFilters);
       } catch (error) {
         console.error('❌ [DEBUG] Error filtering data:', error);
         // TODO: Ajouter une notification d'erreur
