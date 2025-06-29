@@ -82,7 +82,7 @@ function validateAndSanitizeFilters(filters = {}) {
           // Nettoyer et limiter la longueur
           const cleanValue = value.trim().substring(0, maxStringLength);
           // Supprimer les caractères potentiellement dangereux
-          const sanitizedValue = cleanValue.replace(/[<>\"'%;()&+]/g, '');
+          const sanitizedValue = cleanValue.replace(/[<>"'%;()&+]/g, '');
           if (sanitizedValue.length >= 2) {
             validatedFilters[key] = sanitizedValue;
           }
