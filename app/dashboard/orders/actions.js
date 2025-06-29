@@ -425,7 +425,7 @@ export async function updateOrderPaymentStatus(orderId, newStatus) {
         UPDATE admin.orders 
         SET 
           order_payment_status = $1,
-          updated_at = CURRENT_TIMESTAMP
+          order_updated = CURRENT_TIMESTAMP
         WHERE order_id = $2
         RETURNING order_id, order_payment_status, updated_at
       `;

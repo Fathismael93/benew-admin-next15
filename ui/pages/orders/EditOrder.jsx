@@ -20,6 +20,7 @@ import {
   MdStar,
 } from 'react-icons/md';
 import styles from '@ui/styling/dashboard/orders/editOrder.module.css'; // Assurez-vous que le chemin est correct
+import { updateOrderPaymentStatus } from '@app/dashboard/orders/actions';
 
 const EditOrder = ({ order }) => {
   const [currentStatus, setCurrentStatus] = useState(
@@ -46,18 +47,13 @@ const EditOrder = ({ order }) => {
     setMessage(null);
 
     try {
-      const response = await fetch('/api/dashboard/orders/update-payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          orderId: order.order_id,
-          order_payment_status: currentStatus,
-        }),
-      });
+      // PAR ÇA :
+      const result = await updateOrderPaymentStatus(
+        order.order_id,
+        currentStatus,
+      );
 
-      if (response.ok) {
+      if (result.success) {
         setMessage({
           type: 'success',
           text: 'Statut mis à jour avec succès !',
