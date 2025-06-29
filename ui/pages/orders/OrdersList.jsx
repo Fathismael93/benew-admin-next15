@@ -120,6 +120,9 @@ const OrdersList = ({
       // Utiliser la Server Action pour récupérer les données filtrées
       const result = await getFilteredOrders(currentFilters);
 
+      console.log('Refreshing data with filters:', currentFilters);
+      console.log('Result from server:', result);
+
       if (result && result.orders) {
         setOrders(result.orders);
         // Si le parent a besoin du total mis à jour, on pourrait l'exposer via une callback
