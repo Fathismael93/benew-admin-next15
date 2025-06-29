@@ -16,6 +16,11 @@ function OrderSearch({ placeholder, onFilterChange, currentFilters = {} }) {
 
   // Fonction pour notifier le changement de filtre
   const notifyFilterChange = (term) => {
+    console.log(
+      '🔍 [DEBUG] OrderSearch notifyFilterChange called with term:',
+      term,
+    );
+
     if (onFilterChange) {
       const newFilters = {
         ...currentFilters,
@@ -29,7 +34,10 @@ function OrderSearch({ placeholder, onFilterChange, currentFilters = {} }) {
         }
       });
 
+      console.log('🔍 [DEBUG] OrderSearch sending filters:', newFilters);
       onFilterChange(newFilters);
+    } else {
+      console.log('❌ [DEBUG] OrderSearch: onFilterChange not available');
     }
   };
 

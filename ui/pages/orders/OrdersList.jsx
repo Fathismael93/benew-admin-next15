@@ -112,45 +112,64 @@ const OrdersList = ({
     }
   };
 
-  // Nouvelle fonction pour rafraîchir les données avec les filtres actuels
+  // Ajouter plus de logs pour debug
   const handleRefreshData = async () => {
-    if (!onFilterChange) return;
+    console.log('🔄 [DEBUG] handleRefreshData called');
+
+    if (!onFilterChange) {
+      console.log('❌ [DEBUG] onFilterChange not available in refresh');
+      return;
+    }
 
     try {
+      console.log('📞 [DEBUG] Refreshing with filters:', currentFilters);
       // Utiliser la Server Action pour récupérer les données filtrées
       const result = await getFilteredOrders(currentFilters);
 
-      console.log('Refreshing data with filters:', currentFilters);
-      console.log('Result from server:', result);
+      console.log('✅ [DEBUG] Refresh result:', result);
 
       if (result && result.orders) {
         setOrders(result.orders);
-        // Si le parent a besoin du total mis à jour, on pourrait l'exposer via une callback
+        console.log(
+          '✅ [DEBUG] Orders refreshed, count:',
+          result.orders.length,
+        );
       }
     } catch (error) {
-      console.error('Error refreshing data:', error);
-      // Ne pas afficher d'erreur pour le refresh automatique
+      console.error('❌ [DEBUG] Error refreshing data:', error);
     }
   };
 
-  // Nouvelle fonction pour gérer les changements de filtres
+  // Ajouter des logs pour debug
   const handleFilterChange = async (newFilters) => {
-    if (!onFilterChange) return;
+    console.log('🔄 [DEBUG] handleFilterChange called with:', newFilters);
+
+    if (!onFilterChange) {
+      console.log('❌ [DEBUG] onFilterChange not available');
+      return;
+    }
 
     // Déclencher la transition pour montrer l'état de chargement
     startTransition(async () => {
       try {
+        console.log('📞 [DEBUG] Calling getFilteredOrders...');
         // Utiliser la Server Action pour filtrer
         const result = await getFilteredOrders(newFilters);
 
+        console.log('✅ [DEBUG] getFilteredOrders result:', result);
+
         if (result && result.orders) {
           setOrders(result.orders);
+          console.log(
+            '✅ [DEBUG] Orders updated, count:',
+            result.orders.length,
+          );
         }
 
         // Notifier le parent du changement de filtres
         onFilterChange(newFilters);
       } catch (error) {
-        console.error('Error filtering data:', error);
+        console.error('❌ [DEBUG] Error filtering data:', error);
         // TODO: Ajouter une notification d'erreur
       }
     });

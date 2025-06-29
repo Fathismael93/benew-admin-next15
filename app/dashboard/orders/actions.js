@@ -42,46 +42,13 @@ function buildSecureWhereClause(filters) {
 
   // Recherche par client dans TOUT l'array order_client
   if (filters.order_client) {
-    console.log(
-      '🔍 [DEBUG] Adding order_client filter (search in entire array):',
-      filters.order_client,
-    );
-    // Recherche dans tout l'array order_client avec ANY
-    conditions.push(`${paramCount} = ANY(
-      SELECT unnest(
-        array(
-          SELECT CASE 
-            WHEN elem ILIKE ${paramCount + 1} THEN elem 
-            ELSE NULL 
-          END
-          FROM unnest(order_client) AS elem
-        )
-      )
-    )`);
-    const searchTerm = `%${filters.order_client}%`;
-    values.push(filters.order_client, searchTerm);
-    paramCount += 2;
-    console.log(
-      '🔍 [DEBUG] Client search condition added with array search, searchTerm:',
-      searchTerm,
-    );
-  }
-
-  // Alternative plus simple pour rechercher dans tout l'array
-  if (filters.order_client) {
-    console.log('🔍 [DEBUG] Using simpler array search approach');
-    // Reset des conditions pour utiliser la version simple
-    conditions.length = 0;
-    values.length = 0;
-    paramCount = 1;
-
-    // Convertir l'array en texte et chercher dedans
-    conditions.push(`array_to_string(order_client, ' ') ILIKE ${paramCount}`);
+    console.log('🔍 [DEBUG] Adding order_client filter:', filters.order_client);
+    conditions.push(`array_to_string(order_client, ' ') ILIKE $${paramCount}`);
     const searchTerm = `%${filters.order_client}%`;
     values.push(searchTerm);
     paramCount++;
     console.log(
-      '🔍 [DEBUG] Using array_to_string approach, searchTerm:',
+      '🔍 [DEBUG] Client search condition added, searchTerm:',
       searchTerm,
     );
   }
@@ -93,7 +60,7 @@ function buildSecureWhereClause(filters) {
       filters.order_payment_status,
     );
     const statusPlaceholders = filters.order_payment_status
-      .map(() => `${paramCount++}`)
+      .map(() => `$${paramCount++}`)
       .join(', ');
     conditions.push(`order_payment_status IN (${statusPlaceholders})`);
     values.push(...filters.order_payment_status);

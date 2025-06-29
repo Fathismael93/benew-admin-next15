@@ -60,6 +60,11 @@ const OrderFilters = ({ onFilterChange, currentFilters = {} }) => {
 
   // Fonction pour notifier le changement de filtre
   const notifyFilterChange = (filters) => {
+    console.log(
+      '🔍 [DEBUG] OrderFilters notifyFilterChange called with:',
+      filters,
+    );
+
     if (onFilterChange) {
       // Construire l'objet de filtres pour la Server Action
       const serverFilters = {
@@ -73,7 +78,10 @@ const OrderFilters = ({ onFilterChange, currentFilters = {} }) => {
         delete serverFilters.order_payment_status;
       }
 
+      console.log('🔍 [DEBUG] OrderFilters sending filters:', serverFilters);
       onFilterChange(serverFilters);
+    } else {
+      console.log('❌ [DEBUG] OrderFilters: onFilterChange not available');
     }
   };
 
