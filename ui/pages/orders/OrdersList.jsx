@@ -18,10 +18,7 @@ import {
 import styles from '@/ui/styling/dashboard/orders/orders.module.css';
 import OrderSearch from '@/ui/components/dashboard/search/OrderSearch';
 import OrderFilters from '@/ui/components/dashboard/OrderFilters';
-import {
-  updateOrderPaymentStatus,
-  getFilteredOrders,
-} from '@/app/dashboard/orders/actions';
+import { getFilteredOrders } from '@/app/dashboard/orders/actions';
 
 const OrdersList = ({
   data,
@@ -61,18 +58,20 @@ const OrdersList = ({
     };
   }, [orders]);
 
-  // Nouvelle fonction utilisant la Server Action pour la mise à jour du statut
+  // Fonction utilisant l'API route pour la mise à jour du statut
   const handleStatusChange = async (orderId, newStatus) => {
     setLoading(true);
 
     try {
-      // Utiliser la Server Action au lieu de l'API route
-      const result = await updateOrderPaymentStatus(
-        orderId.toString(),
-        newStatus,
-      );
+      const response = await fetch('/api/dashboard/orders/update-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ orderId, order_payment_status: newStatus }),
+      });
 
-      if (result.success) {
+      if (response.ok) {
         // Mettre à jour l'état local immédiatement pour l'UX
         setOrders((prevOrders) =>
           prevOrders.map((order) =>
@@ -92,7 +91,7 @@ const OrdersList = ({
         }
 
         // TODO: Ajouter une notification de succès
-        console.log('Statut mis à jour avec succès:', result);
+        console.log('Statut mis à jour avec succès');
       } else {
         throw new Error('Failed to update status');
       }
