@@ -10,16 +10,16 @@ function OrderSearch({ placeholder, onFilterChange, currentFilters = {} }) {
 
   // Initialiser le terme de recherche depuis les filtres actuels
   useEffect(() => {
-    const applicationName = currentFilters.application_name || '';
-    setSearchTerm(applicationName);
-  }, [currentFilters.application_name]);
+    const clientName = currentFilters.order_client || '';
+    setSearchTerm(clientName);
+  }, [currentFilters.order_client]);
 
   // Fonction pour notifier le changement de filtre
   const notifyFilterChange = (term) => {
     if (onFilterChange) {
       const newFilters = {
         ...currentFilters,
-        application_name: term.trim() || undefined,
+        order_client: term.trim() || undefined,
       };
 
       // Nettoyer les valeurs undefined
@@ -62,7 +62,7 @@ function OrderSearch({ placeholder, onFilterChange, currentFilters = {} }) {
     <div className={styles.container}>
       <MdSearch alt="search icon" />
       <input
-        id="searchApp"
+        id="searchOrder"
         type="text"
         placeholder={placeholder}
         className={styles.input}

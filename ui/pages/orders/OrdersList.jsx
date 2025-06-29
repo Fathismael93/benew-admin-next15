@@ -18,7 +18,7 @@ import {
   MdArrowForward,
 } from 'react-icons/md';
 import styles from '@/ui/styling/dashboard/orders/orders.module.css';
-import Search from '@/ui/components/dashboard/search';
+import OrderSearch from '@/ui/components/dashboard/search';
 
 const OrdersList = ({ data, totalOrders }) => {
   const [orders, setOrders] = useState(data);
@@ -306,8 +306,8 @@ const OrdersList = ({ data, totalOrders }) => {
       <div className={styles.toolbar}>
         <div className={styles.searchSection}>
           <div className={styles.searchWrapper}>
-            <Search
-              placeholder="Rechercher une commande, produit..."
+            <OrderSearch
+              placeholder="Rechercher une commande"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
