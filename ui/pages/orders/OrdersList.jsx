@@ -21,6 +21,7 @@ import styles from '@/ui/styling/dashboard/orders/orders.module.css';
 import OrderSearch from '@/ui/components/dashboard/search/OrderSearch';
 import OrderFilters from '@/ui/components/dashboard/OrderFilters';
 import { getFilteredOrders } from '@/app/dashboard/orders/actions';
+import { updateOrderPaymentStatus } from '@app/dashboard/orders/actions';
 
 const OrdersList = ({ data, totalOrders }) => {
   const [orders, setOrders] = useState(data);
@@ -80,16 +81,11 @@ const OrdersList = ({ data, totalOrders }) => {
         ),
       );
 
-      const response = await fetch('/api/dashboard/orders/update-payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ orderId, order_payment_status: newStatus }),
-      });
+      // PAR ÇA :
+      const result = await updateOrderPaymentStatus(orderId, newStatus);
 
-      if (!response.ok) {
-        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+      if (!result.success) {
+        throw new Error(`Erreur ${result.status}: ${result.statusText}`);
       }
 
       // Succès confirmé côté serveur
