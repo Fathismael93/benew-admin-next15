@@ -203,6 +203,8 @@ async function getApplicationsFromDatabase(filters = {}) {
     const whereClause =
       conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
+    console.log('Where clause:', whereClause);
+
     // ===== ÉTAPE 3: EXÉCUTION DE LA REQUÊTE =====
     let result;
     try {
