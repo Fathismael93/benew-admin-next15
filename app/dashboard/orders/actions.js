@@ -12,91 +12,20 @@ import {
 } from '@/monitoring/sentry';
 
 /**
- * Validation avancée des filtres avec sécurité renforcée
- * @param {Object} filters - Filtres à valider
- * @returns {Object} - Filtres validés et nettoyés
+ * Pas de validation - utilise les filtres tels quels pour le debug
+ * @param {Object} filters - Filtres à utiliser directement
+ * @returns {Object} - Filtres sans modification
  */
 function validateAndSanitizeFilters(filters = {}) {
   console.log(
-    '🔍 [DEBUG] validateAndSanitizeFilters - Input filters:',
+    '🔍 [DEBUG] validateAndSanitizeFilters - Input filters (no validation):',
     filters,
   );
-
-  const validatedFilters = {};
-  const allowedFields = ['order_payment_status', 'order_client'];
-  const maxStringLength = 100;
-  const maxArrayLength = 10;
-
-  for (const [key, value] of Object.entries(filters)) {
-    console.log(`🔍 [DEBUG] Processing filter: ${key} =`, value);
-
-    // Vérifier que le champ est autorisé
-    if (!allowedFields.includes(key)) {
-      console.log(`❌ [DEBUG] Field ${key} not allowed`);
-      logger.warn(
-        'Server Action: Tentative de filtrage avec champ non autorisé',
-        {
-          field: key,
-          component: 'orders_server_action',
-          action: 'filter_validation_failed',
-          security_event: true,
-        },
-      );
-      continue;
-    }
-
-    // Validation selon le type de champ
-    switch (key) {
-      case 'order_client':
-        if (typeof value === 'string' && value.trim()) {
-          const cleanValue = value.trim().substring(0, maxStringLength);
-          const sanitizedValue = cleanValue.replace(/[<>"'%;()&+]/g, '');
-          if (sanitizedValue.length >= 2) {
-            validatedFilters[key] = sanitizedValue;
-            console.log(`✅ [DEBUG] order_client validated:`, sanitizedValue);
-          } else {
-            console.log(`❌ [DEBUG] order_client too short:`, sanitizedValue);
-          }
-        } else {
-          console.log(
-            `❌ [DEBUG] order_client invalid type or empty:`,
-            typeof value,
-            value,
-          );
-        }
-        break;
-
-      case 'order_payment_status':
-        if (Array.isArray(value)) {
-          const validValues = value
-            .filter((v) => typeof v === 'string' && v.trim())
-            .map((v) => v.trim())
-            .slice(0, maxArrayLength);
-
-          const allowedStatuses = ['paid', 'unpaid', 'refunded', 'failed'];
-          validatedFilters[key] = validValues.filter((v) =>
-            allowedStatuses.includes(v),
-          );
-          console.log(
-            `✅ [DEBUG] order_payment_status validated:`,
-            validatedFilters[key],
-          );
-        } else {
-          console.log(
-            `❌ [DEBUG] order_payment_status not an array:`,
-            typeof value,
-            value,
-          );
-        }
-        break;
-    }
-  }
-
   console.log(
-    '🔍 [DEBUG] validateAndSanitizeFilters - Output:',
-    validatedFilters,
+    '🔍 [DEBUG] validateAndSanitizeFilters - Output (passthrough):',
+    filters,
   );
-  return validatedFilters;
+  return filters;
 }
 
 /**
@@ -111,19 +40,48 @@ function buildSecureWhereClause(filters) {
   const values = [];
   let paramCount = 1;
 
-  // Recherche par client (nom et prénom) avec ILIKE sécurisé
+  // Recherche par client dans TOUT l'array order_client
   if (filters.order_client) {
-    console.log('🔍 [DEBUG] Adding order_client filter:', filters.order_client);
-    // La recherche se fait sur nom et prénom (order_client[1] et order_client[2])
-    conditions.push(`(
-      order_client[1] ILIKE $${paramCount} OR 
-      order_client[2] ILIKE $${paramCount + 1}
+    console.log(
+      '🔍 [DEBUG] Adding order_client filter (search in entire array):',
+      filters.order_client,
+    );
+    // Recherche dans tout l'array order_client avec ANY
+    conditions.push(`${paramCount} = ANY(
+      SELECT unnest(
+        array(
+          SELECT CASE 
+            WHEN elem ILIKE ${paramCount + 1} THEN elem 
+            ELSE NULL 
+          END
+          FROM unnest(order_client) AS elem
+        )
+      )
     )`);
     const searchTerm = `%${filters.order_client}%`;
-    values.push(searchTerm, searchTerm);
+    values.push(filters.order_client, searchTerm);
     paramCount += 2;
     console.log(
-      '🔍 [DEBUG] Client search condition added, searchTerm:',
+      '🔍 [DEBUG] Client search condition added with array search, searchTerm:',
+      searchTerm,
+    );
+  }
+
+  // Alternative plus simple pour rechercher dans tout l'array
+  if (filters.order_client) {
+    console.log('🔍 [DEBUG] Using simpler array search approach');
+    // Reset des conditions pour utiliser la version simple
+    conditions.length = 0;
+    values.length = 0;
+    paramCount = 1;
+
+    // Convertir l'array en texte et chercher dedans
+    conditions.push(`array_to_string(order_client, ' ') ILIKE ${paramCount}`);
+    const searchTerm = `%${filters.order_client}%`;
+    values.push(searchTerm);
+    paramCount++;
+    console.log(
+      '🔍 [DEBUG] Using array_to_string approach, searchTerm:',
       searchTerm,
     );
   }
@@ -135,7 +93,7 @@ function buildSecureWhereClause(filters) {
       filters.order_payment_status,
     );
     const statusPlaceholders = filters.order_payment_status
-      .map(() => `$${paramCount++}`)
+      .map(() => `${paramCount++}`)
       .join(', ');
     conditions.push(`order_payment_status IN (${statusPlaceholders})`);
     values.push(...filters.order_payment_status);
