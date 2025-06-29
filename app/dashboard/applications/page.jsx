@@ -29,7 +29,7 @@ export const dynamic = 'force-dynamic'; // Force le rendu dynamique
  * Cette fonction remplace l'appel API et s'exécute directement côté serveur
  * @returns {Promise<Array>} Liste des applications ou tableau vide en cas d'erreur
  */
-async function getApplicationsFromDatabase(filters = {}) {
+async function getApplicationsFromDatabase() {
   let client;
   const startTime = Date.now();
   const requestId = generateRequestId();
