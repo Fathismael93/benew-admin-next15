@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { MdSearch } from 'react-icons/md';
-import styles from './search.module.css';
+import styles from './appFilters.module.css';
 
 function AppSearch({ placeholder, onFilterChange, currentFilters = {} }) {
   const [searchTerm, setSearchTerm] = useState('');
