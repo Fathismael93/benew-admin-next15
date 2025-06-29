@@ -97,36 +97,6 @@
   flex-wrap: wrap;
 }
 
-.filterGroup {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background-color: var(--bg);
-  border-radius: 8px;
-  padding: 8px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.filterIcon {
-  font-size: 18px;
-  color: var(--textSoft);
-}
-
-.filterSelect {
-  background-color: transparent;
-  border: none;
-  color: var(--text);
-  outline: none;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-.filterSelect:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-}
-
 /* ===== RÉSULTATS ===== */
 .resultsHeader {
   padding: 16px 24px;
@@ -223,6 +193,7 @@
   border: 1px solid;
 }
 
+/* Icônes de statut */
 .statusIconPaid {
   color: #10b981;
   font-size: 16px;
@@ -233,16 +204,39 @@
   font-size: 16px;
 }
 
-.statusText.statusPaid {
+.statusIconRefunded {
+  color: #6366f1;
+  font-size: 16px;
+}
+
+.statusIconFailed {
+  color: #ef4444;
+  font-size: 16px;
+}
+
+/* Classes de statut */
+.statusPaid {
   color: #10b981;
   border-color: rgba(16, 185, 129, 0.3);
   background-color: rgba(16, 185, 129, 0.1);
 }
 
-.statusText.statusPending {
+.statusPending {
   color: #f59e0b;
   border-color: rgba(245, 158, 11, 0.3);
   background-color: rgba(245, 158, 11, 0.1);
+}
+
+.statusRefunded {
+  color: #6366f1;
+  border-color: rgba(99, 102, 241, 0.3);
+  background-color: rgba(99, 102, 241, 0.1);
+}
+
+.statusFailed {
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+  background-color: rgba(239, 68, 68, 0.1);
 }
 
 /* Corps de la carte */
@@ -313,56 +307,112 @@
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.statusToggle {
+.actionButtons {
   display: flex;
-  align-items: center;
   gap: 12px;
-  cursor: pointer;
-  width: 100%;
-  position: relative;
+  margin-bottom: 12px;
 }
 
-.statusCheckbox {
-  appearance: none;
-  width: 44px;
-  height: 24px;
-  background-color: rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  position: relative;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: 2px solid transparent;
-}
-
-.statusCheckbox:checked {
-  background-color: #10b981;
-  border-color: #10b981;
-}
-
-.statusCheckbox::before {
-  content: '';
-  position: absolute;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background-color: white;
-  top: 1px;
-  left: 1px;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.statusCheckbox:checked::before {
-  transform: translateX(20px);
-}
-
-.statusLabel {
-  font-size: 14px;
-  color: var(--textSoft);
-  font-weight: 500;
+.detailsButton {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  padding: 10px 16px;
+  background-color: #4f46e5;
+  color: white;
+  text-decoration: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  flex: 1;
+}
+
+.detailsButton:hover {
+  background-color: #4338ca;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(79, 70, 229, 0.3);
+}
+
+.arrowIcon {
+  margin-left: auto;
+  font-size: 16px;
+}
+
+.statusButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex: 1;
+}
+
+.statusButtonPaid {
+  background-color: #6366f1;
+  color: white;
+}
+
+.statusButtonPaid:hover {
+  background-color: #5856eb;
+}
+
+.statusButtonUnpaid {
+  background-color: #10b981;
+  color: white;
+}
+
+.statusButtonUnpaid:hover {
+  background-color: #059669;
+}
+
+.statusButtonRefunded {
+  background-color: #f59e0b;
+  color: white;
+}
+
+.statusButtonRefunded:hover {
+  background-color: #d97706;
+}
+
+.statusButtonFailed {
+  background-color: #10b981;
+  color: white;
+}
+
+.statusButtonFailed:hover {
+  background-color: #059669;
+}
+
+.statusDropdown {
+  margin-top: 8px;
+}
+
+.statusSelect {
+  width: 100%;
+  padding: 8px 12px;
+  background-color: var(--bgSoft);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.statusSelect:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.statusSelect:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 }
 
 .loadingIcon {
@@ -410,23 +460,6 @@
   margin-bottom: 24px;
   max-width: 400px;
   line-height: 1.5;
-}
-
-.clearSearchBtn {
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.clearSearchBtn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(79, 70, 229, 0.3);
 }
 
 /* ===== RESPONSIVE ===== */
@@ -497,6 +530,11 @@
 
   .productPrice {
     font-size: 18px;
+  }
+
+  .actionButtons {
+    flex-direction: column;
+    gap: 8px;
   }
 }
 

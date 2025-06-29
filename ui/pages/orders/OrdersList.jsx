@@ -5,8 +5,6 @@ import { useState, useMemo } from 'react';
 import { CldImage } from 'next-cloudinary';
 import Link from 'next/link';
 import {
-  MdFilterList,
-  MdSort,
   MdTrendingUp,
   MdShoppingCart,
   MdPending,
@@ -18,14 +16,16 @@ import {
   MdArrowForward,
 } from 'react-icons/md';
 import styles from '@/ui/styling/dashboard/orders/orders.module.css';
-import OrderSearch from '@/ui/components/dashboard/search';
+import OrderSearch from '@/ui/components/dashboard/search/OrderSearch';
+import OrderFilters from '@/ui/components/dashboard/OrderFilters';
 
-const OrdersList = ({ data, totalOrders }) => {
+const OrdersList = ({
+  data,
+  totalOrders,
+  onFilterChange,
+  currentFilters = {},
+}) => {
   const [orders, setOrders] = useState(data);
-  const [filteredOrders, setFilteredOrders] = useState(data);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('created_desc');
   const [loading, setLoading] = useState(false);
 
   // Statistiques calculées avec les 4 statuts
@@ -55,54 +55,6 @@ const OrdersList = ({ data, totalOrders }) => {
       failedOrders,
     };
   }, [orders]);
-
-  // Filtrage et tri des commandes
-  useMemo(() => {
-    let filtered = [...orders];
-
-    // Filtrer par terme de recherche
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (order) =>
-          order.application_name
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          order.order_id.toString().includes(searchTerm) ||
-          order.application_category
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()),
-      );
-    }
-
-    // Filtrer par statut
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter((order) => {
-        return order.order_payment_status === statusFilter;
-      });
-    }
-
-    // Trier
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'created_desc':
-          return new Date(b.order_created) - new Date(a.order_created);
-        case 'created_asc':
-          return new Date(a.order_created) - new Date(b.order_created);
-        case 'price_desc':
-          return b.order_price - a.order_price;
-        case 'price_asc':
-          return a.order_price - b.order_price;
-        case 'name_asc':
-          return a.application_name.localeCompare(b.application_name);
-        case 'name_desc':
-          return b.application_name.localeCompare(a.application_name);
-        default:
-          return 0;
-      }
-    });
-
-    setFilteredOrders(filtered);
-  }, [orders, searchTerm, statusFilter, sortBy]);
 
   const handleStatusChange = async (orderId, newStatus) => {
     setLoading(true);
@@ -227,6 +179,9 @@ const OrdersList = ({ data, totalOrders }) => {
     }).format(new Date(dateString));
   };
 
+  // Vérifier si on a des filtres actifs
+  const hasActiveFilters = Object.keys(currentFilters).length > 0;
+
   return (
     <div className={styles.container}>
       {/* En-tête avec statistiques */}
@@ -307,61 +262,34 @@ const OrdersList = ({ data, totalOrders }) => {
         <div className={styles.searchSection}>
           <div className={styles.searchWrapper}>
             <OrderSearch
-              placeholder="Rechercher une commande"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Rechercher par nom ou prénom du client..."
+              onFilterChange={onFilterChange}
+              currentFilters={currentFilters}
             />
           </div>
         </div>
 
         <div className={styles.filtersSection}>
-          <div className={styles.filterGroup}>
-            <MdFilterList className={styles.filterIcon} />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className={styles.filterSelect}
-            >
-              <option value="all">Tous les statuts</option>
-              <option value="paid">Payées</option>
-              <option value="unpaid">En attente</option>
-              <option value="refunded">Remboursées</option>
-              <option value="failed">Échouées</option>
-            </select>
-          </div>
-
-          <div className={styles.filterGroup}>
-            <MdSort className={styles.filterIcon} />
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className={styles.filterSelect}
-            >
-              <option value="created_desc">Plus récent</option>
-              <option value="created_asc">Plus ancien</option>
-              <option value="price_desc">Prix décroissant</option>
-              <option value="price_asc">Prix croissant</option>
-              <option value="name_asc">Nom A-Z</option>
-              <option value="name_desc">Nom Z-A</option>
-            </select>
-          </div>
+          <OrderFilters
+            onFilterChange={onFilterChange}
+            currentFilters={currentFilters}
+          />
         </div>
       </div>
 
       {/* Résultats */}
       <div className={styles.resultsHeader}>
         <span className={styles.resultsCount}>
-          {filteredOrders.length} commande{filteredOrders.length > 1 ? 's' : ''}
-          {searchTerm &&
-            ` trouvée${filteredOrders.length > 1 ? 's' : ''} pour "${searchTerm}"`}
+          {orders.length} commande{orders.length > 1 ? 's' : ''}
+          {hasActiveFilters && ' trouvée(s) avec les filtres appliqués'}
         </span>
       </div>
 
       {/* Liste des commandes */}
       <div className={styles.ordersList}>
-        {filteredOrders.length > 0 ? (
+        {orders.length > 0 ? (
           <div className={styles.ordersGrid}>
-            {filteredOrders.map((order) => (
+            {orders.map((order) => (
               <div key={order.order_id} className={styles.orderCard}>
                 <div className={styles.orderHeader}>
                   <div className={styles.orderMeta}>
@@ -472,21 +400,13 @@ const OrdersList = ({ data, totalOrders }) => {
               <MdShoppingCart />
             </div>
             <h3 className={styles.emptyTitle}>
-              {searchTerm ? 'Aucune commande trouvée' : 'Aucune commande'}
+              {hasActiveFilters ? 'Aucune commande trouvée' : 'Aucune commande'}
             </h3>
             <p className={styles.emptyDescription}>
-              {searchTerm
-                ? `Aucune commande ne correspond à "${searchTerm}"`
+              {hasActiveFilters
+                ? 'Aucune commande ne correspond aux filtres appliqués'
                 : "Il n'y a pas encore de commandes à afficher."}
             </p>
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className={styles.clearSearchBtn}
-              >
-                Effacer la recherche
-              </button>
-            )}
           </div>
         )}
       </div>
