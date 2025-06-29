@@ -14,6 +14,8 @@ import {
   MdUndo,
   MdVisibility,
   MdArrowForward,
+  MdWarning,
+  MdClose,
 } from 'react-icons/md';
 import styles from '@/ui/styling/dashboard/orders/orders.module.css';
 import OrderSearch from '@/ui/components/dashboard/search/OrderSearch';
@@ -22,10 +24,11 @@ import { getFilteredOrders } from '@/app/dashboard/orders/actions';
 
 const OrdersList = ({ data, totalOrders }) => {
   const [orders, setOrders] = useState(data);
-  const [loading, setLoading] = useState(false);
+  const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [currentFilters, setCurrentFilters] = useState({});
   const [error, setError] = useState(null);
+  const [statusUpdateError, setStatusUpdateError] = useState(null);
 
   // Statistiques calculées avec les 4 statuts
   const stats = useMemo(() => {
@@ -55,15 +58,28 @@ const OrdersList = ({ data, totalOrders }) => {
     };
   }, [orders]);
 
+  // Fonction pour fermer les erreurs
+  const dismissError = () => setError(null);
+  const dismissStatusError = () => setStatusUpdateError(null);
+
   // Fonction utilisant l'API route pour la mise à jour du statut
   const handleStatusChange = async (orderId, newStatus) => {
-    console.log(
-      `🔄 [DEBUG] handleStatusChange called for order ${orderId} with status ${newStatus}`,
-    );
-    setLoading(true);
+    setStatusUpdateLoading(true);
+    setStatusUpdateError(null);
+
+    // Sauvegarder l'état actuel pour le rollback
+    const previousOrders = [...orders];
 
     try {
-      console.log('📞 [DEBUG] Fetching API to update status...');
+      // Optimistic update pour une meilleure UX
+      setOrders((prevOrders) =>
+        prevOrders.map((order) =>
+          order.order_id === orderId
+            ? { ...order, order_payment_status: newStatus }
+            : order,
+        ),
+      );
+
       const response = await fetch('/api/dashboard/orders/update-payment', {
         method: 'POST',
         headers: {
@@ -72,63 +88,38 @@ const OrdersList = ({ data, totalOrders }) => {
         body: JSON.stringify({ orderId, order_payment_status: newStatus }),
       });
 
-      if (response.ok) {
-        // Mettre à jour l'état local immédiatement pour l'UX
-        setOrders((prevOrders) =>
-          prevOrders.map((order) =>
-            order.order_id === orderId
-              ? { ...order, order_payment_status: newStatus }
-              : order,
-          ),
-        );
-
-        // TODO: Ajouter une notification de succès
-        console.log('Statut mis à jour avec succès');
-      } else {
-        throw new Error('Failed to update status');
+      if (!response.ok) {
+        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
       }
+
+      // Succès confirmé côté serveur
     } catch (error) {
-      console.error('Error updating payment status:', error);
-
-      // Rétablir l'état précédent en cas d'erreur
-      setOrders((prevOrders) =>
-        prevOrders.map((order) =>
-          order.order_id === orderId ? { ...order } : order,
-        ),
+      // Rollback en cas d'erreur
+      setOrders(previousOrders);
+      setStatusUpdateError(
+        `Impossible de mettre à jour le statut de la commande #${orderId}. ${error.message}`,
       );
-
-      // TODO: Ajouter une notification d'erreur
-      alert('Erreur lors de la mise à jour du statut. Veuillez réessayer.');
     } finally {
-      setLoading(false);
+      setStatusUpdateLoading(false);
     }
   };
 
-  // Ajouter des logs pour debug
+  // Fonction pour gérer les changements de filtres
   const handleFilterChange = async (newFilters) => {
-    console.log('🔄 [DEBUG] handleFilterChange called with:', newFilters);
     setCurrentFilters(newFilters);
-    setError(null); // Réinitialiser l'erreur
+    setError(null);
 
-    // Déclencher la transition pour montrer l'état de chargement
     startTransition(async () => {
       try {
-        console.log('📞 [DEBUG] Calling getFilteredOrders...');
-        // Utiliser la Server Action pour filtrer
         const result = await getFilteredOrders(newFilters);
-
-        console.log('✅ [DEBUG] getFilteredOrders result:', result);
 
         if (result && result.orders) {
           setOrders(result.orders);
-          console.log(
-            '✅ [DEBUG] Orders updated, count:',
-            result.orders.length,
-          );
         }
       } catch (error) {
-        console.error('❌ [DEBUG] Error filtering data:', error);
-        // TODO: Ajouter une notification d'erreur
+        setError(
+          'Une erreur est survenue lors du filtrage des commandes. Veuillez réessayer.',
+        );
       }
     });
   };
@@ -228,11 +219,37 @@ const OrdersList = ({ data, totalOrders }) => {
   // Vérifier si on a des filtres actifs
   const hasActiveFilters = Object.keys(currentFilters).length > 0;
 
-  // Déterminer si on est en état de chargement
-  const isLoading = loading || isPending;
-
   return (
     <div className={styles.container}>
+      {/* Notifications d'erreur */}
+      {error && (
+        <div className={styles.errorNotification}>
+          <MdWarning className={styles.errorIcon} />
+          <span className={styles.errorMessage}>{error}</span>
+          <button
+            onClick={dismissError}
+            className={styles.errorDismiss}
+            aria-label="Fermer la notification"
+          >
+            <MdClose />
+          </button>
+        </div>
+      )}
+
+      {statusUpdateError && (
+        <div className={styles.errorNotification}>
+          <MdWarning className={styles.errorIcon} />
+          <span className={styles.errorMessage}>{statusUpdateError}</span>
+          <button
+            onClick={dismissStatusError}
+            className={styles.errorDismiss}
+            aria-label="Fermer la notification"
+          >
+            <MdClose />
+          </button>
+        </div>
+      )}
+
       {/* En-tête avec statistiques */}
       <div className={styles.header}>
         <div className={styles.statsGrid}>
@@ -417,10 +434,11 @@ const OrdersList = ({ data, totalOrders }) => {
                           getNextStatus(order.order_payment_status),
                         )
                       }
-                      disabled={isLoading}
+                      disabled={statusUpdateLoading}
                       className={`${styles.statusButton} ${styles[`statusButton${order.order_payment_status.charAt(0).toUpperCase() + order.order_payment_status.slice(1)}`]}`}
+                      aria-label={`${getStatusActionText(order.order_payment_status)} pour la commande ${order.order_id}`}
                     >
-                      {isLoading ? (
+                      {statusUpdateLoading ? (
                         <>
                           <MdRefresh className={styles.loadingIcon} />
                           <span>Mise à jour...</span>
@@ -445,8 +463,9 @@ const OrdersList = ({ data, totalOrders }) => {
                       onChange={(e) =>
                         handleStatusChange(order.order_id, e.target.value)
                       }
-                      disabled={isLoading}
+                      disabled={statusUpdateLoading}
                       className={styles.statusSelect}
+                      aria-label={`Changer le statut de la commande ${order.order_id}`}
                     >
                       <option value="unpaid">En attente</option>
                       <option value="paid">Payée</option>
