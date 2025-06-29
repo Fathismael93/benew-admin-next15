@@ -294,9 +294,10 @@ export async function updateOrderPaymentStatus(orderId, newStatus) {
       throw new Error(`Invalid payment status: ${newStatus}`);
     }
 
-    // Valider l'ID de la commande (doit être un nombre)
-    const orderIdNumber = parseInt(orderId);
-    if (isNaN(orderIdNumber) || orderIdNumber <= 0) {
+    // Valider l'ID de la commande (doit être un UUID valide)
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!orderId || typeof orderId !== 'string' || !uuidRegex.test(orderId)) {
       logger.warn('Server Action: ID de commande invalide', {
         requestId,
         userId: session.user.id,
@@ -340,7 +341,7 @@ export async function updateOrderPaymentStatus(orderId, newStatus) {
         extra: {
           requestId,
           userId: session.user.id,
-          orderId: orderIdNumber,
+          orderId: orderId,
           newStatus,
         },
       });
@@ -357,25 +358,25 @@ export async function updateOrderPaymentStatus(orderId, newStatus) {
         WHERE order_id = $1
       `;
 
-      const checkResult = await client.query(checkQuery, [orderIdNumber]);
+      const checkResult = await client.query(checkQuery, [orderId]);
 
       if (checkResult.rows.length === 0) {
         logger.warn('Server Action: Commande non trouvée', {
           requestId,
           userId: session.user.id,
-          orderId: orderIdNumber,
+          orderId: orderId,
           component: 'orders_server_action',
           action: 'order_not_found',
         });
 
-        throw new Error(`Order #${orderIdNumber} not found`);
+        throw new Error(`Order #${orderId} not found`);
       }
 
       currentOrder = checkResult.rows[0];
 
       logger.debug('Server Action: Commande trouvée', {
         requestId,
-        orderId: orderIdNumber,
+        orderId: orderId,
         currentStatus: currentOrder.order_payment_status,
         newStatus,
         component: 'orders_server_action',
@@ -391,7 +392,7 @@ export async function updateOrderPaymentStatus(orderId, newStatus) {
           message: queryError.message,
           requestId,
           userId: session.user.id,
-          orderId: orderIdNumber,
+          orderId: orderId,
           component: 'orders_server_action',
           action: 'order_check_failed',
         },
@@ -409,7 +410,7 @@ export async function updateOrderPaymentStatus(orderId, newStatus) {
         extra: {
           requestId,
           userId: session.user.id,
-          orderId: orderIdNumber,
+          orderId: orderId,
           postgresCode: queryError.code,
         },
       });
@@ -431,14 +432,14 @@ export async function updateOrderPaymentStatus(orderId, newStatus) {
 
       const updateResult = await client.query(updateQuery, [
         newStatus,
-        orderIdNumber,
+        orderId,
       ]);
 
       if (updateResult.rows.length === 0) {
         logger.error('Server Action: Échec de la mise à jour de la commande', {
           requestId,
           userId: session.user.id,
-          orderId: orderIdNumber,
+          orderId: orderId,
           newStatus,
           component: 'orders_server_action',
           action: 'update_failed',
@@ -452,7 +453,7 @@ export async function updateOrderPaymentStatus(orderId, newStatus) {
       logger.info('Server Action: Statut commande mis à jour avec succès', {
         requestId,
         userId: session.user.id,
-        orderId: orderIdNumber,
+        orderId: orderId,
         oldStatus: currentOrder.order_payment_status,
         newStatus: updatedOrder.order_payment_status,
         updatedAt: updatedOrder.updated_at,
@@ -478,7 +479,7 @@ export async function updateOrderPaymentStatus(orderId, newStatus) {
           extra: {
             requestId,
             userId: session.user.id,
-            orderId: orderIdNumber,
+            orderId: orderId,
             oldStatus: currentOrder.order_payment_status,
             newStatus: updatedOrder.order_payment_status,
             responseTimeMs: responseTime,
@@ -506,7 +507,7 @@ export async function updateOrderPaymentStatus(orderId, newStatus) {
         message: updateError.message,
         requestId,
         userId: session.user.id,
-        orderId: orderIdNumber,
+        orderId: orderId,
         newStatus,
         component: 'orders_server_action',
         action: 'update_query_failed',
@@ -524,7 +525,7 @@ export async function updateOrderPaymentStatus(orderId, newStatus) {
         extra: {
           requestId,
           userId: session.user.id,
-          orderId: orderIdNumber,
+          orderId: orderId,
           newStatus,
           oldStatus: currentOrder.order_payment_status,
           postgresCode: updateError.code,
