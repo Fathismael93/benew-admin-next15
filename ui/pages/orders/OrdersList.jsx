@@ -57,6 +57,9 @@ const OrdersList = ({ data, totalOrders }) => {
 
   // Fonction utilisant l'API route pour la mise à jour du statut
   const handleStatusChange = async (orderId, newStatus) => {
+    console.log(
+      `🔄 [DEBUG] handleStatusChange called for order ${orderId} with status ${newStatus}`,
+    );
     setLoading(true);
 
     try {
