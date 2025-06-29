@@ -22,9 +22,11 @@ import { CldImage } from 'next-cloudinary';
 import styles from '@/ui/styling/dashboard/templates/templates.module.css';
 import TemplateSearch from '@/ui/components/dashboard/search/TemplateSearch';
 import TemplateFilters from '@/ui/components/dashboard/TemplateFilters';
+import { getFilteredTemplates } from '@app/dashboard/templates/actions';
 
 const ListTemplates = ({ data: initialData }) => {
   const [filters, setFilters] = useState({});
+  const [isLoading, setIsLoading] = useState(false); // NOUVEAU
   const [isDeleting, setIsDeleting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState(''); // 'active' ou 'confirm'
@@ -38,43 +40,25 @@ const ListTemplates = ({ data: initialData }) => {
     setTemplates(initialData);
   }, [initialData]);
 
-  // Fonction pour gérer les changements de filtres
-  const handleFiltersChange = useCallback((newFilters) => {
-    setFilters(newFilters);
-  }, []);
+  // PAR CETTE NOUVELLE FONCTION
+  const handleFiltersChange = useCallback(
+    async (newFilters) => {
+      setFilters(newFilters);
+      setIsLoading(true);
 
-  // Appliquer les filtres aux templates
-  const filteredTemplates = templates?.filter((template) => {
-    // Filtre par nom
-    if (filters.template_name) {
-      const matchesName = template.template_name
-        .toLowerCase()
-        .includes(filters.template_name.toLowerCase());
-      if (!matchesName) return false;
-    }
-
-    // Filtre par support mobile
-    if (filters.template_has_mobile && filters.template_has_mobile.length > 0) {
-      const mobileValues = filters.template_has_mobile.map(
-        (val) => val === 'true',
-      );
-      if (!mobileValues.includes(template.template_has_mobile)) return false;
-    }
-
-    // Filtre par support web
-    if (filters.template_has_web && filters.template_has_web.length > 0) {
-      const webValues = filters.template_has_web.map((val) => val === 'true');
-      if (!webValues.includes(template.template_has_web)) return false;
-    }
-
-    // Filtre par statut actif
-    if (filters.is_active && filters.is_active.length > 0) {
-      const activeValues = filters.is_active.map((val) => val === 'true');
-      if (!activeValues.includes(template.is_active)) return false;
-    }
-
-    return true;
-  });
+      try {
+        const filteredData = await getFilteredTemplates(newFilters);
+        setTemplates(filteredData);
+      } catch (error) {
+        console.error('Erreur lors du filtrage des templates:', error);
+        // En cas d'erreur, revenir aux données initiales
+        setTemplates(initialData);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [initialData],
+  );
 
   const handleDeleteClick = (template) => {
     setTemplateToDelete(template);
@@ -288,6 +272,7 @@ const ListTemplates = ({ data: initialData }) => {
             onFilterChange={handleFiltersChange}
             currentFilters={filters}
           />
+          {isLoading && <div className={styles.loading}>Searching...</div>}
         </div>
         <div className={styles.headerActions}>
           <button
@@ -309,13 +294,13 @@ const ListTemplates = ({ data: initialData }) => {
           <div className={styles.noTemplates}>
             <p>No templates found. Add your first template.</p>
           </div>
-        ) : filteredTemplates?.length === 0 ? (
+        ) : templates?.length === 0 ? (
           <div className={styles.noTemplates}>
             <p>No templates match your current filters.</p>
           </div>
         ) : (
           <div className={styles.grid}>
-            {filteredTemplates?.map((template) => (
+            {templates?.map((template) => (
               <div
                 key={template.template_id}
                 className={`${styles.card} ${
