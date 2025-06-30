@@ -186,9 +186,83 @@ const nextConfig = {
       //   headers: securityHeaders,
       // },
 
-      // Configuration CORS et cache pour les API publiques (templates, applications)
+      // ===== HEADERS COMMUNS POUR LES ROUTES TEMPLATES/ADD =====
+      // Configuration spécifique pour les routes d'ajout de templates
       {
-        source: '/api/dashboard/templates/:path*',
+        source: '/api/dashboard/templates/add/:path*',
+        headers: [
+          // CORS de base (commun aux 2 routes)
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'POST, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization, X-Requested-With',
+          },
+
+          // Anti-cache strict (commun - toutes deux sont des mutations)
+          {
+            key: 'Cache-Control',
+            value:
+              'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+          {
+            key: 'Expires',
+            value: '0',
+          },
+
+          // Sécurité de base (commun aux 2 routes)
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains; preload',
+          },
+
+          // Isolation (commun aux 2 routes)
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'credentialless',
+          },
+
+          // Headers de traçabilité et versioning (commun)
+          {
+            key: 'Vary',
+            value: 'Authorization, Content-Type',
+          },
+          {
+            key: 'X-Permitted-Cross-Domain-Policies',
+            value: 'none',
+          },
+        ],
+      },
+
+      // Configuration CORS et cache pour les autres API templates (lectures)
+      {
+        source: '/api/dashboard/templates/((?!add).*)',
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
@@ -314,7 +388,7 @@ const nextConfig = {
         ],
       },
 
-      // APIs de signature Cloudinary
+      // APIs de signature Cloudinary (configuration générale - sera surchargée par la route spécifique)
       {
         source: '/api/dashboard/:path*/sign-image',
         headers: [
