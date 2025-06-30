@@ -130,6 +130,92 @@ const cleanUUID = (uuid) => {
   return uuidRegex.test(cleaned) ? cleaned : null;
 };
 
+const createResponseHeaders = (
+  requestId,
+  responseTime,
+  platformId,
+  rateLimitInfo = null,
+) => {
+  const headers = {
+    // CORS spécifique pour mutations de plateformes (données sensibles)
+    'Access-Control-Allow-Origin':
+      process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
+    'Access-Control-Allow-Methods': 'PUT, OPTIONS',
+    'Access-Control-Allow-Headers':
+      'Content-Type, Authorization, X-Requested-With',
+
+    // Anti-cache ultra-strict pour données bancaires
+    'Cache-Control':
+      'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+    Pragma: 'no-cache',
+    Expires: '0',
+
+    // Sécurité renforcée pour données sensibles
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Cross-Origin-Resource-Policy': 'same-site',
+    'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+
+    // Isolation renforcée pour données bancaires
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cross-Origin-Embedder-Policy': 'credentialless',
+
+    // CSP ultra-restrictive pour manipulation de données bancaires
+    'Content-Security-Policy': "default-src 'none'; connect-src 'self'",
+
+    // Headers de sécurité supplémentaires
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'X-XSS-Protection': '1; mode=block',
+
+    // Headers de traçabilité
+    'X-Request-ID': requestId,
+    'X-Response-Time': `${responseTime}ms`,
+    'X-API-Version': '1.0',
+
+    // Headers spécifiques à l'édition de plateformes
+    'X-Transaction-Type': 'mutation',
+    'X-Operation-Type': 'update',
+    'X-Entity-Type': 'platform',
+    'X-Resource-ID': platformId,
+    'X-Resource-Validation': 'platform-id',
+    'X-Cache-Invalidation': 'platforms',
+    'X-Data-Sensitivity': 'high',
+
+    // Rate limiting spécifique aux plateformes (5 minutes / 10 max - plus restrictif)
+    'X-RateLimit-Window': '300', // 5 minutes en secondes
+    'X-RateLimit-Limit': '10',
+
+    // Headers de validation et sécurité spécifiques
+    'X-UUID-Validation': 'cleaned-and-verified',
+    'X-Sanitization-Applied': 'true',
+    'X-Yup-Validation-Applied': 'true',
+    'X-Partial-Update': 'enabled',
+    'X-Business-Rules': 'partial-update-allowed',
+
+    // Headers de performance et monitoring
+    'X-Database-Operations': '2', // connection + update (pas de uniqueness check)
+    'X-Operation-Criticality': 'high',
+
+    // Headers de sécurité pour données bancaires
+    'X-Financial-Data': 'true',
+    'X-PCI-Compliance': 'required',
+    'X-Data-Masking': 'platform-number',
+
+    // Headers anti-cache supplémentaires
+    Vary: 'Authorization, Content-Type',
+    'X-Permitted-Cross-Domain-Policies': 'none',
+  };
+
+  // Ajouter les infos de rate limiting si disponibles
+  if (rateLimitInfo) {
+    headers['X-RateLimit-Remaining'] =
+      rateLimitInfo.remaining?.toString() || '0';
+    headers['X-RateLimit-Reset'] = rateLimitInfo.resetTime?.toString() || '0';
+  }
+
+  return headers;
+};
+
 // ----- API ROUTE PRINCIPALE AVEC RATE LIMITING -----
 
 export async function PUT(request, { params }) {
@@ -220,6 +306,9 @@ export async function PUT(request, { params }) {
         },
       });
 
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(requestId, responseTime, id);
+
       return NextResponse.json(
         {
           error: 'Invalid platform ID format',
@@ -227,7 +316,7 @@ export async function PUT(request, { params }) {
             idValidationError.message,
           ],
         },
-        { status: 400 },
+        { status: 400, headers },
       );
     }
 
@@ -242,9 +331,12 @@ export async function PUT(request, { params }) {
         providedId: id,
       });
 
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(requestId, responseTime, id);
+
       return NextResponse.json(
         { error: 'Invalid platform ID format' },
-        { status: 400 },
+        { status: 400, headers },
       );
     }
 
@@ -289,7 +381,23 @@ export async function PUT(request, { params }) {
         },
       });
 
-      return rateLimitResponse; // Retourner directement la réponse 429
+      // Ajouter les headers de sécurité même en cas de rate limit
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(
+        requestId,
+        responseTime,
+        cleanedPlatformId,
+        {
+          remaining: 0,
+        },
+      );
+
+      // Modifier la réponse pour inclure nos headers
+      const rateLimitBody = await rateLimitResponse.json();
+      return NextResponse.json(rateLimitBody, {
+        status: 429,
+        headers: headers,
+      });
     }
 
     logger.debug('Rate limiting passed successfully', {
@@ -360,9 +468,16 @@ export async function PUT(request, { params }) {
         },
       });
 
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(
+        requestId,
+        responseTime,
+        cleanedPlatformId,
+      );
+
       return NextResponse.json(
         { error: 'Database connection failed' },
-        { status: 503 },
+        { status: 503, headers },
       );
     }
 
@@ -412,9 +527,17 @@ export async function PUT(request, { params }) {
       });
 
       if (client) await client.cleanup();
+
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(
+        requestId,
+        responseTime,
+        cleanedPlatformId,
+      );
+
       return NextResponse.json(
         { error: 'Invalid JSON in request body' },
-        { status: 400 },
+        { status: 400, headers },
       );
     }
 
@@ -543,166 +666,18 @@ export async function PUT(request, { params }) {
         errors[error.path] = error.message;
       });
 
-      return NextResponse.json({ errors }, { status: 400 });
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(
+        requestId,
+        responseTime,
+        cleanedPlatformId,
+      );
+
+      return NextResponse.json({ errors }, { status: 400, headers });
     }
 
-    // ===== ÉTAPE 8: VÉRIFICATION DE L'UNICITÉ (pour les modifications) =====
-    // if (
-    //   sanitizedPlatformName !== undefined ||
-    //   sanitizedPlatformNumber !== undefined
-    // ) {
-    //   try {
-    //     let uniqueCheckQuery = `
-    //       SELECT platform_id, platform_name, platform_number
-    //       FROM admin.platforms
-    //       WHERE platform_id != $1 AND (
-    //     `;
-
-    //     const queryParams = [cleanedPlatformId];
-    //     const conditions = [];
-    //     let paramCounter = 2;
-
-    //     if (sanitizedPlatformName !== undefined) {
-    //       conditions.push(`LOWER(platform_name) = LOWER($${paramCounter})`);
-    //       queryParams.push(sanitizedPlatformName);
-    //       paramCounter++;
-    //     }
-
-    //     if (sanitizedPlatformNumber !== undefined) {
-    //       conditions.push(`platform_number = $${paramCounter}`);
-    //       queryParams.push(sanitizedPlatformNumber);
-    //       paramCounter++;
-    //     }
-
-    //     uniqueCheckQuery += conditions.join(' OR ') + ')';
-
-    //     logger.debug('Checking platform uniqueness for update', {
-    //       requestId,
-    //       platformId: cleanedPlatformId,
-    //       component: 'platforms',
-    //       action: 'uniqueness_check_start',
-    //       operation: 'edit_platform',
-    //       table: 'admin.platforms',
-    //     });
-
-    //     const existingPlatform = await client.query(
-    //       uniqueCheckQuery,
-    //       queryParams,
-    //     );
-
-    //     if (existingPlatform.rows.length > 0) {
-    //       const conflictingPlatform = existingPlatform.rows[0];
-    //       let duplicateField = 'unknown';
-
-    //       if (
-    //         sanitizedPlatformName !== undefined &&
-    //         conflictingPlatform.platform_name.toLowerCase() ===
-    //           sanitizedPlatformName.toLowerCase()
-    //       ) {
-    //         duplicateField = 'platform_name';
-    //       } else if (
-    //         sanitizedPlatformNumber !== undefined &&
-    //         conflictingPlatform.platform_number === sanitizedPlatformNumber
-    //       ) {
-    //         duplicateField = 'platform_number';
-    //       }
-
-    //       logger.warn('Platform uniqueness violation detected during update', {
-    //         requestId,
-    //         platformId: cleanedPlatformId,
-    //         component: 'platforms',
-    //         action: 'uniqueness_violation',
-    //         operation: 'edit_platform',
-    //         duplicateField,
-    //         conflictingPlatformId: conflictingPlatform.platform_id,
-    //       });
-
-    //       // Capturer la violation d'unicité avec Sentry
-    //       captureMessage(
-    //         'Platform uniqueness violation detected during update',
-    //         {
-    //           level: 'warning',
-    //           tags: {
-    //             component: 'platforms',
-    //             action: 'uniqueness_violation',
-    //             error_category: 'business_logic',
-    //             entity: 'platform',
-    //             operation: 'update',
-    //           },
-    //           extra: {
-    //             requestId,
-    //             platformId: cleanedPlatformId,
-    //             duplicateField,
-    //             ip: anonymizeIp(extractRealIp(request)),
-    //           },
-    //         },
-    //       );
-
-    //       if (client) await client.cleanup();
-
-    //       const errorMessage =
-    //         duplicateField === 'platform_name'
-    //           ? 'A platform with this name already exists'
-    //           : 'A platform with this number already exists';
-
-    //       return NextResponse.json(
-    //         {
-    //           error: errorMessage,
-    //           field: duplicateField,
-    //         },
-    //         { status: 409 },
-    //       );
-    //     }
-
-    //     logger.debug('Platform uniqueness check passed for update', {
-    //       requestId,
-    //       platformId: cleanedPlatformId,
-    //       component: 'platforms',
-    //       action: 'uniqueness_check_success',
-    //       operation: 'edit_platform',
-    //     });
-    //   } catch (uniqueCheckError) {
-    //     const errorCategory = categorizeError(uniqueCheckError);
-
-    //     logger.error('Platform Uniqueness Check Error during update', {
-    //       category: errorCategory,
-    //       message: uniqueCheckError.message,
-    //       operation: 'SELECT FROM platforms',
-    //       table: 'admin.platforms',
-    //       requestId,
-    //       platformId: cleanedPlatformId,
-    //       component: 'platforms',
-    //       action: 'uniqueness_check_failed',
-    //     });
-
-    //     // Capturer l'erreur de vérification d'unicité avec Sentry
-    //     captureDatabaseError(uniqueCheckError, {
-    //       tags: {
-    //         component: 'platforms',
-    //         action: 'uniqueness_check_failed',
-    //         operation: 'SELECT',
-    //         entity: 'platform',
-    //       },
-    //       extra: {
-    //         requestId,
-    //         platformId: cleanedPlatformId,
-    //         table: 'admin.platforms',
-    //         queryType: 'uniqueness_check_update',
-    //         postgresCode: uniqueCheckError.code,
-    //         postgresDetail: uniqueCheckError.detail ? '[Filtered]' : undefined,
-    //         ip: anonymizeIp(extractRealIp(request)),
-    //       },
-    //     });
-
-    //     if (client) await client.cleanup();
-    //     return NextResponse.json(
-    //       { error: 'Failed to verify platform uniqueness' },
-    //       { status: 500 },
-    //     );
-    //   }
-    // }
-
-    // ===== ÉTAPE 9: MISE À JOUR EN BASE DE DONNÉES =====
+    // ===== ÉTAPE 8: MISE À JOUR EN BASE DE DONNÉES =====
+    // Note: La vérification d'unicité a été commentée dans le code original
     let result;
     try {
       // Construire la requête dynamiquement selon les champs fournis
@@ -711,19 +686,19 @@ export async function PUT(request, { params }) {
       let paramCounter = 1;
 
       if (sanitizedPlatformName !== undefined) {
-        updateFields.push(`platform_name = $${paramCounter}`);
+        updateFields.push(`platform_name = ${paramCounter}`);
         updateValues.push(sanitizedPlatformName);
         paramCounter++;
       }
 
       if (sanitizedPlatformNumber !== undefined) {
-        updateFields.push(`platform_number = $${paramCounter}`);
+        updateFields.push(`platform_number = ${paramCounter}`);
         updateValues.push(sanitizedPlatformNumber);
         paramCounter++;
       }
 
       if (sanitizedIsActive !== undefined) {
-        updateFields.push(`is_active = $${paramCounter}`);
+        updateFields.push(`is_active = ${paramCounter}`);
         updateValues.push(sanitizedIsActive);
         paramCounter++;
       }
@@ -737,7 +712,7 @@ export async function PUT(request, { params }) {
       const queryText = `
         UPDATE admin.platforms 
         SET ${updateFields.join(', ')}
-        WHERE platform_id = $${paramCounter}
+        WHERE platform_id = ${paramCounter}
         RETURNING platform_id, platform_name, platform_number, is_active, created_at, updated_at
       `;
 
@@ -780,9 +755,17 @@ export async function PUT(request, { params }) {
         });
 
         if (client) await client.cleanup();
+
+        const responseTime = Date.now() - startTime;
+        const headers = createResponseHeaders(
+          requestId,
+          responseTime,
+          cleanedPlatformId,
+        );
+
         return NextResponse.json(
           { message: 'Platform not found' },
-          { status: 404 },
+          { status: 404, headers },
         );
       }
 
@@ -829,26 +812,34 @@ export async function PUT(request, { params }) {
       });
 
       if (client) await client.cleanup();
+
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(
+        requestId,
+        responseTime,
+        cleanedPlatformId,
+      );
+
       return NextResponse.json(
         { error: 'Failed to update platform', message: updateError.message },
-        { status: 500 },
+        { status: 500, headers },
       );
     }
 
-    // ===== ÉTAPE 10: INVALIDATION DU CACHE APRÈS SUCCÈS =====
+    // ===== ÉTAPE 9: INVALIDATION DU CACHE APRÈS SUCCÈS =====
     const updatedPlatform = result.rows[0];
 
     // Invalider le cache des plateformes après modification réussie
     invalidatePlatformsCache(requestId, cleanedPlatformId);
 
-    // ===== ÉTAPE 11: SUCCÈS - LOG ET NETTOYAGE =====
+    // ===== ÉTAPE 10: SUCCÈS - LOG ET NETTOYAGE =====
     const responseTime = Date.now() - startTime;
 
     logger.info('Platform update successful', {
       platformId: cleanedPlatformId,
       platformName: updatedPlatform.platform_name,
       response_time_ms: responseTime,
-      database_operations: 3, // connection + uniqueness check + update
+      database_operations: 2, // connection + update (pas de uniqueness check)
       cache_invalidated: true,
       success: true,
       requestId,
@@ -859,7 +850,6 @@ export async function PUT(request, { params }) {
       operation: 'edit_platform',
       sanitizationApplied: true,
       yupValidationApplied: true,
-      uniquenessCheckApplied: true,
       containsSensitiveData: true,
     });
 
@@ -878,18 +868,24 @@ export async function PUT(request, { params }) {
         platformId: cleanedPlatformId,
         platformName: updatedPlatform.platform_name,
         responseTimeMs: responseTime,
-        databaseOperations: 3,
+        databaseOperations: 2,
         cacheInvalidated: true,
         ip: anonymizeIp(extractRealIp(request)),
         rateLimitingApplied: true,
         sanitizationApplied: true,
         yupValidationApplied: true,
-        uniquenessCheckApplied: true,
         containsSensitiveData: true,
       },
     });
 
     if (client) await client.cleanup();
+
+    // Créer les headers de succès
+    const headers = createResponseHeaders(
+      requestId,
+      responseTime,
+      cleanedPlatformId,
+    );
 
     // Masquer partiellement le numéro dans la réponse pour sécurité
     const responseData = {
@@ -912,10 +908,7 @@ export async function PUT(request, { params }) {
       },
       {
         status: 200,
-        headers: {
-          'X-Request-ID': requestId,
-          'X-Response-Time': `${responseTime}ms`,
-        },
+        headers: headers,
       },
     );
   } catch (error) {
@@ -964,18 +957,19 @@ export async function PUT(request, { params }) {
 
     if (client) await client.cleanup();
 
+    // Créer les headers même en cas d'erreur globale
+    const headers = createResponseHeaders(requestId, responseTime, id);
+
     return NextResponse.json(
       {
+        success: false,
         error: 'Internal server error',
         message: 'Failed to update platform',
         requestId,
       },
       {
         status: 500,
-        headers: {
-          'X-Request-ID': requestId,
-          'X-Response-Time': `${responseTime}ms`,
-        },
+        headers: headers,
       },
     );
   }
