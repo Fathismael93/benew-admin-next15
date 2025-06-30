@@ -32,7 +32,6 @@ const validateEnv = () => {
     'CONNECTION_TIMEOUT',
     'MAXIMUM_CLIENTS',
     'NODE_ENV',
-    'VERCEL_GIT_COMMIT_SHA',
   ];
 
   const missingVars = requiredVars.filter((varName) => !process.env[varName]);
@@ -537,7 +536,7 @@ const sentryWebpackPluginOptions = {
   ignore: ['node_modules', '*.map'],
 
   // Configuration des releases
-  release: process.env.SENTRY_RELEASE || process.env.VERCEL_GIT_COMMIT_SHA,
+  release: process.env.SENTRY_RELEASE || '1.0.0',
   deploy: {
     env: process.env.NODE_ENV,
   },
