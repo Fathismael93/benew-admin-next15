@@ -18,6 +18,7 @@ import {
 import styles from '@/ui/styling/dashboard/blog/blog.module.css';
 // import Search from '@/ui/components/dashboard/search';
 import PostCard from '@/ui/components/dashboard/PostCard';
+import BlogSearch from '@ui/components/dashboard/sidebar/BlogSearch';
 
 const ListArticles = ({ data }) => {
   const [articles, setArticles] = useState(data || []);
@@ -210,14 +211,7 @@ const ListArticles = ({ data }) => {
       <div className={styles.controls}>
         <div className={styles.searchAndFilters}>
           <div className={styles.searchWrapper}>
-            <MdSearch className={styles.searchIcon} />
-            <input
-              type="text"
-              placeholder="Search articles by title..."
-              value={searchTerm}
-              onChange={(e) => handleSearch(e.target.value)}
-              className={styles.searchInput}
-            />
+            <BlogSearch />
           </div>
 
           <div className={styles.filters}>
@@ -230,52 +224,6 @@ const ListArticles = ({ data }) => {
               <option value="active">Active Only</option>
               <option value="inactive">Inactive Only</option>
             </select>
-
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className={styles.sortSelect}
-            >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-              <option value="title">Title A-Z</option>
-            </select>
-          </div>
-        </div>
-
-        <div className={styles.viewControls}>
-          <div className={styles.bulkSelect}>
-            <input
-              type="checkbox"
-              checked={
-                selectedArticles.size === processedArticles.length &&
-                processedArticles.length > 0
-              }
-              onChange={selectAllArticles}
-              className={styles.selectAllCheckbox}
-            />
-            <span className={styles.selectAllLabel}>
-              {selectedArticles.size > 0
-                ? `${selectedArticles.size} selected`
-                : 'Select all'}
-            </span>
-          </div>
-
-          <div className={styles.viewModeToggle}>
-            <button
-              className={`${styles.viewModeButton} ${viewMode === 'grid' ? styles.active : ''}`}
-              onClick={() => setViewMode('grid')}
-              title="Grid view"
-            >
-              <MdViewModule />
-            </button>
-            <button
-              className={`${styles.viewModeButton} ${viewMode === 'list' ? styles.active : ''}`}
-              onClick={() => setViewMode('list')}
-              title="List view"
-            >
-              <MdViewList />
-            </button>
           </div>
         </div>
       </div>
