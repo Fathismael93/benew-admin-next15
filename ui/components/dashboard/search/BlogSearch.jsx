@@ -10,9 +10,9 @@ function BlogSearch({ placeholder, onFilterChange, currentFilters = {} }) {
 
   // Initialiser le terme de recherche depuis les filtres actuels
   useEffect(() => {
-    const articleName = currentFilters.article_name || '';
-    setSearchTerm(articleName);
-  }, [currentFilters.article_name]);
+    const articleTitlte = currentFilters.article_ || '';
+    setSearchTerm(articleTitlte);
+  }, [currentFilters.article_title]);
 
   // Fonction pour notifier le changement de filtre
   const notifyFilterChange = (term) => {

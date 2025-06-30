@@ -124,7 +124,7 @@ function buildSecureWhereClause(filters) {
   let paramCount = 1;
 
   // Recherche par nom d'article
-  if (filters.article_name) {
+  if (filters.article_title) {
     conditions.push(`article_title ILIKE $${paramCount}`);
     values.push(`%${filters.article_name}%`);
     paramCount++;
