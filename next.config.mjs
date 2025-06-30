@@ -316,7 +316,7 @@ const nextConfig = {
 
       // ===== HEADERS SPÉCIFIQUES POUR TEMPLATES/EDIT UNIQUEMENT =====
       {
-        source: '/api/dashboard/templates/[^/]+/edit',
+        source: '/api/dashboard/templates/:id/edit',
         headers: [
           // Méthodes spécifiques à edit
           {
