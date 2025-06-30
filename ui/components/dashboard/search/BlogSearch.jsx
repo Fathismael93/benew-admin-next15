@@ -8,11 +8,11 @@ function BlogSearch({ placeholder, onFilterChange, currentFilters = {} }) {
   const [searchTerm, setSearchTerm] = useState('');
   const debounceRef = useRef(null);
 
-  // Initialiser le terme de recherche depuis les filtres actuels
+  // Initialiser le terme de recherche seulement au montage du composant
   useEffect(() => {
-    const articleTitlte = currentFilters.article_ || '';
-    setSearchTerm(articleTitlte);
-  }, [currentFilters.article_title]);
+    const articleTitle = currentFilters.article_title || '';
+    setSearchTerm(articleTitle);
+  }, []); // Tableau vide = exécution une seule fois au montage
 
   // Fonction pour notifier le changement de filtre
   const notifyFilterChange = (term) => {
