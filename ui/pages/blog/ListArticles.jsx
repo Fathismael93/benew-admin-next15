@@ -18,7 +18,7 @@ import {
 import styles from '@/ui/styling/dashboard/blog/blog.module.css';
 // import Search from '@/ui/components/dashboard/search';
 import PostCard from '@/ui/components/dashboard/PostCard';
-import BlogSearch from '@ui/components/dashboard/sidebar/BlogSearch';
+import BlogSearch from '@ui/components/dashboard/search/BlogSearch';
 
 const ListArticles = ({ data }) => {
   const [articles, setArticles] = useState(data || []);
