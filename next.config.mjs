@@ -26,10 +26,13 @@ const validateEnv = () => {
     'SENTRY_IGNORE_API_RESOLUTION_ERROR',
     'SENTRY_ORG',
     'SENTRY_URL',
+    'SENTRY_RELEASE',
     'ANALYZE',
     'CLIENT_EXISTENCE',
     'CONNECTION_TIMEOUT',
     'MAXIMUM_CLIENTS',
+    'NODE_ENV',
+    'VERCEL_GIT_COMMIT_SHA',
   ];
 
   const missingVars = requiredVars.filter((varName) => !process.env[varName]);
