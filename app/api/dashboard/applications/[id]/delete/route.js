@@ -117,6 +117,100 @@ const invalidateApplicationsCache = (requestId, applicationId) => {
   }
 };
 
+// ----- FONCTION POUR CRÉER LES HEADERS DE RÉPONSE SPÉCIFIQUES À LA SUPPRESSION -----
+const createResponseHeaders = (
+  requestId,
+  responseTime,
+  applicationId,
+  rateLimitInfo = null,
+  cloudinaryOperations = 0,
+  businessRulesValidated = false,
+) => {
+  const headers = {
+    // ===== HEADERS COMMUNS (sécurité de base) =====
+    'Access-Control-Allow-Origin':
+      process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
+    'Access-Control-Allow-Methods': 'DELETE, OPTIONS',
+    'Access-Control-Allow-Headers':
+      'Content-Type, Authorization, X-Requested-With',
+
+    // Anti-cache strict pour les mutations critiques
+    'Cache-Control':
+      'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+    Pragma: 'no-cache',
+    Expires: '0',
+
+    // Sécurité de base
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'X-XSS-Protection': '1; mode=block',
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+
+    // Isolation moderne
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cross-Origin-Embedder-Policy': 'credentialless',
+    'Cross-Origin-Resource-Policy': 'same-site',
+
+    // Sécurité pour mutations de données
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+
+    // CSP pour manipulation de données
+    'Content-Security-Policy': "default-src 'none'; connect-src 'self'",
+
+    // ===== HEADERS SPÉCIFIQUES À LA SUPPRESSION D'APPLICATIONS =====
+    // Rate limiting ultra-strict pour suppressions (5/10min)
+    'X-RateLimit-Window': '600', // 10 minutes en secondes
+    'X-RateLimit-Limit': '5',
+
+    // Validation spécifique à la suppression
+    'X-Resource-Validation': 'application-id-required',
+    'X-UUID-Validation': 'cleaned-and-verified',
+    'X-Business-Rule-Validation': 'inactive-only',
+    'X-Sales-Validation': 'zero-sales-required',
+    'X-Media-Management': 'cloudinary-full-cleanup',
+
+    // Cache et base de données (spécifique suppression)
+    'X-Cache-Invalidation': 'applications',
+    'X-Database-Operations': '3', // connection + check + delete
+
+    // Headers de traçabilité spécifiques
+    'X-Request-ID': requestId,
+    'X-Response-Time': `${responseTime}ms`,
+    'X-API-Version': '1.0',
+    'X-Transaction-Type': 'mutation',
+    'X-Entity-Type': 'application',
+    'X-Operation-Type': 'delete',
+    'X-Operation-Criticality': 'high',
+
+    // Headers de validation métier
+    'X-Validation-Steps': 'business-rules',
+    'X-Business-Rules-Validated': businessRulesValidated.toString(),
+
+    // Headers Cloudinary (si des opérations ont eu lieu)
+    'X-Cloudinary-Operations': cloudinaryOperations.toString(),
+
+    // Headers de performance et traçabilité
+    Vary: 'Authorization, Content-Type',
+    'X-Permitted-Cross-Domain-Policies': 'none',
+
+    // Header spécifique pour l'ID de l'application supprimée
+    'X-Deleted-Resource-ID': applicationId,
+
+    // Headers de sécurité spécifiques aux suppressions
+    'X-Irreversible-Operation': 'true',
+    'X-Data-Loss-Warning': 'permanent',
+  };
+
+  // Ajouter les infos de rate limiting si disponibles
+  if (rateLimitInfo) {
+    headers['X-RateLimit-Remaining'] =
+      rateLimitInfo.remaining?.toString() || '0';
+    headers['X-RateLimit-Reset'] = rateLimitInfo.resetTime?.toString() || '0';
+  }
+
+  return headers;
+};
+
 // ----- API ROUTE PRINCIPALE AVEC RATE LIMITING ET MONITORING SENTRY -----
 
 export async function DELETE(request, { params }) {
@@ -124,6 +218,8 @@ export async function DELETE(request, { params }) {
   const startTime = Date.now();
   const requestId = generateRequestId();
   const { id } = params;
+  let cloudinaryOperations = 0;
+  let businessRulesValidated = false;
 
   logger.info('Delete Application API called', {
     timestamp: new Date().toISOString(),
@@ -208,6 +304,9 @@ export async function DELETE(request, { params }) {
         },
       });
 
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(requestId, responseTime, id);
+
       return NextResponse.json(
         {
           success: false,
@@ -217,7 +316,7 @@ export async function DELETE(request, { params }) {
             idValidationError.message,
           ],
         },
-        { status: 400 },
+        { status: 400, headers },
       );
     }
 
@@ -232,13 +331,16 @@ export async function DELETE(request, { params }) {
         providedId: id,
       });
 
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(requestId, responseTime, id);
+
       return NextResponse.json(
         {
           success: false,
           error: 'Invalid application ID format',
           message: 'This application does not exist',
         },
-        { status: 400 },
+        { status: 400, headers },
       );
     }
 
@@ -282,7 +384,21 @@ export async function DELETE(request, { params }) {
         },
       });
 
-      return rateLimitResponse;
+      // Ajouter les headers de sécurité même en cas de rate limit
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(
+        requestId,
+        responseTime,
+        cleanedApplicationId,
+        { remaining: 0 },
+      );
+
+      // Modifier la réponse pour inclure nos headers
+      const rateLimitBody = await rateLimitResponse.json();
+      return NextResponse.json(rateLimitBody, {
+        status: 429,
+        headers: headers,
+      });
     }
 
     logger.debug('Rate limiting passed successfully', {
@@ -353,12 +469,19 @@ export async function DELETE(request, { params }) {
         },
       });
 
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(
+        requestId,
+        responseTime,
+        cleanedApplicationId,
+      );
+
       return NextResponse.json(
         {
           success: false,
           error: 'Database connection failed',
         },
-        { status: 503 },
+        { status: 503, headers },
       );
     }
 
@@ -412,12 +535,20 @@ export async function DELETE(request, { params }) {
         });
 
         if (client) await client.cleanup();
+
+        const responseTime = Date.now() - startTime;
+        const headers = createResponseHeaders(
+          requestId,
+          responseTime,
+          cleanedApplicationId,
+        );
+
         return NextResponse.json(
           {
             success: false,
             message: 'This application does not exist',
           },
-          { status: 404 },
+          { status: 404, headers },
         );
       }
 
@@ -455,6 +586,17 @@ export async function DELETE(request, { params }) {
         });
 
         if (client) await client.cleanup();
+
+        const responseTime = Date.now() - startTime;
+        const headers = createResponseHeaders(
+          requestId,
+          responseTime,
+          cleanedApplicationId,
+          null,
+          0,
+          false,
+        );
+
         return NextResponse.json(
           {
             success: false,
@@ -462,7 +604,7 @@ export async function DELETE(request, { params }) {
               'Cannot delete active application. Please deactivate the application first.',
             error: 'Application is currently active',
           },
-          { status: 400 },
+          { status: 400, headers },
         );
       }
 
@@ -499,6 +641,17 @@ export async function DELETE(request, { params }) {
         });
 
         if (client) await client.cleanup();
+
+        const responseTime = Date.now() - startTime;
+        const headers = createResponseHeaders(
+          requestId,
+          responseTime,
+          cleanedApplicationId,
+          null,
+          0,
+          false,
+        );
+
         return NextResponse.json(
           {
             success: false,
@@ -506,9 +659,12 @@ export async function DELETE(request, { params }) {
               'Cannot delete application with existing sales. Please contact support for assistance.',
             error: 'Application has sales history',
           },
-          { status: 400 },
+          { status: 400, headers },
         );
       }
+
+      // Les règles métier sont validées
+      businessRulesValidated = true;
 
       logger.debug(
         'Application validation passed - inactive application with no sales found',
@@ -555,13 +711,21 @@ export async function DELETE(request, { params }) {
       });
 
       if (client) await client.cleanup();
+
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(
+        requestId,
+        responseTime,
+        cleanedApplicationId,
+      );
+
       return NextResponse.json(
         {
           success: false,
           error: 'Failed to verify application status',
           message: 'Something went wrong! Please try again',
         },
-        { status: 500 },
+        { status: 500, headers },
       );
     }
 
@@ -615,6 +779,17 @@ export async function DELETE(request, { params }) {
         });
 
         if (client) await client.cleanup();
+
+        const responseTime = Date.now() - startTime;
+        const headers = createResponseHeaders(
+          requestId,
+          responseTime,
+          cleanedApplicationId,
+          null,
+          0,
+          businessRulesValidated,
+        );
+
         return NextResponse.json(
           {
             success: false,
@@ -622,7 +797,7 @@ export async function DELETE(request, { params }) {
               'Application could not be deleted. It may be active, have sales, or already deleted.',
             error: 'Deletion conditions not met',
           },
-          { status: 400 },
+          { status: 400, headers },
         );
       }
 
@@ -669,13 +844,24 @@ export async function DELETE(request, { params }) {
       });
 
       if (client) await client.cleanup();
+
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(
+        requestId,
+        responseTime,
+        cleanedApplicationId,
+        null,
+        0,
+        businessRulesValidated,
+      );
+
       return NextResponse.json(
         {
           success: false,
           error: 'Failed to delete application from database',
           message: 'Something went wrong! Please try again',
         },
-        { status: 500 },
+        { status: 500, headers },
       );
     }
 
@@ -704,6 +890,7 @@ export async function DELETE(request, { params }) {
         try {
           await cloudinary.uploader.destroy(imageId);
           deletedImagesCount++;
+          cloudinaryOperations++;
 
           logger.debug('Image deleted from Cloudinary', {
             requestId,
@@ -776,8 +963,9 @@ export async function DELETE(request, { params }) {
       failedImages: failedImagesCount,
       response_time_ms: responseTime,
       database_operations: 3, // connection + check + delete
-      cloudinary_operations: cloudinaryImageIds.length,
+      cloudinary_operations: cloudinaryOperations,
       cache_invalidated: true,
+      business_rules_validated: businessRulesValidated,
       success: true,
       requestId,
       component: 'applications',
@@ -806,14 +994,25 @@ export async function DELETE(request, { params }) {
         failedImages: failedImagesCount,
         responseTimeMs: responseTime,
         databaseOperations: 3,
-        cloudinaryOperations: cloudinaryImageIds.length,
+        cloudinaryOperations: cloudinaryOperations,
         cacheInvalidated: true,
+        businessRulesValidated: businessRulesValidated,
         ip: anonymizeIp(extractRealIp(request)),
         rateLimitingApplied: true,
       },
     });
 
     if (client) await client.cleanup();
+
+    // Créer les headers de succès avec toutes les informations
+    const headers = createResponseHeaders(
+      requestId,
+      responseTime,
+      cleanedApplicationId,
+      null,
+      cloudinaryOperations,
+      businessRulesValidated,
+    );
 
     return NextResponse.json(
       {
@@ -831,14 +1030,13 @@ export async function DELETE(request, { params }) {
         meta: {
           requestId,
           timestamp: new Date().toISOString(),
+          businessRulesValidated,
+          cloudinaryOperations,
         },
       },
       {
         status: 200,
-        headers: {
-          'X-Request-ID': requestId,
-          'X-Response-Time': `${responseTime}ms`,
-        },
+        headers: headers,
       },
     );
   } catch (error) {
@@ -887,6 +1085,16 @@ export async function DELETE(request, { params }) {
 
     if (client) await client.cleanup();
 
+    // Créer les headers même en cas d'erreur globale
+    const headers = createResponseHeaders(
+      requestId,
+      responseTime,
+      id,
+      null,
+      cloudinaryOperations,
+      businessRulesValidated,
+    );
+
     return NextResponse.json(
       {
         success: false,
@@ -896,10 +1104,7 @@ export async function DELETE(request, { params }) {
       },
       {
         status: 500,
-        headers: {
-          'X-Request-ID': requestId,
-          'X-Response-Time': `${responseTime}ms`,
-        },
+        headers: headers,
       },
     );
   }
