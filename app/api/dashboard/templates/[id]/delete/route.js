@@ -112,6 +112,68 @@ const invalidateTemplatesCache = (requestId, templateId) => {
   }
 };
 
+// ----- FONCTION POUR CRÉER LES HEADERS DE RÉPONSE -----
+const createResponseHeaders = (
+  requestId,
+  responseTime,
+  templateId,
+  rateLimitInfo = null,
+) => {
+  const headers = {
+    // CORS spécifique pour mutations de suppression
+    'Access-Control-Allow-Origin':
+      process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
+    'Access-Control-Allow-Methods': 'DELETE, OPTIONS',
+    'Access-Control-Allow-Headers':
+      'Content-Type, Authorization, X-Requested-With',
+
+    // Anti-cache strict pour les mutations
+    'Cache-Control':
+      'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+    Pragma: 'no-cache',
+    Expires: '0',
+
+    // Sécurité pour mutations de données
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Cross-Origin-Resource-Policy': 'same-site',
+
+    // CSP pour manipulation de données
+    'Content-Security-Policy': "default-src 'none'; connect-src 'self'",
+
+    // Headers de traçabilité
+    'X-Request-ID': requestId,
+    'X-Response-Time': `${responseTime}ms`,
+    'X-API-Version': '1.0',
+
+    // Headers spécifiques à la suppression
+    'X-Transaction-Type': 'mutation',
+    'X-Operation-Type': 'delete',
+    'X-Operation-Criticality': 'high',
+    'X-Resource-ID': templateId,
+    'X-Resource-Validation': 'template-id',
+    'X-Business-Rule-Validation': 'inactive-only',
+    'X-Cascade-Operations': 'database,cloudinary',
+    'X-Cache-Invalidation': 'templates',
+
+    // Rate limiting strict pour suppressions
+    'X-RateLimit-Window': '300', // 5 minutes en secondes
+    'X-RateLimit-Limit': '10',
+
+    // Headers de sécurité supplémentaires pour opération critique
+    'X-Irreversible-Operation': 'true',
+    'X-Data-Loss-Risk': 'high',
+  };
+
+  // Ajouter les infos de rate limiting si disponibles
+  if (rateLimitInfo) {
+    headers['X-RateLimit-Remaining'] =
+      rateLimitInfo.remaining?.toString() || '0';
+    headers['X-RateLimit-Reset'] = rateLimitInfo.resetTime?.toString() || '0';
+  }
+
+  return headers;
+};
+
 // ----- API ROUTE PRINCIPALE AVEC RATE LIMITING -----
 
 export async function DELETE(request, { params }) {
@@ -202,6 +264,9 @@ export async function DELETE(request, { params }) {
         },
       });
 
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(requestId, responseTime, id);
+
       return NextResponse.json(
         {
           success: false,
@@ -211,7 +276,7 @@ export async function DELETE(request, { params }) {
             idValidationError.message,
           ],
         },
-        { status: 400 },
+        { status: 400, headers },
       );
     }
 
@@ -256,7 +321,18 @@ export async function DELETE(request, { params }) {
         },
       });
 
-      return rateLimitResponse; // Retourner directement la réponse 429
+      // Ajouter les headers de sécurité même en cas de rate limit
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(requestId, responseTime, id, {
+        remaining: 0,
+      });
+
+      // Modifier la réponse pour inclure nos headers
+      const rateLimitBody = await rateLimitResponse.json();
+      return NextResponse.json(rateLimitBody, {
+        status: 429,
+        headers: headers,
+      });
     }
 
     logger.debug('Rate limiting passed successfully', {
@@ -327,12 +403,15 @@ export async function DELETE(request, { params }) {
         },
       });
 
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(requestId, responseTime, id);
+
       return NextResponse.json(
         {
           success: false,
           error: 'Database connection failed',
         },
-        { status: 503 },
+        { status: 503, headers },
       );
     }
 
@@ -379,12 +458,16 @@ export async function DELETE(request, { params }) {
         });
 
         if (client) await client.cleanup();
+
+        const responseTime = Date.now() - startTime;
+        const headers = createResponseHeaders(requestId, responseTime, id);
+
         return NextResponse.json(
           {
             success: false,
             message: 'This template does not exist',
           },
-          { status: 404 },
+          { status: 404, headers },
         );
       }
 
@@ -422,6 +505,10 @@ export async function DELETE(request, { params }) {
         });
 
         if (client) await client.cleanup();
+
+        const responseTime = Date.now() - startTime;
+        const headers = createResponseHeaders(requestId, responseTime, id);
+
         return NextResponse.json(
           {
             success: false,
@@ -429,7 +516,7 @@ export async function DELETE(request, { params }) {
               'Cannot delete active template. Please deactivate the template first.',
             error: 'Template is currently active',
           },
-          { status: 400 },
+          { status: 400, headers },
         );
       }
 
@@ -474,13 +561,17 @@ export async function DELETE(request, { params }) {
       });
 
       if (client) await client.cleanup();
+
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(requestId, responseTime, id);
+
       return NextResponse.json(
         {
           success: false,
           error: 'Failed to verify template status',
           message: 'Something went wrong! Please try again',
         },
-        { status: 500 },
+        { status: 500, headers },
       );
     }
 
@@ -534,6 +625,10 @@ export async function DELETE(request, { params }) {
         });
 
         if (client) await client.cleanup();
+
+        const responseTime = Date.now() - startTime;
+        const headers = createResponseHeaders(requestId, responseTime, id);
+
         return NextResponse.json(
           {
             success: false,
@@ -541,7 +636,7 @@ export async function DELETE(request, { params }) {
               'Template could not be deleted. It may be active or already deleted.',
             error: 'Deletion condition not met',
           },
-          { status: 400 },
+          { status: 400, headers },
         );
       }
 
@@ -588,13 +683,17 @@ export async function DELETE(request, { params }) {
       });
 
       if (client) await client.cleanup();
+
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(requestId, responseTime, id);
+
       return NextResponse.json(
         {
           success: false,
           error: 'Failed to delete template from database',
           message: 'Something went wrong! Please try again',
         },
-        { status: 500 },
+        { status: 500, headers },
       );
     }
 
@@ -706,6 +805,9 @@ export async function DELETE(request, { params }) {
 
     if (client) await client.cleanup();
 
+    // Créer les headers de succès
+    const headers = createResponseHeaders(requestId, responseTime, id);
+
     return NextResponse.json(
       {
         success: true,
@@ -721,10 +823,7 @@ export async function DELETE(request, { params }) {
       },
       {
         status: 200,
-        headers: {
-          'X-Request-ID': requestId,
-          'X-Response-Time': `${responseTime}ms`,
-        },
+        headers: headers,
       },
     );
   } catch (error) {
@@ -773,6 +872,9 @@ export async function DELETE(request, { params }) {
 
     if (client) await client.cleanup();
 
+    // Créer les headers même en cas d'erreur globale
+    const headers = createResponseHeaders(requestId, responseTime, id);
+
     return NextResponse.json(
       {
         success: false,
@@ -782,10 +884,7 @@ export async function DELETE(request, { params }) {
       },
       {
         status: 500,
-        headers: {
-          'X-Request-ID': requestId,
-          'X-Response-Time': `${responseTime}ms`,
-        },
+        headers: headers,
       },
     );
   }

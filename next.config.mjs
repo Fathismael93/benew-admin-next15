@@ -186,12 +186,12 @@ const nextConfig = {
       //   headers: securityHeaders,
       // },
 
-      // ===== HEADERS COMMUNS POUR LES ROUTES TEMPLATES/ADD ET EDIT =====
-      // Configuration spécifique pour les routes de mutation de templates (add + edit)
+      // ===== HEADERS COMMUNS POUR LES ROUTES TEMPLATES MUTATIONS (ADD/EDIT/DELETE) =====
+      // Configuration spécifique pour les routes de mutation de templates
       {
-        source: '/api/dashboard/templates/(add|[^/]+/edit)/:path*',
+        source: '/api/dashboard/templates/(add|:id/edit|:id/delete)/:path*',
         headers: [
-          // CORS de base (commun aux routes de mutation)
+          // CORS de base (commun aux mutations)
           {
             key: 'Access-Control-Allow-Origin',
             value: process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
@@ -352,9 +352,51 @@ const nextConfig = {
         ],
       },
 
+      // ===== HEADERS SPÉCIFIQUES POUR TEMPLATES/DELETE UNIQUEMENT =====
+      {
+        source: '/api/dashboard/templates/:id/delete',
+        headers: [
+          // Méthodes spécifiques à delete
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'DELETE, OPTIONS',
+          },
+
+          // Rate limiting spécifique à delete (strict comme add)
+          {
+            key: 'X-RateLimit-Window',
+            value: '300', // 5 minutes
+          },
+          {
+            key: 'X-RateLimit-Limit',
+            value: '10',
+          },
+
+          // Operation type spécifique
+          {
+            key: 'X-Operation-Type',
+            value: 'delete',
+          },
+
+          // Headers spécifiques à la suppression
+          {
+            key: 'X-Resource-Validation',
+            value: 'template-id',
+          },
+          {
+            key: 'X-Operation-Criticality',
+            value: 'high',
+          },
+          {
+            key: 'X-Business-Rule-Validation',
+            value: 'inactive-only',
+          },
+        ],
+      },
+
       // Configuration CORS et cache pour les autres API templates (lectures)
       {
-        source: '/api/dashboard/templates/((?!add|[^/]+/edit).*)',
+        source: '/api/dashboard/templates/((?!add|:id/edit|:id/delete).*)',
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
