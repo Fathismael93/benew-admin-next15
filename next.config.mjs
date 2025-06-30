@@ -19,6 +19,17 @@ const validateEnv = () => {
     'DB_NAME',
     'DB_PASSWORD',
     'PORT_NUMBER',
+    'DB_CA',
+    'SENTRY_AUTH_TOKEN',
+    'NEXT_PUBLIC_SENTRY_DSN',
+    'SENTRY_PROJECT',
+    'SENTRY_IGNORE_API_RESOLUTION_ERROR',
+    'SENTRY_ORG',
+    'SENTRY_URL',
+    'ANALYZE',
+    'CLIENT_EXISTENCE',
+    'CONNECTION_TIMEOUT',
+    'MAXIMUM_CLIENTS',
   ];
 
   const missingVars = requiredVars.filter((varName) => !process.env[varName]);
@@ -243,36 +254,36 @@ const nextConfig = {
       },
 
       // APIs sensibles (auth, orders, users) - pas de cache
-      {
-        source: '/api/(auth|dashboard/(orders|users|platforms))/:path*',
-        headers: [
-          {
-            key: 'Access-Control-Allow-Origin',
-            value: process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
-          },
-          {
-            key: 'Access-Control-Allow-Methods',
-            value: 'GET, POST, PUT, DELETE, OPTIONS',
-          },
-          {
-            key: 'Access-Control-Allow-Headers',
-            value: 'Content-Type, Authorization, X-Requested-With',
-          },
-          {
-            key: 'Cache-Control',
-            value:
-              'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
-          },
-          {
-            key: 'Pragma',
-            value: 'no-cache',
-          },
-          {
-            key: 'Expires',
-            value: '0',
-          },
-        ],
-      },
+      // {
+      //   source: '/api/(auth|dashboard/(orders|users|platforms))/:path*',
+      //   headers: [
+      //     {
+      //       key: 'Access-Control-Allow-Origin',
+      //       value: process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
+      //     },
+      //     {
+      //       key: 'Access-Control-Allow-Methods',
+      //       value: 'GET, POST, PUT, DELETE, OPTIONS',
+      //     },
+      //     {
+      //       key: 'Access-Control-Allow-Headers',
+      //       value: 'Content-Type, Authorization, X-Requested-With',
+      //     },
+      //     {
+      //       key: 'Cache-Control',
+      //       value:
+      //         'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+      //     },
+      //     {
+      //       key: 'Pragma',
+      //       value: 'no-cache',
+      //     },
+      //     {
+      //       key: 'Expires',
+      //       value: '0',
+      //     },
+      //   ],
+      // },
 
       // API d'inscription - sécurité renforcée
       {
