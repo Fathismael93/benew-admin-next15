@@ -56,7 +56,7 @@ function createMockRequest(session) {
  */
 function validateAndSanitizeFilters(filters = {}) {
   const validatedFilters = {};
-  const allowedFields = ['article_name', 'is_active'];
+  const allowedFields = ['article_title', 'is_active'];
   const maxStringLength = 100;
   const maxArrayLength = 10;
 
@@ -77,7 +77,7 @@ function validateAndSanitizeFilters(filters = {}) {
 
     // Validation selon le type de champ
     switch (key) {
-      case 'article_name':
+      case 'article_title':
         if (typeof value === 'string' && value.trim()) {
           const cleanValue = value.trim().substring(0, maxStringLength);
           const sanitizedValue = cleanValue.replace(/[<>"'%;()&+]/g, '');

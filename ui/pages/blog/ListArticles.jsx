@@ -5,9 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   MdAdd,
-  MdSearch,
-  MdViewList,
-  MdViewModule,
   MdEdit,
   MdDelete,
   MdVisibility,
@@ -16,71 +13,62 @@ import {
 } from 'react-icons/md';
 
 import styles from '@/ui/styling/dashboard/blog/blog.module.css';
-// import Search from '@/ui/components/dashboard/search';
 import PostCard from '@/ui/components/dashboard/PostCard';
 import BlogSearch from '@ui/components/dashboard/search/BlogSearch';
+import { getFilteredArticles } from '@/app/dashboard/blog/actions';
 
-const ListArticles = ({ data }) => {
-  const [articles, setArticles] = useState(data || []);
-  // const [filteredArticles, setFilteredArticles] = useState(data || []);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'active', 'inactive'
-  const [sortBy, setSortBy] = useState('newest'); // 'newest', 'oldest', 'title'
-  const [viewMode, setViewMode] = useState('grid'); // 'grid', 'list'
+const ListArticles = ({ data: initialData }) => {
+  const [articles, setArticles] = useState(initialData || []);
+  const [filters, setFilters] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedArticles, setSelectedArticles] = useState(new Set());
-  const [showBulkActions, setShowBulkActions] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState(null);
 
   const router = useRouter();
 
   // Update articles when data prop changes
   useEffect(() => {
-    setArticles(data || []);
-    // setFilteredArticles(data || []);
-  }, [data]);
+    setArticles(initialData || []);
+  }, [initialData]);
 
-  // Filter and sort articles
-  const processedArticles = useMemo(() => {
-    let result = [...articles];
+  // Fonction pour gérer les changements de filtres
+  const handleFiltersChange = useCallback(
+    async (newFilters) => {
+      setFilters(newFilters);
+      setIsLoading(true);
 
-    // Apply search filter
-    if (searchTerm) {
-      result = result.filter((article) =>
-        article.articleTitle?.toLowerCase().includes(searchTerm.toLowerCase()),
-      );
-    }
-
-    // Apply status filter
-    if (filterStatus !== 'all') {
-      result = result.filter((article) => {
-        if (filterStatus === 'active') return article.isActive;
-        if (filterStatus === 'inactive') return !article.isActive;
-        return true;
-      });
-    }
-
-    // Apply sorting
-    result.sort((a, b) => {
-      switch (sortBy) {
-        case 'newest':
-          return new Date(b.created) - new Date(a.created);
-        case 'oldest':
-          return new Date(a.created) - new Date(b.created);
-        case 'title':
-          return (a.articleTitle || '').localeCompare(b.articleTitle || '');
-        default:
-          return 0;
+      try {
+        const filteredData = await getFilteredArticles(newFilters);
+        setArticles(filteredData);
+      } catch (error) {
+        console.error('Erreur lors du filtrage des articles:', error);
+        // En cas d'erreur, revenir aux données initiales
+        setArticles(initialData);
+      } finally {
+        setIsLoading(false);
       }
-    });
+    },
+    [initialData],
+  );
 
-    return result;
-  }, [articles, searchTerm, filterStatus, sortBy]);
+  // Fonction pour gérer le changement de statut via select
+  const handleStatusFilterChange = useCallback(
+    (status) => {
+      const newFilters = {
+        ...filters,
+      };
 
-  // Handle search
-  const handleSearch = useCallback((term) => {
-    setSearchTerm(term);
-  }, []);
+      if (status === 'all') {
+        // Si "all" est sélectionné, supprimer le filtre is_active
+        delete newFilters.is_active;
+      } else {
+        // Sinon, ajouter le filtre approprié
+        newFilters.is_active = [status === 'active' ? 'true' : 'false'];
+      }
+
+      handleFiltersChange(newFilters);
+    },
+    [filters, handleFiltersChange],
+  );
 
   // Handle article deletion
   const deleteArticle = async (articleId, articleImage) => {
@@ -104,57 +92,29 @@ const ListArticles = ({ data }) => {
         setArticles((prev) =>
           prev.filter((article) => article.articleId !== articleId),
         );
-        setSelectedArticles((prev) => {
-          const newSet = new Set(prev);
-          newSet.delete(articleId);
-          return newSet;
-        });
 
-        // Show success message (you could add a toast notification here)
+        // Show success message
         console.log('Article deleted successfully');
       } else {
         console.error('Failed to delete article');
-        // You could add error handling/notification here
       }
     } catch (error) {
       console.error('Error deleting article:', error);
-      // You could add error handling/notification here
     } finally {
       setIsLoading(false);
       setDeleteConfirmation(null);
     }
   };
 
-  // Handle bulk selection
-  const toggleArticleSelection = (articleId) => {
-    setSelectedArticles((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(articleId)) {
-        newSet.delete(articleId);
-      } else {
-        newSet.add(articleId);
-      }
-      setShowBulkActions(newSet.size > 0);
-      return newSet;
-    });
-  };
-
-  const selectAllArticles = () => {
-    if (selectedArticles.size === processedArticles.length) {
-      setSelectedArticles(new Set());
-      setShowBulkActions(false);
-    } else {
-      setSelectedArticles(new Set(processedArticles.map((a) => a.articleId)));
-      setShowBulkActions(true);
-    }
-  };
-
   // Handle refresh
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     setIsLoading(true);
+    // Reset filters and reload initial data
+    setFilters({});
+    setArticles(initialData);
     router.refresh();
     setTimeout(() => setIsLoading(false), 1000);
-  };
+  }, [router, initialData]);
 
   // Stats calculation
   const stats = useMemo(() => {
@@ -163,6 +123,20 @@ const ListArticles = ({ data }) => {
     const inactive = total - active;
     return { total, active, inactive };
   }, [articles]);
+
+  // Dériver le statut actuel du filtre pour le select
+  const currentFilterStatus = useMemo(() => {
+    if (!filters.is_active || filters.is_active.length === 0) {
+      return 'all';
+    }
+    if (filters.is_active.includes('true')) {
+      return 'active';
+    }
+    if (filters.is_active.includes('false')) {
+      return 'inactive';
+    }
+    return 'all';
+  }, [filters.is_active]);
 
   return (
     <div className={styles.container}>
@@ -211,14 +185,20 @@ const ListArticles = ({ data }) => {
       <div className={styles.controls}>
         <div className={styles.searchAndFilters}>
           <div className={styles.searchWrapper}>
-            <BlogSearch placeholder="Search for an article..." />
+            <BlogSearch
+              placeholder="Search for an article..."
+              onFilterChange={handleFiltersChange}
+              currentFilters={filters}
+            />
+            {isLoading && <div className={styles.loading}>Searching...</div>}
           </div>
 
           <div className={styles.filters}>
             <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
+              value={currentFilterStatus}
+              onChange={(e) => handleStatusFilterChange(e.target.value)}
               className={styles.filterSelect}
+              disabled={isLoading}
             >
               <option value="all">All Status</option>
               <option value="active">Active Only</option>
@@ -228,61 +208,34 @@ const ListArticles = ({ data }) => {
         </div>
       </div>
 
-      {/* Bulk Actions Bar */}
-      {showBulkActions && (
-        <div className={styles.bulkActionsBar}>
-          <span className={styles.bulkActionsText}>
-            {selectedArticles.size} article
-            {selectedArticles.size > 1 ? 's' : ''} selected
-          </span>
-          <div className={styles.bulkActions}>
-            <button className={styles.bulkActionButton}>
-              <MdVisibility /> Activate
-            </button>
-            <button className={styles.bulkActionButton}>
-              <MdVisibilityOff /> Deactivate
-            </button>
-            <button className={`${styles.bulkActionButton} ${styles.danger}`}>
-              <MdDelete /> Delete
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Results Info */}
       <div className={styles.resultsInfo}>
         <span className={styles.resultsCount}>
-          Showing {processedArticles.length} of {articles.length} articles
+          Showing {articles.length} articles
         </span>
-        {searchTerm && (
+        {filters.article_name && (
           <span className={styles.searchInfo}>
-            for &quot;{searchTerm}&quot;
+            for &quot;{filters.article_name}&quot;
+          </span>
+        )}
+        {currentFilterStatus !== 'all' && (
+          <span className={styles.searchInfo}>
+            ({currentFilterStatus} only)
           </span>
         )}
       </div>
 
-      {/* Articles Grid/List */}
+      {/* Articles Grid */}
       <div className={styles.articlesContainer}>
         {isLoading ? (
           <div className={styles.loading}>
             <div className={styles.loadingSpinner}></div>
             <span>Loading articles...</span>
           </div>
-        ) : processedArticles.length > 0 ? (
-          <div
-            className={`${styles.articlesGrid} ${viewMode === 'list' ? styles.listView : styles.gridView}`}
-          >
-            {processedArticles.map((article) => (
+        ) : articles.length > 0 ? (
+          <div className={`${styles.articlesGrid} ${styles.gridView}`}>
+            {articles.map((article) => (
               <div key={article.articleId} className={styles.articleWrapper}>
-                <div className={styles.articleSelection}>
-                  <input
-                    type="checkbox"
-                    checked={selectedArticles.has(article.articleId)}
-                    onChange={() => toggleArticleSelection(article.articleId)}
-                    className={styles.articleCheckbox}
-                  />
-                </div>
-
                 <div className={styles.articleCard}>
                   <div className={styles.articleStatus}>
                     {article.isActive ? (
@@ -347,16 +300,16 @@ const ListArticles = ({ data }) => {
           <div className={styles.emptyState}>
             <div className={styles.emptyIcon}>📝</div>
             <h3 className={styles.emptyTitle}>
-              {searchTerm || filterStatus !== 'all'
+              {filters.article_name || currentFilterStatus !== 'all'
                 ? 'No articles found'
                 : 'No articles yet'}
             </h3>
             <p className={styles.emptyDescription}>
-              {searchTerm || filterStatus !== 'all'
+              {filters.article_name || currentFilterStatus !== 'all'
                 ? 'Try adjusting your search or filters'
                 : 'Start by creating your first blog article'}
             </p>
-            {!searchTerm && filterStatus === 'all' && (
+            {!filters.article_name && currentFilterStatus === 'all' && (
               <Link href="/dashboard/blog/add">
                 <button className={styles.emptyActionButton}>
                   <MdAdd /> Create First Article

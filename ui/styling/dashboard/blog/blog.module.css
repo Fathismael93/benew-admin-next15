@@ -148,37 +148,29 @@
   position: relative;
   flex: 1;
   max-width: 400px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
 }
 
-.searchIcon {
-  position: absolute;
-  left: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--textSoft);
-  font-size: 1.25rem;
-  pointer-events: none;
-}
-
-.searchInput {
-  width: 100%;
-  padding: 0.75rem 1rem 0.75rem 3rem;
-  background-color: rgba(255, 255, 255, 0.05);
-  border: 2px solid transparent;
-  border-radius: 8px;
+/* Style pour l'indicateur de loading dans la recherche */
+.loading {
+  padding: 8px 16px;
+  background-color: rgba(93, 87, 201, 0.1);
   color: var(--text);
-  font-size: 1rem;
-  transition: all 0.3s ease;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  animation: pulse 1.5s ease-in-out infinite alternate;
+  white-space: nowrap;
 }
 
-.searchInput:focus {
-  outline: none;
-  border-color: #5d57c9;
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.searchInput::placeholder {
-  color: var(--textSoft);
+@keyframes pulse {
+  0% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 .filters {
@@ -186,8 +178,7 @@
   gap: 0.75rem;
 }
 
-.filterSelect,
-.sortSelect {
+.filterSelect {
   padding: 0.75rem 1rem;
   background-color: rgba(255, 255, 255, 0.05);
   border: 2px solid transparent;
@@ -199,130 +190,19 @@
   min-width: 140px;
 }
 
-.filterSelect:focus,
-.sortSelect:focus {
+.filterSelect:focus {
   outline: none;
   border-color: #5d57c9;
 }
 
-.filterSelect option,
-.sortSelect option {
+.filterSelect:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.filterSelect option {
   background-color: var(--bgSoft);
   color: var(--text);
-}
-
-.viewControls {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.bulkSelect {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.selectAllCheckbox {
-  width: 1.25rem;
-  height: 1.25rem;
-  accent-color: #5d57c9;
-}
-
-.selectAllLabel {
-  font-size: 0.875rem;
-  color: var(--textSoft);
-  white-space: nowrap;
-}
-
-.viewModeToggle {
-  display: flex;
-  background-color: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.viewModeButton {
-  padding: 0.75rem;
-  background-color: transparent;
-  border: none;
-  color: var(--textSoft);
-  cursor: pointer;
-  font-size: 1.25rem;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.viewModeButton:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.viewModeButton.active {
-  background-color: #5d57c9;
-  color: white;
-}
-
-/* Bulk Actions Bar */
-.bulkActionsBar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  background-color: rgba(93, 87, 201, 0.1);
-  border: 1px solid rgba(93, 87, 201, 0.3);
-  border-radius: 8px;
-  margin-bottom: 1rem;
-  animation: slideDown 0.3s ease-out;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.bulkActionsText {
-  font-weight: 500;
-  color: var(--text);
-}
-
-.bulkActions {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.bulkActionButton {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background-color: rgba(255, 255, 255, 0.1);
-  color: var(--text);
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.875rem;
-  transition: all 0.3s ease;
-}
-
-.bulkActionButton:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-}
-
-.bulkActionButton.danger {
-  background-color: rgba(248, 113, 113, 0.2);
-  color: #f87171;
-}
-
-.bulkActionButton.danger:hover {
-  background-color: rgba(248, 113, 113, 0.3);
 }
 
 /* Results Info */
@@ -358,10 +238,6 @@
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
 }
 
-.listView {
-  grid-template-columns: 1fr;
-}
-
 .articleWrapper {
   position: relative;
   background-color: rgba(255, 255, 255, 0.03);
@@ -375,19 +251,6 @@
   background-color: rgba(255, 255, 255, 0.05);
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-}
-
-.articleSelection {
-  position: absolute;
-  top: 1rem;
-  left: 1rem;
-  z-index: 10;
-}
-
-.articleCheckbox {
-  width: 1.25rem;
-  height: 1.25rem;
-  accent-color: #5d57c9;
 }
 
 .articleCard {
@@ -673,10 +536,6 @@
     flex-wrap: wrap;
   }
 
-  .viewControls {
-    justify-content: space-between;
-  }
-
   .gridView {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   }
@@ -708,29 +567,13 @@
     display: none;
   }
 
-  .searchInput {
-    font-size: 0.875rem;
-  }
-
   .filters {
     gap: 0.5rem;
   }
 
-  .filterSelect,
-  .sortSelect {
+  .filterSelect {
     min-width: 120px;
     font-size: 0.75rem;
-  }
-
-  .bulkActionsBar {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: stretch;
-  }
-
-  .bulkActions {
-    justify-content: center;
-    flex-wrap: wrap;
   }
 
   .gridView {
@@ -791,18 +634,6 @@
     gap: 0.75rem;
   }
 
-  .viewModeToggle {
-    order: -1;
-  }
-
-  .bulkSelect {
-    flex: 1;
-  }
-
-  .selectAllLabel {
-    font-size: 0.75rem;
-  }
-
   .articleActions {
     gap: 0.25rem;
   }
@@ -830,12 +661,7 @@
 }
 
 /* Focus states pour accessibilité */
-.searchInput:focus,
 .filterSelect:focus,
-.sortSelect:focus,
-.selectAllCheckbox:focus,
-.articleCheckbox:focus,
-.viewModeButton:focus,
 .actionButton:focus,
 .addButton:focus,
 .refreshButton:focus {
@@ -854,12 +680,6 @@
   transition: all 0.3s ease;
 }
 
-/* États de sélection */
-.articleWrapper:has(.articleCheckbox:checked) {
-  border-color: #5d57c9;
-  background-color: rgba(93, 87, 201, 0.1);
-}
-
 /* Print styles */
 @media print {
   .container {
@@ -869,9 +689,7 @@
   }
 
   .controls,
-  .bulkActionsBar,
-  .articleActions,
-  .articleSelection {
+  .articleActions {
     display: none;
   }
 
