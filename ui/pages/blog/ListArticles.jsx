@@ -211,7 +211,7 @@ const ListArticles = ({ data }) => {
       <div className={styles.controls}>
         <div className={styles.searchAndFilters}>
           <div className={styles.searchWrapper}>
-            <BlogSearch />
+            <BlogSearch placeholder="Search for an article..." />
           </div>
 
           <div className={styles.filters}>
