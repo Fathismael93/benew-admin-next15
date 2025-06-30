@@ -186,26 +186,22 @@ const nextConfig = {
       //   headers: securityHeaders,
       // },
 
-      // ===== HEADERS COMMUNS POUR LES ROUTES TEMPLATES/ADD =====
-      // Configuration spécifique pour les routes d'ajout de templates
+      // ===== HEADERS COMMUNS POUR LES ROUTES TEMPLATES/ADD ET EDIT =====
+      // Configuration spécifique pour les routes de mutation de templates (add + edit)
       {
-        source: '/api/dashboard/templates/add/:path*',
+        source: '/api/dashboard/templates/(add|[^/]+/edit)/:path*',
         headers: [
-          // CORS de base (commun aux 2 routes)
+          // CORS de base (commun aux routes de mutation)
           {
             key: 'Access-Control-Allow-Origin',
             value: process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
-          },
-          {
-            key: 'Access-Control-Allow-Methods',
-            value: 'POST, OPTIONS',
           },
           {
             key: 'Access-Control-Allow-Headers',
             value: 'Content-Type, Authorization, X-Requested-With',
           },
 
-          // Anti-cache strict (commun - toutes deux sont des mutations)
+          // Anti-cache strict (commun - toutes sont des mutations)
           {
             key: 'Cache-Control',
             value:
@@ -220,7 +216,7 @@ const nextConfig = {
             value: '0',
           },
 
-          // Sécurité de base (commun aux 2 routes)
+          // Sécurité de base (commun aux mutations)
           {
             key: 'X-Content-Type-Options',
             value: 'nosniff',
@@ -238,7 +234,7 @@ const nextConfig = {
             value: 'max-age=31536000; includeSubDomains; preload',
           },
 
-          // Isolation (commun aux 2 routes)
+          // Isolation (commun aux mutations)
           {
             key: 'Cross-Origin-Opener-Policy',
             value: 'same-origin',
@@ -246,6 +242,22 @@ const nextConfig = {
           {
             key: 'Cross-Origin-Embedder-Policy',
             value: 'credentialless',
+          },
+
+          // Sécurité pour mutations de données (commun)
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'same-site',
+          },
+
+          // CSP pour manipulation de données (commun)
+          {
+            key: 'Content-Security-Policy',
+            value: "default-src 'none'; connect-src 'self'",
           },
 
           // Headers de traçabilité et versioning (commun)
@@ -257,12 +269,92 @@ const nextConfig = {
             key: 'X-Permitted-Cross-Domain-Policies',
             value: 'none',
           },
+          {
+            key: 'X-API-Version',
+            value: '1.0',
+          },
+
+          // Headers métier communs
+          {
+            key: 'X-Transaction-Type',
+            value: 'mutation',
+          },
+          {
+            key: 'X-Cache-Invalidation',
+            value: 'templates',
+          },
+        ],
+      },
+
+      // ===== HEADERS SPÉCIFIQUES POUR TEMPLATES/ADD UNIQUEMENT =====
+      {
+        source: '/api/dashboard/templates/add/:path*',
+        headers: [
+          // Méthodes spécifiques à add
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'POST, OPTIONS',
+          },
+
+          // Rate limiting spécifique à add
+          {
+            key: 'X-RateLimit-Window',
+            value: '300', // 5 minutes
+          },
+          {
+            key: 'X-RateLimit-Limit',
+            value: '10',
+          },
+
+          // Operation type spécifique
+          {
+            key: 'X-Operation-Type',
+            value: 'create',
+          },
+        ],
+      },
+
+      // ===== HEADERS SPÉCIFIQUES POUR TEMPLATES/EDIT UNIQUEMENT =====
+      {
+        source: '/api/dashboard/templates/[^/]+/edit',
+        headers: [
+          // Méthodes spécifiques à edit
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'PUT, OPTIONS',
+          },
+
+          // Rate limiting spécifique à edit (plus permissif)
+          {
+            key: 'X-RateLimit-Window',
+            value: '120', // 2 minutes
+          },
+          {
+            key: 'X-RateLimit-Limit',
+            value: '20',
+          },
+
+          // Operation type spécifique
+          {
+            key: 'X-Operation-Type',
+            value: 'update',
+          },
+
+          // Headers spécifiques à l'édition
+          {
+            key: 'X-Resource-Validation',
+            value: 'template-id',
+          },
+          {
+            key: 'X-Media-Management',
+            value: 'cloudinary',
+          },
         ],
       },
 
       // Configuration CORS et cache pour les autres API templates (lectures)
       {
-        source: '/api/dashboard/templates/((?!add).*)',
+        source: '/api/dashboard/templates/((?!add|[^/]+/edit).*)',
         headers: [
           {
             key: 'Access-Control-Allow-Origin',

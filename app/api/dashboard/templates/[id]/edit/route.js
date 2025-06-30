@@ -115,6 +115,62 @@ const invalidateTemplatesCache = (requestId, templateId) => {
   }
 };
 
+// ----- FONCTION POUR CRÉER LES HEADERS DE RÉPONSE -----
+const createResponseHeaders = (
+  requestId,
+  responseTime,
+  templateId,
+  rateLimitInfo = null,
+) => {
+  const headers = {
+    // CORS spécifique pour mutations d'édition
+    'Access-Control-Allow-Origin':
+      process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
+    'Access-Control-Allow-Methods': 'PUT, OPTIONS',
+    'Access-Control-Allow-Headers':
+      'Content-Type, Authorization, X-Requested-With',
+
+    // Anti-cache strict pour les mutations
+    'Cache-Control':
+      'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+    Pragma: 'no-cache',
+    Expires: '0',
+
+    // Sécurité pour mutations de données
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Cross-Origin-Resource-Policy': 'same-site',
+
+    // CSP pour manipulation de données
+    'Content-Security-Policy': "default-src 'none'; connect-src 'self'",
+
+    // Headers de traçabilité
+    'X-Request-ID': requestId,
+    'X-Response-Time': `${responseTime}ms`,
+    'X-API-Version': '1.0',
+
+    // Headers spécifiques à l'édition
+    'X-Transaction-Type': 'mutation',
+    'X-Operation-Type': 'update',
+    'X-Resource-ID': templateId,
+    'X-Resource-Validation': 'template-id',
+    'X-Cache-Invalidation': 'templates',
+    'X-Media-Management': 'cloudinary',
+
+    // Rate limiting info (différent de add)
+    'X-RateLimit-Window': '120', // 2 minutes en secondes
+    'X-RateLimit-Limit': '20',
+  };
+
+  // Ajouter les infos de rate limiting si disponibles
+  if (rateLimitInfo) {
+    headers['X-RateLimit-Remaining'] =
+      rateLimitInfo.remaining?.toString() || '0';
+    headers['X-RateLimit-Reset'] = rateLimitInfo.resetTime?.toString() || '0';
+  }
+
+  return headers;
+};
+
 // ----- API ROUTE PRINCIPALE AVEC RATE LIMITING -----
 
 export async function PUT(request, { params }) {
@@ -205,6 +261,9 @@ export async function PUT(request, { params }) {
         },
       });
 
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(requestId, responseTime, id);
+
       return NextResponse.json(
         {
           error: 'Invalid template ID format',
@@ -212,7 +271,7 @@ export async function PUT(request, { params }) {
             idValidationError.message,
           ],
         },
-        { status: 400 },
+        { status: 400, headers },
       );
     }
 
@@ -257,7 +316,18 @@ export async function PUT(request, { params }) {
         },
       });
 
-      return rateLimitResponse; // Retourner directement la réponse 429
+      // Ajouter les headers de sécurité même en cas de rate limit
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(requestId, responseTime, id, {
+        remaining: 0,
+      });
+
+      // Modifier la réponse pour inclure nos headers
+      const rateLimitBody = await rateLimitResponse.json();
+      return NextResponse.json(rateLimitBody, {
+        status: 429,
+        headers: headers,
+      });
     }
 
     logger.debug('Rate limiting passed successfully', {
@@ -328,9 +398,12 @@ export async function PUT(request, { params }) {
         },
       });
 
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(requestId, responseTime, id);
+
       return NextResponse.json(
         { error: 'Database connection failed' },
-        { status: 503 },
+        { status: 503, headers },
       );
     }
 
@@ -380,9 +453,13 @@ export async function PUT(request, { params }) {
       });
 
       if (client) await client.cleanup();
+
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(requestId, responseTime, id);
+
       return NextResponse.json(
         { error: 'Invalid JSON in request body' },
-        { status: 400 },
+        { status: 400, headers },
       );
     }
 
@@ -530,7 +607,10 @@ export async function PUT(request, { params }) {
         errors[error.path] = error.message;
       });
 
-      return NextResponse.json({ errors }, { status: 400 });
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(requestId, responseTime, id);
+
+      return NextResponse.json({ errors }, { status: 400, headers });
     }
 
     // ===== ÉTAPE 8: GESTION DE L'IMAGE CLOUDINARY =====
@@ -678,9 +758,13 @@ export async function PUT(request, { params }) {
         });
 
         if (client) await client.cleanup();
+
+        const responseTime = Date.now() - startTime;
+        const headers = createResponseHeaders(requestId, responseTime, id);
+
         return NextResponse.json(
           { message: 'Template not found' },
-          { status: 404 },
+          { status: 404, headers },
         );
       }
 
@@ -727,9 +811,13 @@ export async function PUT(request, { params }) {
       });
 
       if (client) await client.cleanup();
+
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(requestId, responseTime, id);
+
       return NextResponse.json(
         { error: 'Failed to update template', message: updateError.message },
-        { status: 500 },
+        { status: 500, headers },
       );
     }
 
@@ -785,6 +873,9 @@ export async function PUT(request, { params }) {
 
     if (client) await client.cleanup();
 
+    // Créer les headers de succès
+    const headers = createResponseHeaders(requestId, responseTime, id);
+
     return NextResponse.json(
       {
         message: 'Template updated successfully',
@@ -796,10 +887,7 @@ export async function PUT(request, { params }) {
       },
       {
         status: 200,
-        headers: {
-          'X-Request-ID': requestId,
-          'X-Response-Time': `${responseTime}ms`,
-        },
+        headers: headers,
       },
     );
   } catch (error) {
@@ -848,6 +936,9 @@ export async function PUT(request, { params }) {
 
     if (client) await client.cleanup();
 
+    // Créer les headers même en cas d'erreur globale
+    const headers = createResponseHeaders(requestId, responseTime, id);
+
     return NextResponse.json(
       {
         error: 'Internal server error',
@@ -856,10 +947,7 @@ export async function PUT(request, { params }) {
       },
       {
         status: 500,
-        headers: {
-          'X-Request-ID': requestId,
-          'X-Response-Time': `${responseTime}ms`,
-        },
+        headers: headers,
       },
     );
   }
