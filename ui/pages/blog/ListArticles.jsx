@@ -20,7 +20,8 @@ import { getFilteredArticles } from '@/app/dashboard/blog/actions';
 const ListArticles = ({ data: initialData }) => {
   const [articles, setArticles] = useState(initialData || []);
   const [filters, setFilters] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSearchLoading, setIsSearchLoading] = useState(false); // Loading pour recherche/filtres
+  const [isRefreshLoading, setIsRefreshLoading] = useState(false); // Loading pour refresh
   const [deleteConfirmation, setDeleteConfirmation] = useState(null);
 
   const router = useRouter();
@@ -34,7 +35,7 @@ const ListArticles = ({ data: initialData }) => {
   const handleFiltersChange = useCallback(
     async (newFilters) => {
       setFilters(newFilters);
-      setIsLoading(true);
+      setIsSearchLoading(true); // Utiliser le loading spécifique à la recherche
 
       try {
         const filteredData = await getFilteredArticles(newFilters);
@@ -44,7 +45,7 @@ const ListArticles = ({ data: initialData }) => {
         // En cas d'erreur, revenir aux données initiales
         setArticles(initialData);
       } finally {
-        setIsLoading(false);
+        setIsSearchLoading(false);
       }
     },
     [initialData],
@@ -77,7 +78,7 @@ const ListArticles = ({ data: initialData }) => {
       return;
     }
 
-    setIsLoading(true);
+    setIsSearchLoading(true); // Loading pour la suppression
     try {
       const response = await fetch(`/api/dashboard/blog/${articleId}/delete`, {
         method: 'DELETE',
@@ -101,19 +102,19 @@ const ListArticles = ({ data: initialData }) => {
     } catch (error) {
       console.error('Error deleting article:', error);
     } finally {
-      setIsLoading(false);
+      setIsSearchLoading(false);
       setDeleteConfirmation(null);
     }
   };
 
   // Handle refresh
   const handleRefresh = useCallback(() => {
-    setIsLoading(true);
+    setIsRefreshLoading(true); // Loading spécifique au refresh
     // Reset filters and reload initial data
     setFilters({});
     setArticles(initialData);
     router.refresh();
-    setTimeout(() => setIsLoading(false), 1000);
+    setTimeout(() => setIsRefreshLoading(false), 1000);
   }, [router, initialData]);
 
   // Stats calculation
@@ -167,10 +168,10 @@ const ListArticles = ({ data: initialData }) => {
           <button
             className={styles.refreshButton}
             onClick={handleRefresh}
-            disabled={isLoading}
+            disabled={isRefreshLoading} // Seulement désactivé pendant le refresh
             title="Refresh articles"
           >
-            <MdRefresh className={isLoading ? styles.spinning : ''} />
+            <MdRefresh className={isRefreshLoading ? styles.spinning : ''} />
           </button>
           <Link href="/dashboard/blog/add">
             <button className={styles.addButton} type="button">
@@ -190,7 +191,9 @@ const ListArticles = ({ data: initialData }) => {
               onFilterChange={handleFiltersChange}
               currentFilters={filters}
             />
-            {isLoading && <div className={styles.loading}>Searching...</div>}
+            {isSearchLoading && (
+              <div className={styles.searchLoading}>Searching...</div>
+            )}
           </div>
 
           <div className={styles.filters}>
@@ -198,7 +201,7 @@ const ListArticles = ({ data: initialData }) => {
               value={currentFilterStatus}
               onChange={(e) => handleStatusFilterChange(e.target.value)}
               className={styles.filterSelect}
-              disabled={isLoading}
+              disabled={isSearchLoading} // Désactivé pendant la recherche
             >
               <option value="all">All Status</option>
               <option value="active">Active Only</option>
@@ -213,9 +216,9 @@ const ListArticles = ({ data: initialData }) => {
         <span className={styles.resultsCount}>
           Showing {articles.length} articles
         </span>
-        {filters.article_name && (
+        {filters.article_title && (
           <span className={styles.searchInfo}>
-            for &quot;{filters.article_name}&quot;
+            for &quot;{filters.article_title}&quot;
           </span>
         )}
         {currentFilterStatus !== 'all' && (
@@ -227,8 +230,8 @@ const ListArticles = ({ data: initialData }) => {
 
       {/* Articles Grid */}
       <div className={styles.articlesContainer}>
-        {isLoading ? (
-          <div className={styles.loading}>
+        {isSearchLoading ? (
+          <div className={styles.loadingContainer}>
             <div className={styles.loadingSpinner}></div>
             <span>Loading articles...</span>
           </div>
@@ -300,16 +303,16 @@ const ListArticles = ({ data: initialData }) => {
           <div className={styles.emptyState}>
             <div className={styles.emptyIcon}>📝</div>
             <h3 className={styles.emptyTitle}>
-              {filters.article_name || currentFilterStatus !== 'all'
+              {filters.article_title || currentFilterStatus !== 'all'
                 ? 'No articles found'
                 : 'No articles yet'}
             </h3>
             <p className={styles.emptyDescription}>
-              {filters.article_name || currentFilterStatus !== 'all'
+              {filters.article_title || currentFilterStatus !== 'all'
                 ? 'Try adjusting your search or filters'
                 : 'Start by creating your first blog article'}
             </p>
-            {!filters.article_name && currentFilterStatus === 'all' && (
+            {!filters.article_title && currentFilterStatus === 'all' && (
               <Link href="/dashboard/blog/add">
                 <button className={styles.emptyActionButton}>
                   <MdAdd /> Create First Article
