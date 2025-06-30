@@ -286,6 +286,99 @@ const nextConfig = {
         ],
       },
 
+      // ===== HEADERS COMMUNS POUR LES ROUTES APPLICATIONS (ADD ET SIGN-IMAGE) =====
+      // Configuration spécifique pour les 2 routes d'applications (/add et /add/sign-image)
+      {
+        source: '/api/dashboard/applications/add/:path*',
+        headers: [
+          // ===== HEADERS COMMUNS (sécurité de base) =====
+          // CORS sécurisé (commun aux 2 routes)
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'POST, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization, X-Requested-With',
+          },
+
+          // Anti-cache strict pour les mutations sensibles (commun)
+          {
+            key: 'Cache-Control',
+            value:
+              'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+          {
+            key: 'Expires',
+            value: '0',
+          },
+
+          // Sécurité de base moderne (commun)
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains; preload',
+          },
+
+          // Isolation et sécurité moderne (commun)
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'credentialless',
+          },
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'same-site',
+          },
+
+          // Headers métier communs aux applications
+          {
+            key: 'X-API-Version',
+            value: '1.0',
+          },
+          {
+            key: 'X-Transaction-Type',
+            value: 'mutation',
+          },
+          {
+            key: 'X-Entity-Type',
+            value: 'application',
+          },
+
+          // Headers de traçabilité (commun)
+          {
+            key: 'Vary',
+            value: 'Authorization, Content-Type',
+          },
+          {
+            key: 'X-Permitted-Cross-Domain-Policies',
+            value: 'none',
+          },
+        ],
+      },
+
       // ===== HEADERS SPÉCIFIQUES POUR TEMPLATES/ADD UNIQUEMENT =====
       {
         source: '/api/dashboard/templates/add/:path*',
@@ -417,9 +510,9 @@ const nextConfig = {
         ],
       },
 
-      // Configuration pour les API d'applications
+      // Configuration pour les autres API d'applications (lectures - exclut /add)
       {
-        source: '/api/dashboard/applications/:path*',
+        source: '/api/dashboard/applications/((?!add).*)',
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
