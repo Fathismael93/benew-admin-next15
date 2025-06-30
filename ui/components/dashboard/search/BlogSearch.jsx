@@ -19,7 +19,7 @@ function BlogSearch({ placeholder, onFilterChange, currentFilters = {} }) {
     if (onFilterChange) {
       const newFilters = {
         ...currentFilters,
-        article_name: term.trim() || undefined,
+        article_title: term.trim() || undefined,
       };
 
       // Nettoyer les valeurs undefined
