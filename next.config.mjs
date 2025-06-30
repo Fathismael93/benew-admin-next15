@@ -286,20 +286,16 @@ const nextConfig = {
         ],
       },
 
-      // ===== HEADERS COMMUNS POUR LES ROUTES APPLICATIONS (ADD ET SIGN-IMAGE) =====
-      // Configuration spécifique pour les 2 routes d'applications (/add et /add/sign-image)
+      // ===== HEADERS COMMUNS POUR LES ROUTES APPLICATIONS MUTATIONS (ADD ET EDIT) =====
+      // Configuration spécifique pour les routes de mutation d'applications (/add et /[id]/edit)
       {
-        source: '/api/dashboard/applications/add/:path*',
+        source: '/api/dashboard/applications/(add|[^/]+/edit)/:path*',
         headers: [
           // ===== HEADERS COMMUNS (sécurité de base) =====
-          // CORS sécurisé (commun aux 2 routes)
+          // CORS sécurisé (commun aux mutations applications)
           {
             key: 'Access-Control-Allow-Origin',
             value: process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
-          },
-          {
-            key: 'Access-Control-Allow-Methods',
-            value: 'POST, OPTIONS',
           },
           {
             key: 'Access-Control-Allow-Headers',
@@ -353,7 +349,19 @@ const nextConfig = {
             value: 'same-site',
           },
 
-          // Headers métier communs aux applications
+          // Sécurité pour mutations de données (commun)
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+
+          // CSP pour manipulation de données (commun)
+          {
+            key: 'Content-Security-Policy',
+            value: "default-src 'none'; connect-src 'self'",
+          },
+
+          // Headers métier communs aux applications mutations
           {
             key: 'X-API-Version',
             value: '1.0',
@@ -367,6 +375,20 @@ const nextConfig = {
             value: 'application',
           },
 
+          // Headers de cache et validation communs
+          {
+            key: 'X-Cache-Invalidation',
+            value: 'applications',
+          },
+          {
+            key: 'X-Sanitization-Applied',
+            value: 'true',
+          },
+          {
+            key: 'X-Yup-Validation-Applied',
+            value: 'true',
+          },
+
           // Headers de traçabilité (commun)
           {
             key: 'Vary',
@@ -375,6 +397,114 @@ const nextConfig = {
           {
             key: 'X-Permitted-Cross-Domain-Policies',
             value: 'none',
+          },
+        ],
+      },
+
+      // ===== HEADERS SPÉCIFIQUES POUR APPLICATIONS/ADD UNIQUEMENT =====
+      {
+        source: '/api/dashboard/applications/add',
+        headers: [
+          // Méthodes spécifiques à add
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'POST, OPTIONS',
+          },
+
+          // Rate limiting spécifique à add (8/5min)
+          {
+            key: 'X-RateLimit-Window',
+            value: '300', // 5 minutes
+          },
+          {
+            key: 'X-RateLimit-Limit',
+            value: '8',
+          },
+
+          // Validation spécifique à add
+          {
+            key: 'X-Resource-Validation',
+            value: 'application-data',
+          },
+          {
+            key: 'X-Template-Validation',
+            value: 'template-id-required',
+          },
+          {
+            key: 'X-Media-Management',
+            value: 'multiple-images',
+          },
+          {
+            key: 'X-Business-Rules',
+            value: 'fee-rent-validation',
+          },
+
+          // Operation type et performance spécifiques
+          {
+            key: 'X-Operation-Type',
+            value: 'create',
+          },
+          {
+            key: 'X-Database-Operations',
+            value: '2', // connection + insert
+          },
+        ],
+      },
+
+      // ===== HEADERS SPÉCIFIQUES POUR APPLICATIONS/EDIT UNIQUEMENT =====
+      {
+        source: '/api/dashboard/applications/[id]/edit',
+        headers: [
+          // Méthodes spécifiques à edit
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'PUT, OPTIONS',
+          },
+
+          // Rate limiting spécifique à edit (15/2min - plus permissif)
+          {
+            key: 'X-RateLimit-Window',
+            value: '120', // 2 minutes
+          },
+          {
+            key: 'X-RateLimit-Limit',
+            value: '15',
+          },
+
+          // Validation spécifique à l'édition
+          {
+            key: 'X-Resource-Validation',
+            value: 'application-id-required',
+          },
+          {
+            key: 'X-UUID-Validation',
+            value: 'cleaned-and-verified',
+          },
+          {
+            key: 'X-Media-Management',
+            value: 'cloudinary-cleanup',
+          },
+          {
+            key: 'X-Business-Rules',
+            value: 'partial-update-allowed',
+          },
+
+          // Operation type et performance spécifiques
+          {
+            key: 'X-Operation-Type',
+            value: 'update',
+          },
+          {
+            key: 'X-Operation-Criticality',
+            value: 'medium',
+          },
+          {
+            key: 'X-Database-Operations',
+            value: '3', // connection + select + update
+          },
+          {
+            key: 'X-Partial-Update',
+            value: 'enabled',
           },
         ],
       },
@@ -510,9 +640,9 @@ const nextConfig = {
         ],
       },
 
-      // Configuration pour les autres API d'applications (lectures - exclut /add)
+      // Configuration pour les autres API d'applications (lectures - exclut /add et /edit)
       {
-        source: '/api/dashboard/applications/((?!add).*)',
+        source: '/api/dashboard/applications/((?!add|[^/]+/edit).*)',
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
