@@ -286,10 +286,11 @@ const nextConfig = {
         ],
       },
 
-      // ===== HEADERS COMMUNS POUR LES ROUTES APPLICATIONS MUTATIONS (ADD ET EDIT) =====
-      // Configuration spécifique pour les routes de mutation d'applications (/add et /[id]/edit)
+      // ===== HEADERS COMMUNS POUR LES ROUTES APPLICATIONS MUTATIONS (ADD, EDIT ET DELETE) =====
+      // Configuration spécifique pour les routes de mutation d'applications (/add, /[id]/edit et /[id]/delete)
       {
-        source: '/api/dashboard/applications/(add|[^/]+/edit)/:path*',
+        source:
+          '/api/dashboard/applications/(add|[^/]+/edit|[^/]+/delete)/:path*',
         headers: [
           // ===== HEADERS COMMUNS (sécurité de base) =====
           // CORS sécurisé (commun aux mutations applications)
@@ -509,6 +510,78 @@ const nextConfig = {
         ],
       },
 
+      // ===== HEADERS SPÉCIFIQUES POUR APPLICATIONS/DELETE UNIQUEMENT =====
+      {
+        source: '/api/dashboard/applications/[id]/delete',
+        headers: [
+          // Méthodes spécifiques à delete
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'DELETE, OPTIONS',
+          },
+
+          // Rate limiting ultra-strict pour delete (5/10min - le plus restrictif)
+          {
+            key: 'X-RateLimit-Window',
+            value: '600', // 10 minutes
+          },
+          {
+            key: 'X-RateLimit-Limit',
+            value: '5',
+          },
+
+          // Validation spécifique à la suppression
+          {
+            key: 'X-Resource-Validation',
+            value: 'application-id-required',
+          },
+          {
+            key: 'X-UUID-Validation',
+            value: 'cleaned-and-verified',
+          },
+          {
+            key: 'X-Business-Rule-Validation',
+            value: 'inactive-only',
+          },
+          {
+            key: 'X-Sales-Validation',
+            value: 'zero-sales-required',
+          },
+          {
+            key: 'X-Media-Management',
+            value: 'cloudinary-full-cleanup',
+          },
+
+          // Operation type et criticité spécifiques
+          {
+            key: 'X-Operation-Type',
+            value: 'delete',
+          },
+          {
+            key: 'X-Operation-Criticality',
+            value: 'high',
+          },
+          {
+            key: 'X-Database-Operations',
+            value: '3', // connection + check + delete
+          },
+          {
+            key: 'X-Validation-Steps',
+            value: 'business-rules',
+          },
+
+          // Headers de sécurité spécifiques aux suppressions
+          {
+            key: 'X-Irreversible-Operation',
+            value: 'true',
+          },
+          {
+            key: 'X-Data-Loss-Warning',
+            value: 'permanent',
+          },
+        ],
+      },
+
       // ===== HEADERS SPÉCIFIQUES POUR TEMPLATES/ADD UNIQUEMENT =====
       {
         source: '/api/dashboard/templates/add/:path*',
@@ -640,9 +713,10 @@ const nextConfig = {
         ],
       },
 
-      // Configuration pour les autres API d'applications (lectures - exclut /add et /edit)
+      // Configuration pour les autres API d'applications (lectures - exclut /add, /edit et /delete)
       {
-        source: '/api/dashboard/applications/((?!add|[^/]+/edit).*)',
+        source:
+          '/api/dashboard/applications/((?!add|[^/]+/edit|[^/]+/delete).*)',
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
