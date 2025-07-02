@@ -55,71 +55,6 @@ const bundleAnalyzer = withBundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
 });
 
-// En-têtes de sécurité renforcés
-const securityHeaders = [
-  {
-    key: 'Strict-Transport-Security',
-    value: 'max-age=63072000; includeSubDomains; preload',
-  },
-  {
-    key: 'X-Frame-Options',
-    value: 'DENY',
-  },
-  {
-    key: 'X-Content-Type-Options',
-    value: 'nosniff',
-  },
-  {
-    key: 'Referrer-Policy',
-    value: 'strict-origin-when-cross-origin',
-  },
-  {
-    key: 'X-DNS-Prefetch-Control',
-    value: 'on',
-  },
-  {
-    key: 'X-XSS-Protection',
-    value: '1; mode=block',
-  },
-  {
-    key: 'Permissions-Policy',
-    value:
-      'camera=(), microphone=(), geolocation=(self), payment=(self), usb=(), interest-cohort=()',
-  },
-  {
-    key: 'Cross-Origin-Opener-Policy',
-    value: 'same-origin',
-  },
-  {
-    key: 'Cross-Origin-Embedder-Policy',
-    value: 'credentialless',
-  },
-  {
-    key: 'Cross-Origin-Resource-Policy',
-    value: 'same-site',
-  },
-  // CSP renforcée pour votre application
-  {
-    key: 'Content-Security-Policy',
-    value: `
-      default-src 'self';
-      script-src 'self' 'unsafe-inline' ${process.env.NODE_ENV === 'development' ? "'unsafe-eval'" : ''} https://cdnjs.cloudflare.com https://js.sentry-cdn.com;
-      style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com;
-      img-src 'self' data: blob: https://res.cloudinary.com https://*.sentry.io;
-      font-src 'self' https://cdnjs.cloudflare.com;
-      connect-src 'self' https://res.cloudinary.com https://api.cloudinary.com https://sentry.io https://*.ingest.sentry.io https://*.sentry.io;
-      media-src 'self' https://res.cloudinary.com;
-      object-src 'none';
-      base-uri 'self';
-      form-action 'self';
-      frame-ancestors 'none';
-      upgrade-insecure-requests;
-    `
-      .replace(/\s+/g, ' ')
-      .trim(),
-  },
-];
-
 const nextConfig = {
   poweredByHeader: false,
 
@@ -180,11 +115,6 @@ const nextConfig = {
   // Configuration des en-têtes HTTP
   async headers() {
     return [
-      // En-têtes de sécurité globaux (commentés pour éviter les conflits avec les API)
-      // {
-      //   source: '/((?!api).*)',
-      //   headers: securityHeaders,
-      // },
       // ===== HEADERS NEXTAUTH - PRIORITÉ MAXIMALE (à placer EN PREMIER) =====
 
       // 1. Route callback credentials (la plus critique)
@@ -1582,6 +1512,147 @@ const nextConfig = {
         ],
       },
 
+      // ===== HEADERS SPÉCIFIQUES POUR APPLICATIONS/ADD/SIGN-IMAGE UNIQUEMENT =====
+      {
+        source: '/api/dashboard/applications/add/sign-image',
+        headers: [
+          // CORS spécifique Cloudinary
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'POST, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization, X-Requested-With',
+          },
+
+          // Anti-cache strict (signatures sensibles)
+          {
+            key: 'Cache-Control',
+            value:
+              'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+          {
+            key: 'Expires',
+            value: '0',
+          },
+          {
+            key: 'Surrogate-Control',
+            value: 'no-store',
+          },
+
+          // Sécurité renforcée pour signatures
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains; preload',
+          },
+
+          // Isolation et policies
+          {
+            key: 'Referrer-Policy',
+            value: 'no-referrer', // Plus strict - évite leak de signature
+          },
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'same-origin', // Plus strict que same-site
+          },
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'credentialless',
+          },
+
+          // CSP restrictif pour API de signature
+          {
+            key: 'Content-Security-Policy',
+            value:
+              "default-src 'none'; connect-src 'self' https://api.cloudinary.com",
+          },
+
+          // Permissions limitées
+          {
+            key: 'Permissions-Policy',
+            value:
+              'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+          },
+
+          // Headers informatifs spécifiques applications
+          {
+            key: 'X-Upload-Folder',
+            value: 'applications',
+          },
+          {
+            key: 'X-API-Type',
+            value: 'signature-generation',
+          },
+          {
+            key: 'X-Entity-Type',
+            value: 'application',
+          },
+          {
+            key: 'X-Operation-Type',
+            value: 'image-upload-signature',
+          },
+
+          // Headers métier applications
+          {
+            key: 'X-API-Version',
+            value: '1.0',
+          },
+          {
+            key: 'X-Transaction-Type',
+            value: 'signature',
+          },
+          {
+            key: 'X-Service-Integration',
+            value: 'cloudinary',
+          },
+
+          // Sécurité supplémentaire
+          {
+            key: 'X-Permitted-Cross-Domain-Policies',
+            value: 'none',
+          },
+          {
+            key: 'Vary',
+            value: 'Authorization, Content-Type',
+          },
+
+          // Headers de debugging/monitoring
+          {
+            key: 'X-Content-Category',
+            value: 'application-media',
+          },
+          {
+            key: 'X-Upload-Context',
+            value: 'application-creation',
+          },
+        ],
+      },
+
       // ===== HEADERS SPÉCIFIQUES POUR APPLICATIONS/EDIT UNIQUEMENT =====
       {
         source: '/api/dashboard/applications/[id]/edit',
@@ -1736,6 +1807,147 @@ const nextConfig = {
           {
             key: 'X-Operation-Type',
             value: 'create',
+          },
+        ],
+      },
+
+      // ===== HEADERS SPÉCIFIQUES POUR TEMPLATES/ADD/SIGN-IMAGE UNIQUEMENT =====
+      {
+        source: '/api/dashboard/templates/add/sign-image',
+        headers: [
+          // CORS spécifique Cloudinary
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'POST, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization, X-Requested-With',
+          },
+
+          // Anti-cache strict (signatures sensibles)
+          {
+            key: 'Cache-Control',
+            value:
+              'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+          {
+            key: 'Expires',
+            value: '0',
+          },
+          {
+            key: 'Surrogate-Control',
+            value: 'no-store',
+          },
+
+          // Sécurité renforcée pour signatures
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains; preload',
+          },
+
+          // Isolation et policies
+          {
+            key: 'Referrer-Policy',
+            value: 'no-referrer', // Plus strict - évite leak de signature
+          },
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'same-origin', // Plus strict que same-site
+          },
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'credentialless',
+          },
+
+          // CSP restrictif pour API de signature
+          {
+            key: 'Content-Security-Policy',
+            value:
+              "default-src 'none'; connect-src 'self' https://api.cloudinary.com",
+          },
+
+          // Permissions limitées
+          {
+            key: 'Permissions-Policy',
+            value:
+              'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+          },
+
+          // Headers informatifs spécifiques templates
+          {
+            key: 'X-Upload-Folder',
+            value: 'templates',
+          },
+          {
+            key: 'X-API-Type',
+            value: 'signature-generation',
+          },
+          {
+            key: 'X-Entity-Type',
+            value: 'template',
+          },
+          {
+            key: 'X-Operation-Type',
+            value: 'image-upload-signature',
+          },
+
+          // Headers métier templates
+          {
+            key: 'X-API-Version',
+            value: '1.0',
+          },
+          {
+            key: 'X-Transaction-Type',
+            value: 'signature',
+          },
+          {
+            key: 'X-Service-Integration',
+            value: 'cloudinary',
+          },
+
+          // Sécurité supplémentaire
+          {
+            key: 'X-Permitted-Cross-Domain-Policies',
+            value: 'none',
+          },
+          {
+            key: 'Vary',
+            value: 'Authorization, Content-Type',
+          },
+
+          // Headers de debugging/monitoring
+          {
+            key: 'X-Content-Category',
+            value: 'template-media',
+          },
+          {
+            key: 'X-Upload-Context',
+            value: 'template-creation',
           },
         ],
       },
