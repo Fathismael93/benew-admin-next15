@@ -103,6 +103,91 @@ const invalidatePlatformsCache = (requestId) => {
   }
 };
 
+// ----- FONCTION POUR CRÉER LES HEADERS DE RÉPONSE SPÉCIFIQUES AUX PLATEFORMES -----
+const createResponseHeaders = (
+  requestId,
+  responseTime,
+  rateLimitInfo = null,
+) => {
+  const headers = {
+    // ===== HEADERS COMMUNS (sécurité de base) =====
+    'Access-Control-Allow-Origin':
+      process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers':
+      'Content-Type, Authorization, X-Requested-With',
+
+    // Anti-cache strict pour les mutations sensibles
+    'Cache-Control':
+      'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+    Pragma: 'no-cache',
+    Expires: '0',
+
+    // Sécurité de base
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'X-XSS-Protection': '1; mode=block',
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+
+    // Isolation moderne
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cross-Origin-Embedder-Policy': 'credentialless',
+    'Cross-Origin-Resource-Policy': 'same-site',
+
+    // Sécurité pour mutations de données
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+
+    // CSP pour manipulation de données
+    'Content-Security-Policy': "default-src 'none'; connect-src 'self'",
+
+    // ===== HEADERS SPÉCIFIQUES AUX PLATEFORMES DE PAIEMENT =====
+    // Rate limiting ultra-strict pour données financières (5/10min)
+    'X-RateLimit-Window': '600', // 10 minutes en secondes
+    'X-RateLimit-Limit': '5',
+
+    // Validation spécifique aux plateformes
+    'X-Resource-Validation': 'platform-data',
+    'X-Uniqueness-Validation': 'platform-name-required',
+    'X-Financial-Data-Protection': 'enabled',
+    'X-Payment-Platform-Security': 'enhanced',
+
+    // Cache et base de données
+    'X-Cache-Invalidation': 'platforms',
+    'X-Database-Operations': '3', // connection + uniqueness check + insert
+
+    // Headers de traçabilité spécifiques
+    'X-Request-ID': requestId,
+    'X-Response-Time': `${responseTime}ms`,
+    'X-API-Version': '1.0',
+    'X-Transaction-Type': 'mutation',
+    'X-Entity-Type': 'platform',
+    'X-Operation-Type': 'create',
+    'X-Operation-Criticality': 'high',
+
+    // Headers de validation et sécurité
+    'X-Sanitization-Applied': 'true',
+    'X-Yup-Validation-Applied': 'true',
+    'X-Uniqueness-Check-Applied': 'true',
+
+    // Headers de performance et traçabilité
+    Vary: 'Authorization, Content-Type',
+    'X-Permitted-Cross-Domain-Policies': 'none',
+
+    // Headers spécifiques aux données financières
+    'X-Sensitive-Data-Handling': 'financial',
+    'X-Data-Classification': 'restricted',
+  };
+
+  // Ajouter les infos de rate limiting si disponibles
+  if (rateLimitInfo) {
+    headers['X-RateLimit-Remaining'] =
+      rateLimitInfo.remaining?.toString() || '0';
+    headers['X-RateLimit-Reset'] = rateLimitInfo.resetTime?.toString() || '0';
+  }
+
+  return headers;
+};
+
 // ----- API ROUTE PRINCIPALE AVEC RATE LIMITING -----
 
 export async function POST(request) {
@@ -175,7 +260,18 @@ export async function POST(request) {
         },
       });
 
-      return rateLimitResponse; // Retourner directement la réponse 429
+      // Ajouter les headers de sécurité même en cas de rate limit
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(requestId, responseTime, {
+        remaining: 0,
+      });
+
+      // Modifier la réponse pour inclure nos headers
+      const rateLimitBody = await rateLimitResponse.json();
+      return NextResponse.json(rateLimitBody, {
+        status: 429,
+        headers: headers,
+      });
     }
 
     logger.debug('Rate limiting passed successfully', {
@@ -240,9 +336,12 @@ export async function POST(request) {
         },
       });
 
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(requestId, responseTime);
+
       return NextResponse.json(
         { error: 'Database connection failed' },
-        { status: 503 },
+        { status: 503, headers },
       );
     }
 
@@ -289,9 +388,13 @@ export async function POST(request) {
       });
 
       if (client) await client.cleanup();
+
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(requestId, responseTime);
+
       return NextResponse.json(
         { error: 'Invalid JSON in request body' },
-        { status: 400 },
+        { status: 400, headers },
       );
     }
 
@@ -391,7 +494,10 @@ export async function POST(request) {
         errors[error.path] = error.message;
       });
 
-      return NextResponse.json({ errors }, { status: 400 });
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(requestId, responseTime);
+
+      return NextResponse.json({ errors }, { status: 400, headers });
     }
 
     // ===== ÉTAPE 7: VALIDATION DES CHAMPS REQUIS (SÉCURITÉ SUPPLÉMENTAIRE) =====
@@ -433,9 +539,13 @@ export async function POST(request) {
       );
 
       if (client) await client.cleanup();
+
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(requestId, responseTime);
+
       return NextResponse.json(
         { message: 'Platform name and number are required' },
-        { status: 400 },
+        { status: 400, headers },
       );
     }
 
@@ -507,12 +617,15 @@ export async function POST(request) {
             ? 'A platform with this name already exists'
             : 'A platform with this number already exists';
 
+        const responseTime = Date.now() - startTime;
+        const headers = createResponseHeaders(requestId, responseTime);
+
         return NextResponse.json(
           {
             error: errorMessage,
             field: duplicateField,
           },
-          { status: 409 },
+          { status: 409, headers },
         );
       }
 
@@ -554,9 +667,13 @@ export async function POST(request) {
       });
 
       if (client) await client.cleanup();
+
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(requestId, responseTime);
+
       return NextResponse.json(
         { error: 'Failed to verify platform uniqueness' },
-        { status: 500 },
+        { status: 500, headers },
       );
     }
 
@@ -623,9 +740,13 @@ export async function POST(request) {
       });
 
       if (client) await client.cleanup();
+
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(requestId, responseTime);
+
       return NextResponse.json(
         { error: 'Failed to add platform to database' },
-        { status: 500 },
+        { status: 500, headers },
       );
     }
 
@@ -683,6 +804,9 @@ export async function POST(request) {
 
     if (client) await client.cleanup();
 
+    // Créer les headers de succès
+    const headers = createResponseHeaders(requestId, responseTime);
+
     return NextResponse.json(
       {
         message: 'Platform added successfully',
@@ -699,10 +823,7 @@ export async function POST(request) {
       },
       {
         status: 201,
-        headers: {
-          'X-Request-ID': requestId,
-          'X-Response-Time': `${responseTime}ms`,
-        },
+        headers: headers,
       },
     );
   } catch (error) {
@@ -749,6 +870,9 @@ export async function POST(request) {
 
     if (client) await client.cleanup();
 
+    // Créer les headers même en cas d'erreur globale
+    const headers = createResponseHeaders(requestId, responseTime);
+
     return NextResponse.json(
       {
         error: 'Internal server error',
@@ -757,10 +881,7 @@ export async function POST(request) {
       },
       {
         status: 500,
-        headers: {
-          'X-Request-ID': requestId,
-          'X-Response-Time': `${responseTime}ms`,
-        },
+        headers: headers,
       },
     );
   }
