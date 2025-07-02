@@ -1579,84 +1579,188 @@ const nextConfig = {
         ],
       },
 
-      // Configuration pour les API de blog
-      {
-        source: '/api/dashboard/blog/:path*',
-        headers: [
-          {
-            key: 'Access-Control-Allow-Origin',
-            value: process.env.NEXT_PUBLIC_SITE_URL || '*',
-          },
-          {
-            key: 'Access-Control-Allow-Methods',
-            value: 'GET, POST, PUT, DELETE, OPTIONS',
-          },
-          {
-            key: 'Access-Control-Allow-Headers',
-            value: 'Content-Type, Authorization, X-Requested-With',
-          },
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=180, stale-while-revalidate=360',
-          },
-        ],
-      },
+      // ===== API D'INSCRIPTION - SÉCURITÉ RENFORCÉE POUR DONNÉES PII =====
 
-      // APIs sensibles (auth, orders, users) - pas de cache
-      // {
-      //   source: '/api/(auth|dashboard/(orders|users|platforms))/:path*',
-      //   headers: [
-      //     {
-      //       key: 'Access-Control-Allow-Origin',
-      //       value: process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
-      //     },
-      //     {
-      //       key: 'Access-Control-Allow-Methods',
-      //       value: 'GET, POST, PUT, DELETE, OPTIONS',
-      //     },
-      //     {
-      //       key: 'Access-Control-Allow-Headers',
-      //       value: 'Content-Type, Authorization, X-Requested-With',
-      //     },
-      //     {
-      //       key: 'Cache-Control',
-      //       value:
-      //         'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
-      //     },
-      //     {
-      //       key: 'Pragma',
-      //       value: 'no-cache',
-      //     },
-      //     {
-      //       key: 'Expires',
-      //       value: '0',
-      //     },
-      //   ],
-      // },
-
-      // API d'inscription - sécurité renforcée
       {
         source: '/api/register',
         headers: [
+          // ===== CORS SPÉCIFIQUE REGISTRATION (public, pas d'Authorization) =====
           {
             key: 'Access-Control-Allow-Origin',
             value: process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
           },
           {
             key: 'Access-Control-Allow-Methods',
-            value: 'POST, OPTIONS',
+            value: 'POST, OPTIONS', // Uniquement POST pour inscription
           },
           {
             key: 'Access-Control-Allow-Headers',
-            value: 'Content-Type, X-Requested-With',
+            value: 'Content-Type, X-Requested-With', // Pas d'Authorization (route publique)
           },
+
+          // ===== ANTI-CACHE ULTRA-STRICT (données sensibles PII) =====
           {
             key: 'Cache-Control',
-            value: 'no-store, no-cache, must-revalidate',
+            value:
+              'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
           },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+          {
+            key: 'Expires',
+            value: '0',
+          },
+          {
+            key: 'Surrogate-Control',
+            value: 'no-store',
+          },
+
+          // ===== SÉCURITÉ RENFORCÉE POUR DONNÉES PII =====
           {
             key: 'X-Content-Type-Options',
             value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload', // Plus long pour auth (2 ans)
+          },
+
+          // ===== ISOLATION MAXIMALE POUR AUTH =====
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'same-site',
+          },
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'credentialless',
+          },
+
+          // ===== CSP SPÉCIFIQUE FORMULAIRES D'INSCRIPTION =====
+          {
+            key: 'Content-Security-Policy',
+            value:
+              "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'",
+          },
+
+          // ===== PERMISSIONS LIMITÉES POUR AUTH =====
+          {
+            key: 'Permissions-Policy',
+            value:
+              'geolocation=(), microphone=(), camera=(), payment=(), usb=(), interest-cohort=()',
+          },
+
+          // ===== HEADERS SPÉCIFIQUES REGISTRATION =====
+          {
+            key: 'X-API-Version',
+            value: '1.0',
+          },
+          {
+            key: 'X-Transaction-Type',
+            value: 'registration', // Spécifique vs 'mutation'
+          },
+          {
+            key: 'X-Operation-Type',
+            value: 'user-creation',
+          },
+          {
+            key: 'X-Entity-Type',
+            value: 'user-account',
+          },
+
+          // ===== HEADERS DE SÉCURITÉ SPÉCIFIQUES AUTH =====
+          {
+            key: 'X-Data-Sensitivity',
+            value: 'high', // Données PII sensibles
+          },
+          {
+            key: 'X-Authentication-Context',
+            value: 'public-registration',
+          },
+          {
+            key: 'X-Password-Hashing',
+            value: 'bcrypt',
+          },
+          {
+            key: 'X-PII-Processing',
+            value: 'true',
+          },
+
+          // ===== RATE LIMITING SPÉCIFIQUE REGISTRATION =====
+          {
+            key: 'X-RateLimit-Window',
+            value: '900', // 15 minutes (unique)
+          },
+          {
+            key: 'X-RateLimit-Limit',
+            value: '5', // 5 tentatives (unique)
+          },
+          {
+            key: 'X-Rate-Limiting-Applied',
+            value: 'true',
+          },
+          {
+            key: 'X-Rate-Limiting-Strategy',
+            value: 'ip-email-combined',
+          },
+
+          // ===== HEADERS MÉTIER REGISTRATION =====
+          {
+            key: 'X-Sanitization-Applied',
+            value: 'true',
+          },
+          {
+            key: 'X-Yup-Validation-Applied',
+            value: 'true',
+          },
+          {
+            key: 'X-Uniqueness-Check',
+            value: 'email-required',
+          },
+          {
+            key: 'X-Database-Operations',
+            value: '3', // connection + check + insert
+          },
+
+          // ===== SÉCURITÉ SUPPLÉMENTAIRE =====
+          {
+            key: 'X-Permitted-Cross-Domain-Policies',
+            value: 'none',
+          },
+          {
+            key: 'X-Robots-Tag',
+            value: 'noindex, nofollow', // Pas d'indexation des formulaires
+          },
+          {
+            key: 'Vary',
+            value: 'Content-Type, User-Agent',
+          },
+
+          // ===== HEADERS INFORMATIFS =====
+          {
+            key: 'X-Content-Category',
+            value: 'user-registration',
+          },
+          {
+            key: 'X-Operation-Criticality',
+            value: 'high',
           },
         ],
       },
