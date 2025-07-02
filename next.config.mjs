@@ -185,6 +185,294 @@ const nextConfig = {
       //   source: '/((?!api).*)',
       //   headers: securityHeaders,
       // },
+      // ===== HEADERS NEXTAUTH - PRIORITÉ MAXIMALE (à placer EN PREMIER) =====
+
+      // 1. Route callback credentials (la plus critique)
+      {
+        source: '/api/auth/callback/credentials',
+        headers: [
+          // CORS ultra-sécurisé
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'POST, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value:
+              'Content-Type, Authorization, X-Requested-With, Cookie, Set-Cookie',
+          },
+          {
+            key: 'Access-Control-Allow-Credentials',
+            value: 'true',
+          },
+
+          // Anti-cache ultra-strict
+          {
+            key: 'Cache-Control',
+            value:
+              'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, private',
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+          {
+            key: 'Expires',
+            value: '0',
+          },
+
+          // Sécurité maximale
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
+          },
+
+          // Isolation
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'same-site',
+          },
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
+
+          // CSP restrictif
+          {
+            key: 'Content-Security-Policy',
+            value:
+              "default-src 'self'; script-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'",
+          },
+
+          // Rate limiting ultra-strict
+          {
+            key: 'X-RateLimit-Window',
+            value: '600', // 10 minutes
+          },
+          {
+            key: 'X-RateLimit-Limit',
+            value: '5', // 5 tentatives
+          },
+
+          // Headers métier spécifiques
+          {
+            key: 'X-API-Version',
+            value: '1.0',
+          },
+          {
+            key: 'X-Transaction-Type',
+            value: 'credential-authentication',
+          },
+          {
+            key: 'X-Operation-Type',
+            value: 'login',
+          },
+          {
+            key: 'X-Security-Level',
+            value: 'critical',
+          },
+          {
+            key: 'X-Database-Operations',
+            value: '3',
+          },
+          {
+            key: 'X-Sanitization-Applied',
+            value: 'true',
+          },
+          {
+            key: 'X-Bcrypt-Verification',
+            value: 'enabled',
+          },
+          {
+            key: 'X-Suspicious-Activity-Detection',
+            value: 'enabled',
+          },
+          {
+            key: 'X-Audit-Level',
+            value: 'complete',
+          },
+        ],
+      },
+
+      // 2. Route session (appelée fréquemment)
+      {
+        source: '/api/auth/session',
+        headers: [
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
+          },
+          {
+            key: 'Access-Control-Allow-Credentials',
+            value: 'true',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'private, no-cache, no-store, must-revalidate, max-age=0',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
+          },
+          {
+            key: 'X-RateLimit-Window',
+            value: '60', // 1 minute
+          },
+          {
+            key: 'X-RateLimit-Limit',
+            value: '30', // 30 vérifications par minute
+          },
+          {
+            key: 'X-Operation-Type',
+            value: 'session-verification',
+          },
+          {
+            key: 'X-JWT-Validation',
+            value: 'enabled',
+          },
+          {
+            key: 'X-Database-Operations',
+            value: '0',
+          },
+        ],
+      },
+
+      // 3. Autres routes NextAuth (signin, signout, etc.)
+      {
+        source: '/api/auth/:path*',
+        headers: [
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, POST, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization, X-Requested-With, Cookie',
+          },
+          {
+            key: 'Access-Control-Allow-Credentials',
+            value: 'true',
+          },
+          {
+            key: 'Cache-Control',
+            value:
+              'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'same-site',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value:
+              "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'",
+          },
+          {
+            key: 'X-API-Version',
+            value: '1.0',
+          },
+          {
+            key: 'X-Transaction-Type',
+            value: 'authentication',
+          },
+          {
+            key: 'X-Authentication-Provider',
+            value: 'nextauth',
+          },
+          {
+            key: 'X-Security-Level',
+            value: 'maximum',
+          },
+        ],
+      },
+
+      // 4. Page de connexion
+      {
+        source: '/login',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value:
+              "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'",
+          },
+          {
+            key: 'Cache-Control',
+            value: 'no-store, no-cache, must-revalidate',
+          },
+          {
+            key: 'X-Page-Type',
+            value: 'authentication-form',
+          },
+          {
+            key: 'X-CSRF-Protection',
+            value: 'nextauth-enabled',
+          },
+        ],
+      },
 
       // ===== HEADERS COMMUNS POUR LES ROUTES TEMPLATES MUTATIONS (ADD/EDIT/DELETE) =====
       // Configuration spécifique pour les routes de mutation de templates
