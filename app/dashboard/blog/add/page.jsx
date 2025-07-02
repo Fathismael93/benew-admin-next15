@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { redirect } from 'next/navigation';
 import { CldUploadWidget, CldImage } from 'next-cloudinary';
-import axios from 'axios';
 import styles from '@/ui/styling/dashboard/blog/add/add.module.css';
 import TiptapEditor from '@/ui/components/dashboard/editor';
 import { addArticleSchema } from '@utils/schemas/articleSchema';
@@ -48,15 +47,22 @@ const CreatePostPage = () => {
         { abortEarly: false },
       );
 
-      const response = await axios.post(
-        '/api/dashboard/blog/add',
-        JSON.stringify({ title, text, imageUrl }),
-        {
-          headers: { 'Content-Type': 'application/json' },
+      const response = await fetch('/api/dashboard/blog/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      );
+        body: JSON.stringify({ title, text, imageUrl }),
+      });
 
-      if (response.data.success) {
+      // Vérifier si la réponse est ok
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
         setIsSuccess(true);
         // Redirect after a short delay
         setTimeout(() => {
@@ -71,9 +77,9 @@ const CreatePostPage = () => {
           validationErrors[err.path] = err.message;
         });
         setErrors(validationErrors);
-      } else if (error.response?.data?.message) {
-        // Server errors
-        setErrors({ general: error.response.data.message });
+      } else if (error.message?.includes('HTTP error')) {
+        // Erreurs HTTP
+        setErrors({ general: 'Server error. Please try again.' });
       } else {
         // Network or other errors
         setErrors({ general: 'Something went wrong. Please try again.' });

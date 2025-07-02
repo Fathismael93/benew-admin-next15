@@ -3,7 +3,6 @@
 import { useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { CldImage } from 'next-cloudinary';
-import axios from 'axios';
 import styles from '@/ui/styling/dashboard/applications/applicationsList.module.css';
 import AppFilters from '@ui/components/dashboard/AppFilters';
 import Link from 'next/link';
@@ -63,21 +62,36 @@ function ApplicationsList({ data }) {
       setIsDeleting(true);
 
       try {
-        const response = await axios.delete(
+        const response = await fetch(
           `/api/dashboard/applications/${id}/delete`,
           {
-            data: { id, application_images },
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ id, application_images }),
           },
         );
 
-        if (response.data.success) {
+        // Vérifier si la réponse est ok
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
           setIsDeleting(false);
           router.push('/dashboard/applications');
         }
       } catch (error) {
         console.error('Delete error:', error);
         setIsDeleting(false);
-        setError('Failed to delete application. Please try again.');
+        if (error.message?.includes('HTTP error')) {
+          setError('Server error. Please try again.');
+        } else {
+          setError('Failed to delete application. Please try again.');
+        }
       }
     }
   };

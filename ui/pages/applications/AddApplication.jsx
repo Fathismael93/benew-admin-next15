@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CldImage, CldUploadWidget } from 'next-cloudinary';
-import axios from 'axios';
 import styles from '@/ui/styling/dashboard/applications/add/addApplication.module.css';
 import { applicationAddingSchema } from '@/utils/schemas/applicationSchema';
 
@@ -114,15 +113,22 @@ function AddApplication({ templates }) {
       await applicationAddingSchema.validate(formData, { abortEarly: false });
 
       // Si validation réussie, procéder à l'envoi
-      const response = await axios.post(
-        '/api/dashboard/applications/add',
-        JSON.stringify(formData),
-        {
-          headers: { 'Content-Type': 'application/json' },
+      const response = await fetch('/api/dashboard/applications/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      );
+        body: JSON.stringify(formData),
+      });
 
-      if (await response.data.success) {
+      // Vérifier si la réponse est ok
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
         router.push('/dashboard/applications');
       }
     } catch (validationError) {
@@ -130,8 +136,11 @@ function AddApplication({ templates }) {
         // Erreurs de validation Yup - afficher la première erreur
         const firstError = validationError.errors[0];
         setErrorMessage(firstError || 'Validation failed');
+      } else if (validationError.message?.includes('HTTP error')) {
+        // Erreurs HTTP
+        setErrorMessage('Server error. Please try again.');
       } else {
-        // Autres erreurs (API, réseau, etc.)
+        // Autres erreurs (réseau, etc.)
         setErrorMessage(
           validationError.message ||
             'An error occurred while adding the application',

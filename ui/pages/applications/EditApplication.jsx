@@ -100,20 +100,28 @@ function EditApplication({ application }) {
       setFieldErrors({});
 
       // Envoyer la requête
-      const response = await axios.put(
+      const response = await fetch(
         `/api/dashboard/applications/${application.application_id}/edit`,
-        JSON.stringify(formData),
         {
-          headers: { 'Content-Type': 'application/json' },
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
         },
       );
 
-      if (response.data.success) {
+      // Vérifier si la réponse est ok
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
         router.push('/dashboard/applications');
       } else {
-        setErrorMessage(
-          response.data.message || 'Failed to update application.',
-        );
+        setErrorMessage(data.message || 'Failed to update application.');
       }
     } catch (error) {
       if (error.name === 'ValidationError') {
@@ -136,21 +144,12 @@ function EditApplication({ application }) {
             message: err.message,
           })),
         );
-      } else if (error.response) {
-        // Erreur de l'API
-        setErrorMessage(
-          error.response.data.message ||
-            'An error occurred while updating the application.',
-        );
-        console.error('API error:', error.response.data);
-      } else if (error.request) {
-        // Erreur réseau
-        setErrorMessage(
-          'Network error. Please check your connection and try again.',
-        );
-        console.error('Network error:', error.request);
+      } else if (error.message?.includes('HTTP error')) {
+        // Erreur HTTP
+        setErrorMessage('Server error. Please try again.');
+        console.error('HTTP error:', error);
       } else {
-        // Autre erreur
+        // Autre erreur (réseau, etc.)
         setErrorMessage('An unexpected error occurred. Please try again.');
         console.error('Update error:', error);
       }
