@@ -120,6 +120,81 @@ const invalidateArticlesCache = (requestId, articleId) => {
   }
 };
 
+// ----- FONCTION POUR GÉNÉRER LES HEADERS DE SÉCURITÉ -----
+const getSecurityHeaders = (requestId, responseTime, articleId) => {
+  return {
+    // ===== CORS SPÉCIFIQUE (même site uniquement) =====
+    'Access-Control-Allow-Origin':
+      process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
+    'Access-Control-Allow-Methods': 'PUT, OPTIONS', // Spécifique à l'édition
+    'Access-Control-Allow-Headers':
+      'Content-Type, Authorization, X-Requested-With',
+
+    // ===== ANTI-CACHE STRICT (mutations sensibles) =====
+    'Cache-Control':
+      'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+    Pragma: 'no-cache',
+    Expires: '0',
+    'Surrogate-Control': 'no-store',
+
+    // ===== SÉCURITÉ RENFORCÉE =====
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'X-XSS-Protection': '1; mode=block',
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+
+    // ===== ISOLATION ET POLICIES =====
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Cross-Origin-Resource-Policy': 'same-site',
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cross-Origin-Embedder-Policy': 'credentialless',
+
+    // ===== CSP POUR MANIPULATION DE DONNÉES =====
+    'Content-Security-Policy':
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self'",
+
+    // ===== PERMISSIONS LIMITÉES =====
+    'Permissions-Policy':
+      'geolocation=(), microphone=(), camera=(), payment=(), usb=()',
+
+    // ===== HEADERS INFORMATIFS SPÉCIFIQUES BLOG EDIT =====
+    'X-API-Version': '1.0',
+    'X-Transaction-Type': 'mutation',
+    'X-Entity-Type': 'blog-article',
+    'X-Operation-Type': 'update', // Spécifique à l'édition
+
+    // ===== HEADERS MÉTIER EDIT =====
+    'X-Cache-Invalidation': 'articles',
+    'X-Sanitization-Applied': 'true',
+    'X-Yup-Validation-Applied': 'true',
+    'X-Rate-Limiting-Applied': 'true',
+
+    // ===== HEADERS SPÉCIFIQUES À L'ÉDITION =====
+    'X-Resource-Validation': 'article-id-required',
+    'X-UUID-Validation': 'cleaned-and-verified',
+    'X-Media-Management': 'cloudinary-cleanup',
+    'X-Partial-Update': 'enabled',
+    'X-Business-Rules': 'partial-update-allowed',
+    'X-Operation-Criticality': 'medium',
+
+    // ===== RATE LIMITING SPÉCIFIQUE EDIT =====
+    'X-RateLimit-Window': '120', // 2 minutes
+    'X-RateLimit-Limit': '15', // 15 modifications par 2 minutes
+
+    // ===== SÉCURITÉ SUPPLÉMENTAIRE =====
+    'X-Permitted-Cross-Domain-Policies': 'none',
+    'X-Robots-Tag': 'noindex, nofollow',
+    Vary: 'Authorization, Content-Type',
+
+    // ===== HEADERS DE TRAÇABILITÉ =====
+    'X-Request-ID': requestId,
+    'X-Response-Time': `${responseTime}ms`,
+    'X-Content-Category': 'blog-content',
+    'X-Database-Operations': '3', // connection + select + update
+    'X-Resource-ID': articleId,
+  };
+};
+
 // ----- API ROUTE PRINCIPALE AVEC RATE LIMITING -----
 
 export async function PUT(request, { params }) {
@@ -210,6 +285,9 @@ export async function PUT(request, { params }) {
         },
       });
 
+      const responseTime = Date.now() - startTime;
+      const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
+
       return NextResponse.json(
         {
           success: false,
@@ -221,9 +299,7 @@ export async function PUT(request, { params }) {
         },
         {
           status: 400,
-          headers: {
-            'X-Request-ID': requestId,
-          },
+          headers: securityHeaders,
         },
       );
     }
@@ -269,7 +345,18 @@ export async function PUT(request, { params }) {
         },
       });
 
-      return rateLimitResponse; // Retourner directement la réponse 429
+      // Ajouter les headers de sécurité même en cas de rate limiting
+      const responseTime = Date.now() - startTime;
+      const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
+
+      // Créer une nouvelle réponse avec les headers de sécurité
+      return new NextResponse(rateLimitResponse.body, {
+        status: 429,
+        headers: {
+          ...Object.fromEntries(rateLimitResponse.headers.entries()),
+          ...securityHeaders,
+        },
+      });
     }
 
     logger.debug('Rate limiting passed successfully', {
@@ -340,6 +427,9 @@ export async function PUT(request, { params }) {
         },
       });
 
+      const responseTime = Date.now() - startTime;
+      const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
+
       return NextResponse.json(
         {
           success: false,
@@ -348,9 +438,7 @@ export async function PUT(request, { params }) {
         },
         {
           status: 503,
-          headers: {
-            'X-Request-ID': requestId,
-          },
+          headers: securityHeaders,
         },
       );
     }
@@ -401,6 +489,10 @@ export async function PUT(request, { params }) {
       });
 
       if (client) await client.cleanup();
+
+      const responseTime = Date.now() - startTime;
+      const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
+
       return NextResponse.json(
         {
           success: false,
@@ -409,9 +501,7 @@ export async function PUT(request, { params }) {
         },
         {
           status: 400,
-          headers: {
-            'X-Request-ID': requestId,
-          },
+          headers: securityHeaders,
         },
       );
     }
@@ -551,6 +641,9 @@ export async function PUT(request, { params }) {
         errors[error.path] = error.message;
       });
 
+      const responseTime = Date.now() - startTime;
+      const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
+
       return NextResponse.json(
         {
           success: false,
@@ -560,9 +653,7 @@ export async function PUT(request, { params }) {
         },
         {
           status: 422,
-          headers: {
-            'X-Request-ID': requestId,
-          },
+          headers: securityHeaders,
         },
       );
     }
@@ -712,6 +803,10 @@ export async function PUT(request, { params }) {
         });
 
         if (client) await client.cleanup();
+
+        const responseTime = Date.now() - startTime;
+        const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
+
         return NextResponse.json(
           {
             success: false,
@@ -720,9 +815,7 @@ export async function PUT(request, { params }) {
           },
           {
             status: 404,
-            headers: {
-              'X-Request-ID': requestId,
-            },
+            headers: securityHeaders,
           },
         );
       }
@@ -770,6 +863,10 @@ export async function PUT(request, { params }) {
       });
 
       if (client) await client.cleanup();
+
+      const responseTime = Date.now() - startTime;
+      const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
+
       return NextResponse.json(
         {
           success: false,
@@ -779,9 +876,7 @@ export async function PUT(request, { params }) {
         },
         {
           status: 500,
-          headers: {
-            'X-Request-ID': requestId,
-          },
+          headers: securityHeaders,
         },
       );
     }
@@ -799,7 +894,7 @@ export async function PUT(request, { params }) {
       articleId: id,
       articleTitle: updatedArticle.article_title,
       response_time_ms: responseTime,
-      database_operations: 2, // connection + update
+      database_operations: 3, // connection + check + update
       cache_invalidated: cacheInvalidation.listInvalidated,
       success: true,
       requestId,
@@ -827,7 +922,7 @@ export async function PUT(request, { params }) {
         articleId: id,
         articleTitle: updatedArticle.article_title,
         responseTimeMs: responseTime,
-        databaseOperations: 2,
+        databaseOperations: 3,
         cacheInvalidated:
           cacheInvalidation.listInvalidated ||
           cacheInvalidation.singleInvalidated,
@@ -839,6 +934,9 @@ export async function PUT(request, { params }) {
     });
 
     if (client) await client.cleanup();
+
+    // Générer les headers de sécurité pour la réponse de succès
+    const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
 
     return NextResponse.json(
       {
@@ -855,10 +953,7 @@ export async function PUT(request, { params }) {
       },
       {
         status: 200,
-        headers: {
-          'X-Request-ID': requestId,
-          'X-Response-Time': `${responseTime}ms`,
-        },
+        headers: securityHeaders,
       },
     );
   } catch (error) {
@@ -907,6 +1002,9 @@ export async function PUT(request, { params }) {
 
     if (client) await client.cleanup();
 
+    // Générer les headers de sécurité même en cas d'erreur globale
+    const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
+
     return NextResponse.json(
       {
         success: false,
@@ -916,10 +1014,7 @@ export async function PUT(request, { params }) {
       },
       {
         status: 500,
-        headers: {
-          'X-Request-ID': requestId,
-          'X-Response-Time': `${responseTime}ms`,
-        },
+        headers: securityHeaders,
       },
     );
   }
