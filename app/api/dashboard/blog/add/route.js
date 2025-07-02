@@ -109,6 +109,68 @@ const invalidateArticlesCache = (requestId) => {
   }
 };
 
+// ----- FONCTION POUR GÉNÉRER LES HEADERS DE SÉCURITÉ -----
+const getSecurityHeaders = (requestId, responseTime) => {
+  return {
+    // ===== CORS SPÉCIFIQUE (même site uniquement) =====
+    'Access-Control-Allow-Origin':
+      process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers':
+      'Content-Type, Authorization, X-Requested-With',
+
+    // ===== ANTI-CACHE STRICT (mutations sensibles) =====
+    'Cache-Control':
+      'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+    Pragma: 'no-cache',
+    Expires: '0',
+    'Surrogate-Control': 'no-store',
+
+    // ===== SÉCURITÉ RENFORCÉE =====
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'X-XSS-Protection': '1; mode=block',
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+
+    // ===== ISOLATION ET POLICIES =====
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Cross-Origin-Resource-Policy': 'same-site',
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cross-Origin-Embedder-Policy': 'credentialless',
+
+    // ===== CSP POUR MANIPULATION DE DONNÉES =====
+    'Content-Security-Policy':
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self'",
+
+    // ===== PERMISSIONS LIMITÉES =====
+    'Permissions-Policy':
+      'geolocation=(), microphone=(), camera=(), payment=(), usb=()',
+
+    // ===== HEADERS INFORMATIFS SPÉCIFIQUES BLOG =====
+    'X-API-Version': '1.0',
+    'X-Transaction-Type': 'mutation',
+    'X-Entity-Type': 'blog-article',
+    'X-Operation-Type': 'create',
+
+    // ===== HEADERS MÉTIER =====
+    'X-Cache-Invalidation': 'articles',
+    'X-Sanitization-Applied': 'true',
+    'X-Yup-Validation-Applied': 'true',
+    'X-Rate-Limiting-Applied': 'true',
+
+    // ===== SÉCURITÉ SUPPLÉMENTAIRE =====
+    'X-Permitted-Cross-Domain-Policies': 'none',
+    'X-Robots-Tag': 'noindex, nofollow',
+    Vary: 'Authorization, Content-Type',
+
+    // ===== HEADERS DE TRAÇABILITÉ =====
+    'X-Request-ID': requestId,
+    'X-Response-Time': `${responseTime}ms`,
+    'X-Content-Category': 'blog-content',
+    'X-Database-Operations': '2',
+  };
+};
+
 // ----- API ROUTE PRINCIPALE AVEC RATE LIMITING -----
 
 export async function POST(request) {
@@ -181,7 +243,18 @@ export async function POST(request) {
         },
       });
 
-      return rateLimitResponse; // Retourner directement la réponse 429
+      // Ajouter les headers de sécurité même en cas de rate limiting
+      const responseTime = Date.now() - startTime;
+      const securityHeaders = getSecurityHeaders(requestId, responseTime);
+
+      // Créer une nouvelle réponse avec les headers de sécurité
+      return new NextResponse(rateLimitResponse.body, {
+        status: 429,
+        headers: {
+          ...Object.fromEntries(rateLimitResponse.headers.entries()),
+          ...securityHeaders,
+        },
+      });
     }
 
     logger.debug('Rate limiting passed successfully', {
@@ -246,9 +319,15 @@ export async function POST(request) {
         },
       });
 
+      const responseTime = Date.now() - startTime;
+      const securityHeaders = getSecurityHeaders(requestId, responseTime);
+
       return NextResponse.json(
         { error: 'Database connection failed' },
-        { status: 503 },
+        {
+          status: 503,
+          headers: securityHeaders,
+        },
       );
     }
 
@@ -295,9 +374,16 @@ export async function POST(request) {
       });
 
       if (client) await client.cleanup();
+
+      const responseTime = Date.now() - startTime;
+      const securityHeaders = getSecurityHeaders(requestId, responseTime);
+
       return NextResponse.json(
         { error: 'Invalid JSON in request body' },
-        { status: 400 },
+        {
+          status: 400,
+          headers: securityHeaders,
+        },
       );
     }
 
@@ -405,13 +491,19 @@ export async function POST(request) {
         errors[error.path] = error.message;
       });
 
+      const responseTime = Date.now() - startTime;
+      const securityHeaders = getSecurityHeaders(requestId, responseTime);
+
       return NextResponse.json(
         {
           success: false,
           message: 'Validation failed',
           errors,
         },
-        { status: 422 },
+        {
+          status: 422,
+          headers: securityHeaders,
+        },
       );
     }
 
@@ -456,12 +548,19 @@ export async function POST(request) {
       );
 
       if (client) await client.cleanup();
+
+      const responseTime = Date.now() - startTime;
+      const securityHeaders = getSecurityHeaders(requestId, responseTime);
+
       return NextResponse.json(
         {
           success: false,
           message: 'Title, text and image are required',
         },
-        { status: 400 },
+        {
+          status: 400,
+          headers: securityHeaders,
+        },
       );
     }
 
@@ -539,12 +638,19 @@ export async function POST(request) {
       });
 
       if (client) await client.cleanup();
+
+      const responseTime = Date.now() - startTime;
+      const securityHeaders = getSecurityHeaders(requestId, responseTime);
+
       return NextResponse.json(
         {
           success: false,
           error: 'Failed to add article to database',
         },
-        { status: 500 },
+        {
+          status: 500,
+          headers: securityHeaders,
+        },
       );
     }
 
@@ -603,6 +709,9 @@ export async function POST(request) {
 
     if (client) await client.cleanup();
 
+    // Générer les headers de sécurité pour la réponse de succès
+    const securityHeaders = getSecurityHeaders(requestId, responseTime);
+
     return NextResponse.json(
       {
         success: true,
@@ -619,10 +728,7 @@ export async function POST(request) {
       },
       {
         status: 201,
-        headers: {
-          'X-Request-ID': requestId,
-          'X-Response-Time': `${responseTime}ms`,
-        },
+        headers: securityHeaders,
       },
     );
   } catch (error) {
@@ -669,6 +775,9 @@ export async function POST(request) {
 
     if (client) await client.cleanup();
 
+    // Générer les headers de sécurité même en cas d'erreur globale
+    const securityHeaders = getSecurityHeaders(requestId, responseTime);
+
     return NextResponse.json(
       {
         success: false,
@@ -678,10 +787,7 @@ export async function POST(request) {
       },
       {
         status: 500,
-        headers: {
-          'X-Request-ID': requestId,
-          'X-Response-Time': `${responseTime}ms`,
-        },
+        headers: securityHeaders,
       },
     );
   }
