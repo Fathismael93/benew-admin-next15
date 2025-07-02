@@ -2265,58 +2265,332 @@ const nextConfig = {
         ],
       },
 
-      // APIs de signature Cloudinary (configuration générale - sera surchargée par la route spécifique)
-      {
-        source: '/api/dashboard/:path*/sign-image',
-        headers: [
-          {
-            key: 'Access-Control-Allow-Origin',
-            value: process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
-          },
-          {
-            key: 'Access-Control-Allow-Methods',
-            value: 'POST, OPTIONS',
-          },
-          {
-            key: 'Access-Control-Allow-Headers',
-            value: 'Content-Type, Authorization',
-          },
-          {
-            key: 'Cache-Control',
-            value: 'no-store, no-cache, must-revalidate',
-          },
-        ],
-      },
+      // ===== RESSOURCES STATIQUES - CACHE AGRESSIF ET SÉCURITÉ =====
 
-      // Ressources statiques Next.js - cache agressif
+      // 1. Ressources Next.js compilées (_next/static/) - Cache maximal
       {
         source: '/_next/static/:path*',
         headers: [
+          // Cache agressif pour ressources avec hash
           {
             key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
+            value: 'public, max-age=31536000, immutable', // 1 an
+          },
+          // Sécurité
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'cross-origin', // Permet CDN
+          },
+          // Performance
+          {
+            key: 'Vary',
+            value: 'Accept-Encoding',
+          },
+          // Headers informatifs
+          {
+            key: 'X-Resource-Type',
+            value: 'nextjs-compiled',
+          },
+          {
+            key: 'X-Cache-Strategy',
+            value: 'immutable-with-hash',
           },
         ],
       },
 
-      // Images statiques - cache optimisé
+      // 2. Images statiques dans /public/images/ - Cache optimisé
       {
         source: '/images/:path*',
         headers: [
+          // Cache optimisé pour images
           {
             key: 'Cache-Control',
-            value: 'public, max-age=86400, stale-while-revalidate=3600',
+            value: 'public, max-age=86400, stale-while-revalidate=3600', // 1 jour + SWR 1h
+          },
+          // Sécurité
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN', // Permet iframe same-origin
+          },
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'cross-origin',
+          },
+          // Performance
+          {
+            key: 'Vary',
+            value: 'Accept, Accept-Encoding',
+          },
+          // Headers informatifs
+          {
+            key: 'X-Resource-Type',
+            value: 'static-image',
+          },
+          {
+            key: 'X-Cache-Strategy',
+            value: 'daily-with-revalidation',
           },
         ],
       },
 
-      // Fichiers statiques (fonts, etc.)
+      // 3. Fichiers SVG dans /public/ - Cache avec sécurité
+      {
+        source: '/:path*\\.(svg)$',
+        headers: [
+          // Cache modéré pour SVG
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, stale-while-revalidate=3600', // 1 jour + SWR 1h
+          },
+          // Sécurité renforcée pour SVG (risque XSS)
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value:
+              "default-src 'none'; style-src 'unsafe-inline'; script-src 'none';", // Bloque JS dans SVG
+          },
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'cross-origin',
+          },
+          // Performance
+          {
+            key: 'Vary',
+            value: 'Accept-Encoding',
+          },
+          // Headers informatifs
+          {
+            key: 'X-Resource-Type',
+            value: 'svg-vector',
+          },
+          {
+            key: 'X-Security-Level',
+            value: 'sanitized', // SVG sans JS
+          },
+        ],
+      },
+
+      // 4. Polices web (fonts) - Cache maximal
       {
         source: '/:path*\\.(woff|woff2|eot|ttf|otf)$',
         headers: [
+          // Cache agressif pour fonts
           {
             key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
+            value: 'public, max-age=31536000, immutable', // 1 an
+          },
+          // Sécurité
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'cross-origin',
+          },
+          // CORS pour fonts (nécessaire pour certains navigateurs)
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: '*',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Origin, X-Requested-With, Content-Type, Accept',
+          },
+          // Performance
+          {
+            key: 'Vary',
+            value: 'Accept-Encoding',
+          },
+          // Headers informatifs
+          {
+            key: 'X-Resource-Type',
+            value: 'web-font',
+          },
+          {
+            key: 'X-Cache-Strategy',
+            value: 'permanent-immutable',
+          },
+        ],
+      },
+
+      // 5. Autres assets statiques (CSS, JS, JSON, XML, TXT dans /public/)
+      {
+        source: '/:path*\\.(css|js|json|xml|txt|ico|manifest)$',
+        headers: [
+          // Cache modéré pour assets divers
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, stale-while-revalidate=3600', // 1 jour + SWR 1h
+          },
+          // Sécurité
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'same-site',
+          },
+          // Performance
+          {
+            key: 'Vary',
+            value: 'Accept-Encoding',
+          },
+          // Headers informatifs
+          {
+            key: 'X-Resource-Type',
+            value: 'public-asset',
+          },
+          {
+            key: 'X-Cache-Strategy',
+            value: 'daily-refresh',
+          },
+        ],
+      },
+
+      // 6. Fichiers médias (audio/vidéo) - Cache long avec range requests
+      {
+        source: '/:path*\\.(mp4|mp3|webm|ogg|wav|avi|mov)$',
+        headers: [
+          // Cache long pour médias
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=604800, stale-while-revalidate=86400', // 1 semaine + SWR 1 jour
+          },
+          // Support range requests pour streaming
+          {
+            key: 'Accept-Ranges',
+            value: 'bytes',
+          },
+          // Sécurité
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'cross-origin',
+          },
+          // Performance
+          {
+            key: 'Vary',
+            value: 'Accept-Encoding, Range',
+          },
+          // Headers informatifs
+          {
+            key: 'X-Resource-Type',
+            value: 'media-file',
+          },
+          {
+            key: 'X-Streaming-Support',
+            value: 'range-requests',
+          },
+        ],
+      },
+
+      // 7. Documents statiques (PDF, DOC, etc.) - Cache modéré
+      {
+        source: '/:path*\\.(pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar)$',
+        headers: [
+          // Cache modéré pour documents
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, stale-while-revalidate=3600', // 1 jour + SWR 1h
+          },
+          // Sécurité renforcée pour téléchargements
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'Content-Disposition',
+            value: 'attachment', // Force téléchargement
+          },
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'same-site',
+          },
+          // Sécurité supplémentaire
+          {
+            key: 'X-Download-Options',
+            value: 'noopen', // IE security
+          },
+          // Headers informatifs
+          {
+            key: 'X-Resource-Type',
+            value: 'document-download',
+          },
+          {
+            key: 'X-Security-Policy',
+            value: 'attachment-only',
+          },
+        ],
+      },
+
+      // 8. Favicon et icônes d'app - Cache long
+      {
+        source:
+          '/:path*(favicon|apple-touch-icon|android-chrome|mstile)\\.(ico|png)$',
+        headers: [
+          // Cache long pour icônes
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=2592000, stale-while-revalidate=86400', // 30 jours + SWR 1 jour
+          },
+          // Sécurité
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'cross-origin',
+          },
+          // Performance
+          {
+            key: 'Vary',
+            value: 'Accept-Encoding',
+          },
+          // Headers informatifs
+          {
+            key: 'X-Resource-Type',
+            value: 'app-icon',
+          },
+          {
+            key: 'X-Cache-Strategy',
+            value: 'monthly-refresh',
           },
         ],
       },
