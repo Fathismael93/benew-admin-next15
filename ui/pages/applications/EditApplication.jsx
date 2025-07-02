@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CldImage, CldUploadWidget } from 'next-cloudinary';
-import axios from 'axios';
 import styles from '@/ui/styling/dashboard/applications/edit/editApplication.module.css';
 import { MdArrowBack, MdInfo, MdCheck, MdClose, MdError } from 'react-icons/md';
 import Link from 'next/link';

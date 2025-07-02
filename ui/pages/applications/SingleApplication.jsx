@@ -5,7 +5,6 @@ import { CldImage } from 'next-cloudinary';
 import styles from '@/ui/styling/dashboard/applications/singleApplication.module.css';
 import Link from 'next/link';
 import { MdArrowBack, MdCheck, MdClose } from 'react-icons/md';
-import axios from 'axios';
 import { useRouter } from 'next/navigation';
 
 function SingleApplication({ data }) {
@@ -22,18 +21,32 @@ function SingleApplication({ data }) {
 
   const handleDelete = async () => {
     if (confirm('Are you sure you want to delete this application?')) {
-      const response = await axios.delete(
-        '/api/dashboard/applications/delete',
-        {
-          data: {
+      try {
+        const response = await fetch('/api/dashboard/applications/delete', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
             id: application.application_id,
             application_images: application.application_images,
-          },
-        },
-      );
+          }),
+        });
 
-      if (response.data.success) {
-        router.push('/dashboard/applications'); // Redirect to applications list page
+        // Vérifier si la réponse est ok
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+          router.push('/dashboard/applications'); // Redirect to applications list page
+        }
+      } catch (error) {
+        console.error('Delete error:', error);
+        // Optionnel: ajouter une gestion d'erreur utilisateur
+        alert('Failed to delete application. Please try again.');
       }
     }
   };

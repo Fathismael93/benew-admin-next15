@@ -4,7 +4,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import axios from 'axios';
 import styles from '@/ui/styling/dashboard/platforms/add/addPlatform.module.css';
 import { MdArrowBack } from 'react-icons/md';
 import Link from 'next/link';
@@ -61,28 +60,34 @@ function AddPlatform() {
       await platformAddingSchema.validate(formData, { abortEarly: false });
 
       // 3. Si validation réussie, procéder à l'envoi
-      const response = await axios.post(
-        '/api/dashboard/platforms/add',
-        JSON.stringify(formData),
-        {
-          headers: { 'Content-Type': 'application/json' },
+      const response = await fetch('/api/dashboard/platforms/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      );
+        body: JSON.stringify(formData),
+      });
 
-      if (response.data.platform) {
+      // Vérifier si la réponse est ok
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.platform) {
         router.push('/dashboard/platforms');
       } else {
-        setErrorMessage(response.data.message || 'Failed to add platform');
+        setErrorMessage(data.message || 'Failed to add platform');
       }
     } catch (validationError) {
       if (validationError.name === 'ValidationError') {
         // Erreurs de validation Yup - afficher la première erreur
         const firstError = validationError.errors[0];
         setErrorMessage(firstError || 'Validation failed');
-      } else if (validationError.response) {
-        // Erreurs de réponse API
-        const apiError = validationError.response.data;
-        setErrorMessage(apiError.message || 'Server error occurred');
+      } else if (validationError.message?.includes('HTTP error')) {
+        // Erreurs HTTP
+        setErrorMessage('Server error occurred');
       } else {
         // Autres erreurs (réseau, etc.)
         setErrorMessage(

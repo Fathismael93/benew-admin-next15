@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { CldUploadWidget, CldImage } from 'next-cloudinary';
-import axios from 'axios';
 import styles from '@/ui/styling/dashboard/blog/edit/edit.module.css';
 import TiptapEditor from '@/ui/components/dashboard/editor';
 import { updateArticleSchema } from '@utils/schemas/articleSchema';
@@ -124,15 +123,25 @@ const EditArticle = ({ data }) => {
         return;
       }
 
-      const response = await axios.put(
+      const response = await fetch(
         `/api/dashboard/blog/${data.article_id}/edit`,
-        changedData,
         {
-          headers: { 'Content-Type': 'application/json' },
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(changedData),
         },
       );
 
-      if (response.data.success) {
+      // Vérifier si la réponse est ok
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+
+      if (responseData.success) {
         setIsSuccess(true);
         setHasUnsavedChanges(false);
 
@@ -149,8 +158,9 @@ const EditArticle = ({ data }) => {
           validationErrors[err.path] = err.message;
         });
         setErrors(validationErrors);
-      } else if (error.response?.data?.message) {
-        setErrors({ general: error.response.data.message });
+      } else if (error.message?.includes('HTTP error')) {
+        // Erreurs HTTP
+        setErrors({ general: 'Erreur serveur. Veuillez réessayer.' });
       } else {
         setErrors({ general: "Une erreur inattendue s'est produite." });
       }
@@ -172,21 +182,37 @@ const EditArticle = ({ data }) => {
       setIsLoading(true);
       const draftData = { ...formData, isActive: false };
 
-      const response = await axios.put(
+      const response = await fetch(
         `/api/dashboard/blog/${data.article_id}/edit`,
-        draftData,
         {
-          headers: { 'Content-Type': 'application/json' },
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(draftData),
         },
       );
 
-      if (response.data.success) {
+      // Vérifier si la réponse est ok
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+
+      if (responseData.success) {
         setFormData(draftData);
         setOriginalData(draftData);
         setHasUnsavedChanges(false);
       }
     } catch (error) {
-      setErrors({ general: 'Erreur lors de la sauvegarde du brouillon.' });
+      if (error.message?.includes('HTTP error')) {
+        setErrors({
+          general: 'Erreur serveur lors de la sauvegarde du brouillon.',
+        });
+      } else {
+        setErrors({ general: 'Erreur lors de la sauvegarde du brouillon.' });
+      }
     } finally {
       setIsLoading(false);
     }
