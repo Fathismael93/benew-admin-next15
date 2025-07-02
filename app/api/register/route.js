@@ -62,6 +62,79 @@ const registrationRateLimit = applyRateLimit('AUTH_ENDPOINTS', {
   },
 });
 
+// ----- FONCTION POUR GÉNÉRER LES HEADERS DE SÉCURITÉ SPÉCIFIQUES REGISTRATION -----
+const getRegistrationSecurityHeaders = (requestId, responseTime) => {
+  return {
+    // ===== CORS SPÉCIFIQUE REGISTRATION (public, pas d'Authorization) =====
+    'Access-Control-Allow-Origin':
+      process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS', // Uniquement POST pour inscription
+    'Access-Control-Allow-Headers': 'Content-Type, X-Requested-With', // Pas d'Authorization
+
+    // ===== ANTI-CACHE ULTRA-STRICT (données sensibles PII) =====
+    'Cache-Control':
+      'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+    Pragma: 'no-cache',
+    Expires: '0',
+    'Surrogate-Control': 'no-store',
+
+    // ===== SÉCURITÉ RENFORCÉE POUR DONNÉES PII =====
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'X-XSS-Protection': '1; mode=block',
+    'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload', // Plus long pour auth
+
+    // ===== ISOLATION MAXIMALE POUR AUTH =====
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Cross-Origin-Resource-Policy': 'same-site',
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cross-Origin-Embedder-Policy': 'credentialless',
+
+    // ===== CSP SPÉCIFIQUE FORMULAIRES D'INSCRIPTION =====
+    'Content-Security-Policy':
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'",
+
+    // ===== PERMISSIONS LIMITÉES POUR AUTH =====
+    'Permissions-Policy':
+      'geolocation=(), microphone=(), camera=(), payment=(), usb=(), interest-cohort=()',
+
+    // ===== HEADERS SPÉCIFIQUES REGISTRATION =====
+    'X-API-Version': '1.0',
+    'X-Transaction-Type': 'registration', // Spécifique vs 'mutation'
+    'X-Operation-Type': 'user-creation',
+    'X-Entity-Type': 'user-account',
+
+    // ===== HEADERS DE SÉCURITÉ SPÉCIFIQUES AUTH =====
+    'X-Data-Sensitivity': 'high', // Données PII sensibles
+    'X-Authentication-Context': 'public-registration',
+    'X-Password-Hashing': 'bcrypt',
+    'X-PII-Processing': 'true',
+
+    // ===== RATE LIMITING SPÉCIFIQUE REGISTRATION =====
+    'X-RateLimit-Window': '900', // 15 minutes (unique)
+    'X-RateLimit-Limit': '5', // 5 tentatives (unique)
+    'X-Rate-Limiting-Applied': 'true',
+    'X-Rate-Limiting-Strategy': 'ip-email-combined',
+
+    // ===== HEADERS MÉTIER REGISTRATION =====
+    'X-Sanitization-Applied': 'true',
+    'X-Yup-Validation-Applied': 'true',
+    'X-Uniqueness-Check': 'email-required',
+    'X-Database-Operations': '3', // connection + check + insert
+
+    // ===== SÉCURITÉ SUPPLÉMENTAIRE =====
+    'X-Permitted-Cross-Domain-Policies': 'none',
+    'X-Robots-Tag': 'noindex, nofollow', // Pas d'indexation des formulaires
+    Vary: 'Content-Type, User-Agent',
+
+    // ===== HEADERS DE TRAÇABILITÉ =====
+    'X-Request-ID': requestId,
+    'X-Response-Time': `${responseTime}ms`,
+    'X-Content-Category': 'user-registration',
+    'X-Operation-Criticality': 'high',
+  };
+};
+
 // ----- API ROUTE PRINCIPALE AVEC RATE LIMITING ET MONITORING SENTRY -----
 
 export async function POST(req) {
@@ -116,7 +189,21 @@ export async function POST(req) {
         },
       });
 
-      return rateLimitResponse; // Retourner directement la réponse 429
+      // Ajouter les headers de sécurité même en cas de rate limiting
+      const responseTime = Date.now() - startTime;
+      const securityHeaders = getRegistrationSecurityHeaders(
+        requestId,
+        responseTime,
+      );
+
+      // Créer une nouvelle réponse avec les headers de sécurité
+      return new NextResponse(rateLimitResponse.body, {
+        status: 429,
+        headers: {
+          ...Object.fromEntries(rateLimitResponse.headers.entries()),
+          ...securityHeaders,
+        },
+      });
     }
 
     console.log('✅ Rate limiting passed');
@@ -155,9 +242,18 @@ export async function POST(req) {
         },
       });
 
+      const responseTime = Date.now() - startTime;
+      const securityHeaders = getRegistrationSecurityHeaders(
+        requestId,
+        responseTime,
+      );
+
       return NextResponse.json(
         { error: 'Invalid JSON in request body' },
-        { status: 400 },
+        {
+          status: 400,
+          headers: securityHeaders,
+        },
       );
     }
 
@@ -273,7 +369,20 @@ export async function POST(req) {
       validationError.inner.forEach((error) => {
         errors[error.path] = error.message;
       });
-      return NextResponse.json({ errors }, { status: 400 });
+
+      const responseTime = Date.now() - startTime;
+      const securityHeaders = getRegistrationSecurityHeaders(
+        requestId,
+        responseTime,
+      );
+
+      return NextResponse.json(
+        { errors },
+        {
+          status: 400,
+          headers: securityHeaders,
+        },
+      );
     }
 
     // ===== ÉTAPE 4: CONNEXION BASE DE DONNÉES =====
@@ -311,9 +420,18 @@ export async function POST(req) {
         },
       });
 
+      const responseTime = Date.now() - startTime;
+      const securityHeaders = getRegistrationSecurityHeaders(
+        requestId,
+        responseTime,
+      );
+
       return NextResponse.json(
         { error: 'Database connection failed' },
-        { status: 503 },
+        {
+          status: 503,
+          headers: securityHeaders,
+        },
       );
     }
 
@@ -360,9 +478,19 @@ export async function POST(req) {
       });
 
       if (client) await client.cleanup();
+
+      const responseTime = Date.now() - startTime;
+      const securityHeaders = getRegistrationSecurityHeaders(
+        requestId,
+        responseTime,
+      );
+
       return NextResponse.json(
         { error: 'Database query failed during user check' },
-        { status: 500 },
+        {
+          status: 500,
+          headers: securityHeaders,
+        },
       );
     }
 
@@ -389,9 +517,19 @@ export async function POST(req) {
       });
 
       if (client) await client.cleanup();
+
+      const responseTime = Date.now() - startTime;
+      const securityHeaders = getRegistrationSecurityHeaders(
+        requestId,
+        responseTime,
+      );
+
       return NextResponse.json(
         { error: 'A user with this email already exists' },
-        { status: 400 },
+        {
+          status: 400,
+          headers: securityHeaders,
+        },
       );
     }
 
@@ -446,9 +584,19 @@ export async function POST(req) {
       });
 
       if (client) await client.cleanup();
+
+      const responseTime = Date.now() - startTime;
+      const securityHeaders = getRegistrationSecurityHeaders(
+        requestId,
+        responseTime,
+      );
+
       return NextResponse.json(
         { error: 'Password processing failed' },
-        { status: 500 },
+        {
+          status: 500,
+          headers: securityHeaders,
+        },
       );
     }
 
@@ -507,18 +655,30 @@ export async function POST(req) {
 
       if (client) await client.cleanup();
 
+      const responseTime = Date.now() - startTime;
+      const securityHeaders = getRegistrationSecurityHeaders(
+        requestId,
+        responseTime,
+      );
+
       // Retourner des erreurs spécifiques selon le type
       if (insertError.code === '23505') {
         // Unique violation
         return NextResponse.json(
           { error: 'A user with this email or username already exists' },
-          { status: 400 },
+          {
+            status: 400,
+            headers: securityHeaders,
+          },
         );
       }
 
       return NextResponse.json(
         { error: 'Failed to create user account' },
-        { status: 500 },
+        {
+          status: 500,
+          headers: securityHeaders,
+        },
       );
     }
 
@@ -558,6 +718,12 @@ export async function POST(req) {
 
     if (client) await client.cleanup();
 
+    // Générer les headers de sécurité pour la réponse de succès
+    const securityHeaders = getRegistrationSecurityHeaders(
+      requestId,
+      responseTime,
+    );
+
     return NextResponse.json(
       {
         message: 'User registered successfully',
@@ -568,7 +734,10 @@ export async function POST(req) {
           created_at: newUser.user_added,
         },
       },
-      { status: 201 },
+      {
+        status: 201,
+        headers: securityHeaders,
+      },
     );
   } catch (error) {
     // ===== GESTION GLOBALE DES ERREURS =====
@@ -610,9 +779,18 @@ export async function POST(req) {
 
     if (client) await client.cleanup();
 
+    // Générer les headers de sécurité même en cas d'erreur globale
+    const securityHeaders = getRegistrationSecurityHeaders(
+      requestId,
+      responseTime,
+    );
+
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 },
+      {
+        status: 500,
+        headers: securityHeaders,
+      },
     );
   }
 }
