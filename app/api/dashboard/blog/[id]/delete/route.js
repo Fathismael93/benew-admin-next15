@@ -115,6 +115,84 @@ const invalidateArticlesCache = (requestId, articleId) => {
   }
 };
 
+// ----- FONCTION POUR GÉNÉRER LES HEADERS DE SÉCURITÉ -----
+const getSecurityHeaders = (requestId, responseTime, articleId) => {
+  return {
+    // ===== CORS SPÉCIFIQUE (même site uniquement) =====
+    'Access-Control-Allow-Origin':
+      process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
+    'Access-Control-Allow-Methods': 'DELETE, OPTIONS', // Spécifique à la suppression
+    'Access-Control-Allow-Headers':
+      'Content-Type, Authorization, X-Requested-With',
+
+    // ===== ANTI-CACHE STRICT (mutations sensibles) =====
+    'Cache-Control':
+      'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+    Pragma: 'no-cache',
+    Expires: '0',
+    'Surrogate-Control': 'no-store',
+
+    // ===== SÉCURITÉ RENFORCÉE =====
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'X-XSS-Protection': '1; mode=block',
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+
+    // ===== ISOLATION ET POLICIES =====
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Cross-Origin-Resource-Policy': 'same-site',
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cross-Origin-Embedder-Policy': 'credentialless',
+
+    // ===== CSP POUR MANIPULATION DE DONNÉES =====
+    'Content-Security-Policy':
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self'",
+
+    // ===== PERMISSIONS LIMITÉES =====
+    'Permissions-Policy':
+      'geolocation=(), microphone=(), camera=(), payment=(), usb=()',
+
+    // ===== HEADERS INFORMATIFS SPÉCIFIQUES BLOG DELETE =====
+    'X-API-Version': '1.0',
+    'X-Transaction-Type': 'mutation',
+    'X-Entity-Type': 'blog-article',
+    'X-Operation-Type': 'delete', // Spécifique à la suppression
+
+    // ===== HEADERS MÉTIER DELETE =====
+    'X-Cache-Invalidation': 'articles',
+    'X-Rate-Limiting-Applied': 'true',
+
+    // ===== HEADERS SPÉCIFIQUES À LA SUPPRESSION =====
+    'X-Resource-Validation': 'article-id-required',
+    'X-UUID-Validation': 'cleaned-and-verified',
+    'X-Media-Management': 'cloudinary-full-cleanup',
+    'X-Business-Rule-Validation': 'inactive-only',
+    'X-Operation-Criticality': 'high', // Plus critique que edit
+    'X-Validation-Steps': 'business-rules',
+    'X-Resource-State-Check': 'required',
+
+    // ===== HEADERS D'AVERTISSEMENT SPÉCIFIQUES =====
+    'X-Irreversible-Operation': 'true',
+    'X-Data-Loss-Warning': 'permanent',
+
+    // ===== RATE LIMITING SPÉCIFIQUE DELETE =====
+    'X-RateLimit-Window': '300', // 5 minutes (strict comme add)
+    'X-RateLimit-Limit': '8', // 8 suppressions par 5 minutes
+
+    // ===== SÉCURITÉ SUPPLÉMENTAIRE =====
+    'X-Permitted-Cross-Domain-Policies': 'none',
+    'X-Robots-Tag': 'noindex, nofollow',
+    Vary: 'Authorization, Content-Type',
+
+    // ===== HEADERS DE TRAÇABILITÉ =====
+    'X-Request-ID': requestId,
+    'X-Response-Time': `${responseTime}ms`,
+    'X-Content-Category': 'blog-content',
+    'X-Database-Operations': '3', // connection + check + delete
+    'X-Resource-ID': articleId,
+  };
+};
+
 // ----- API ROUTE PRINCIPALE AVEC RATE LIMITING -----
 
 export async function DELETE(request, { params }) {
@@ -205,6 +283,9 @@ export async function DELETE(request, { params }) {
         },
       });
 
+      const responseTime = Date.now() - startTime;
+      const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
+
       return NextResponse.json(
         {
           success: false,
@@ -217,9 +298,7 @@ export async function DELETE(request, { params }) {
         },
         {
           status: 400,
-          headers: {
-            'X-Request-ID': requestId,
-          },
+          headers: securityHeaders,
         },
       );
     }
@@ -265,7 +344,18 @@ export async function DELETE(request, { params }) {
         },
       });
 
-      return rateLimitResponse; // Retourner directement la réponse 429
+      // Ajouter les headers de sécurité même en cas de rate limiting
+      const responseTime = Date.now() - startTime;
+      const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
+
+      // Créer une nouvelle réponse avec les headers de sécurité
+      return new NextResponse(rateLimitResponse.body, {
+        status: 429,
+        headers: {
+          ...Object.fromEntries(rateLimitResponse.headers.entries()),
+          ...securityHeaders,
+        },
+      });
     }
 
     logger.debug('Rate limiting passed successfully', {
@@ -336,6 +426,9 @@ export async function DELETE(request, { params }) {
         },
       });
 
+      const responseTime = Date.now() - startTime;
+      const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
+
       return NextResponse.json(
         {
           success: false,
@@ -344,9 +437,7 @@ export async function DELETE(request, { params }) {
         },
         {
           status: 503,
-          headers: {
-            'X-Request-ID': requestId,
-          },
+          headers: securityHeaders,
         },
       );
     }
@@ -421,6 +512,10 @@ export async function DELETE(request, { params }) {
         });
 
         if (client) await client.cleanup();
+
+        const responseTime = Date.now() - startTime;
+        const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
+
         return NextResponse.json(
           {
             success: false,
@@ -429,9 +524,7 @@ export async function DELETE(request, { params }) {
           },
           {
             status: 404,
-            headers: {
-              'X-Request-ID': requestId,
-            },
+            headers: securityHeaders,
           },
         );
       }
@@ -470,6 +563,10 @@ export async function DELETE(request, { params }) {
         });
 
         if (client) await client.cleanup();
+
+        const responseTime = Date.now() - startTime;
+        const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
+
         return NextResponse.json(
           {
             success: false,
@@ -477,7 +574,10 @@ export async function DELETE(request, { params }) {
               'Cannot delete active article. Please deactivate the article first.',
             error: 'Article is currently active',
           },
-          { status: 400 },
+          {
+            status: 400,
+            headers: securityHeaders,
+          },
         );
       }
 
@@ -523,6 +623,10 @@ export async function DELETE(request, { params }) {
       });
 
       if (client) await client.cleanup();
+
+      const responseTime = Date.now() - startTime;
+      const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
+
       return NextResponse.json(
         {
           success: false,
@@ -532,9 +636,7 @@ export async function DELETE(request, { params }) {
         },
         {
           status: 500,
-          headers: {
-            'X-Request-ID': requestId,
-          },
+          headers: securityHeaders,
         },
       );
     }
@@ -588,6 +690,10 @@ export async function DELETE(request, { params }) {
         });
 
         if (client) await client.cleanup();
+
+        const responseTime = Date.now() - startTime;
+        const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
+
         return NextResponse.json(
           {
             success: false,
@@ -598,9 +704,7 @@ export async function DELETE(request, { params }) {
           },
           {
             status: 400,
-            headers: {
-              'X-Request-ID': requestId,
-            },
+            headers: securityHeaders,
           },
         );
       }
@@ -648,6 +752,10 @@ export async function DELETE(request, { params }) {
       });
 
       if (client) await client.cleanup();
+
+      const responseTime = Date.now() - startTime;
+      const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
+
       return NextResponse.json(
         {
           success: false,
@@ -657,9 +765,7 @@ export async function DELETE(request, { params }) {
         },
         {
           status: 500,
-          headers: {
-            'X-Request-ID': requestId,
-          },
+          headers: securityHeaders,
         },
       );
     }
@@ -782,6 +888,9 @@ export async function DELETE(request, { params }) {
 
     if (client) await client.cleanup();
 
+    // Générer les headers de sécurité pour la réponse de succès
+    const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
+
     return NextResponse.json(
       {
         success: true,
@@ -798,10 +907,7 @@ export async function DELETE(request, { params }) {
       },
       {
         status: 200,
-        headers: {
-          'X-Request-ID': requestId,
-          'X-Response-Time': `${responseTime}ms`,
-        },
+        headers: securityHeaders,
       },
     );
   } catch (error) {
@@ -850,6 +956,9 @@ export async function DELETE(request, { params }) {
 
     if (client) await client.cleanup();
 
+    // Générer les headers de sécurité même en cas d'erreur globale
+    const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
+
     return NextResponse.json(
       {
         success: false,
@@ -859,10 +968,7 @@ export async function DELETE(request, { params }) {
       },
       {
         status: 500,
-        headers: {
-          'X-Request-ID': requestId,
-          'X-Response-Time': `${responseTime}ms`,
-        },
+        headers: securityHeaders,
       },
     );
   }
