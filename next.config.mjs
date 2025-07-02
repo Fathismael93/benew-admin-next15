@@ -2610,26 +2610,26 @@ const nextConfig = {
   },
 
   // Configuration des redirections
-  async redirects() {
-    return [
-      {
-        source: '/404',
-        destination: '/',
-        permanent: false,
-      },
-      {
-        source: '/home',
-        destination: '/',
-        permanent: true,
-      },
-      // Rediriger les anciens chemins API vers les nouveaux
-      {
-        source: '/api/templates/:path*',
-        destination: '/api/dashboard/templates/:path*',
-        permanent: true,
-      },
-    ];
-  },
+  // async redirects() {
+  //   // return [
+  //   //   // {
+  //   //   //   source: '/404',
+  //   //   //   destination: '/',
+  //   //   //   permanent: false,
+  //   //   // },
+  //   //   // {
+  //   //   //   source: '/home',
+  //   //   //   destination: '/',
+  //   //   //   permanent: true,
+  //   //   // },
+  //   //   // Rediriger les anciens chemins API vers les nouveaux
+  //   //   // {
+  //   //   //   source: '/api/templates/:path*',
+  //   //   //   destination: '/api/dashboard/templates/:path*',
+  //   //   //   permanent: true,
+  //   //   // },
+  //   // ];
+  // },
 
   // Configuration Webpack optimisée
   webpack: (config, { dev, isServer, buildId }) => {
