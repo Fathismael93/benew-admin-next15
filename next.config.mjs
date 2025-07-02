@@ -541,6 +541,493 @@ const nextConfig = {
         ],
       },
 
+      // ===== HEADERS COMMUNS POUR LES ROUTES BLOG MUTATIONS (ADD/EDIT/DELETE) =====
+      // Configuration spécifique pour les routes de mutation d'articles blog
+      {
+        source: '/api/dashboard/blog/(add|[^/]+/edit|[^/]+/delete)/:path*',
+        headers: [
+          // ===== HEADERS COMMUNS (sécurité de base) =====
+          // CORS sécurisé (commun aux mutations blog)
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization, X-Requested-With',
+          },
+
+          // Anti-cache strict pour les mutations sensibles (commun)
+          {
+            key: 'Cache-Control',
+            value:
+              'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+          {
+            key: 'Expires',
+            value: '0',
+          },
+          {
+            key: 'Surrogate-Control',
+            value: 'no-store',
+          },
+
+          // Sécurité de base moderne (commun)
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains; preload',
+          },
+
+          // Isolation et sécurité moderne (commun)
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'credentialless',
+          },
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'same-site',
+          },
+
+          // Sécurité pour mutations de données (commun)
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+
+          // CSP pour manipulation de données (commun)
+          {
+            key: 'Content-Security-Policy',
+            value:
+              "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self'",
+          },
+
+          // Permissions limitées (commun)
+          {
+            key: 'Permissions-Policy',
+            value:
+              'geolocation=(), microphone=(), camera=(), payment=(), usb=()',
+          },
+
+          // Headers métier communs aux blog mutations
+          {
+            key: 'X-API-Version',
+            value: '1.0',
+          },
+          {
+            key: 'X-Transaction-Type',
+            value: 'mutation',
+          },
+          {
+            key: 'X-Entity-Type',
+            value: 'blog-article',
+          },
+
+          // Headers de cache et validation communs
+          {
+            key: 'X-Cache-Invalidation',
+            value: 'articles',
+          },
+          {
+            key: 'X-Sanitization-Applied',
+            value: 'true',
+          },
+          {
+            key: 'X-Yup-Validation-Applied',
+            value: 'true',
+          },
+          {
+            key: 'X-Rate-Limiting-Applied',
+            value: 'true',
+          },
+
+          // Headers de traçabilité (commun)
+          {
+            key: 'Vary',
+            value: 'Authorization, Content-Type',
+          },
+          {
+            key: 'X-Permitted-Cross-Domain-Policies',
+            value: 'none',
+          },
+          {
+            key: 'X-Robots-Tag',
+            value: 'noindex, nofollow',
+          },
+
+          // Headers informatifs communs
+          {
+            key: 'X-Content-Category',
+            value: 'blog-content',
+          },
+        ],
+      },
+
+      // ===== HEADERS SPÉCIFIQUES POUR BLOG/ADD UNIQUEMENT =====
+      {
+        source: '/api/dashboard/blog/add',
+        headers: [
+          // Méthodes spécifiques à add
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'POST, OPTIONS',
+          },
+
+          // Rate limiting spécifique à add (8/5min)
+          {
+            key: 'X-RateLimit-Window',
+            value: '300', // 5 minutes
+          },
+          {
+            key: 'X-RateLimit-Limit',
+            value: '8',
+          },
+
+          // Operation type spécifique à add
+          {
+            key: 'X-Operation-Type',
+            value: 'create',
+          },
+
+          // Headers métier spécifiques à add
+          {
+            key: 'X-Database-Operations',
+            value: '2', // connection + insert
+          },
+        ],
+      },
+
+      // ===== HEADERS SPÉCIFIQUES POUR BLOG/ADD/SIGN-IMAGE UNIQUEMENT =====
+      {
+        source: '/api/dashboard/blog/add/sign-image',
+        headers: [
+          // CORS spécifique Cloudinary
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'POST, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization, X-Requested-With',
+          },
+
+          // Anti-cache strict (signatures sensibles)
+          {
+            key: 'Cache-Control',
+            value:
+              'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+          {
+            key: 'Expires',
+            value: '0',
+          },
+          {
+            key: 'Surrogate-Control',
+            value: 'no-store',
+          },
+
+          // Sécurité renforcée pour signatures
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains; preload',
+          },
+
+          // Isolation et policies
+          {
+            key: 'Referrer-Policy',
+            value: 'no-referrer', // Plus strict - évite leak de signature
+          },
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'same-origin', // Plus strict que same-site
+          },
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'credentialless',
+          },
+
+          // CSP restrictif pour API de signature
+          {
+            key: 'Content-Security-Policy',
+            value:
+              "default-src 'none'; connect-src 'self' https://api.cloudinary.com",
+          },
+
+          // Permissions limitées
+          {
+            key: 'Permissions-Policy',
+            value:
+              'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+          },
+
+          // Headers informatifs spécifiques blog
+          {
+            key: 'X-Upload-Folder',
+            value: 'blog_pictures',
+          },
+          {
+            key: 'X-API-Type',
+            value: 'signature-generation',
+          },
+          {
+            key: 'X-Entity-Type',
+            value: 'blog-article',
+          },
+          {
+            key: 'X-Operation-Type',
+            value: 'image-upload-signature',
+          },
+
+          // Headers métier blog
+          {
+            key: 'X-API-Version',
+            value: '1.0',
+          },
+          {
+            key: 'X-Transaction-Type',
+            value: 'signature',
+          },
+          {
+            key: 'X-Service-Integration',
+            value: 'cloudinary',
+          },
+
+          // Sécurité supplémentaire
+          {
+            key: 'X-Permitted-Cross-Domain-Policies',
+            value: 'none',
+          },
+          {
+            key: 'Vary',
+            value: 'Authorization, Content-Type',
+          },
+
+          // Headers de debugging/monitoring
+          {
+            key: 'X-Content-Category',
+            value: 'blog-media',
+          },
+          {
+            key: 'X-Upload-Context',
+            value: 'article-creation',
+          },
+        ],
+      },
+
+      // ===== HEADERS SPÉCIFIQUES POUR BLOG/EDIT UNIQUEMENT =====
+      {
+        source: '/api/dashboard/blog/[id]/edit',
+        headers: [
+          // Méthodes spécifiques à edit
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'PUT, OPTIONS',
+          },
+
+          // Rate limiting spécifique à edit (15/2min - plus permissif)
+          {
+            key: 'X-RateLimit-Window',
+            value: '120', // 2 minutes
+          },
+          {
+            key: 'X-RateLimit-Limit',
+            value: '15',
+          },
+
+          // Validation spécifique à l'édition
+          {
+            key: 'X-Resource-Validation',
+            value: 'article-id-required',
+          },
+          {
+            key: 'X-UUID-Validation',
+            value: 'cleaned-and-verified',
+          },
+          {
+            key: 'X-Media-Management',
+            value: 'cloudinary-cleanup',
+          },
+          {
+            key: 'X-Business-Rules',
+            value: 'partial-update-allowed',
+          },
+
+          // Operation type et performance spécifiques
+          {
+            key: 'X-Operation-Type',
+            value: 'update',
+          },
+          {
+            key: 'X-Operation-Criticality',
+            value: 'medium',
+          },
+          {
+            key: 'X-Database-Operations',
+            value: '3', // connection + check + update
+          },
+          {
+            key: 'X-Partial-Update',
+            value: 'enabled',
+          },
+          {
+            key: 'X-Resource-ID',
+            value: 'dynamic', // ID dans l'URL
+          },
+        ],
+      },
+
+      // ===== HEADERS SPÉCIFIQUES POUR BLOG/DELETE UNIQUEMENT =====
+      {
+        source: '/api/dashboard/blog/[id]/delete',
+        headers: [
+          // Méthodes spécifiques à delete
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'DELETE, OPTIONS',
+          },
+
+          // Rate limiting ultra-strict pour delete (8/5min - comme add)
+          {
+            key: 'X-RateLimit-Window',
+            value: '300', // 5 minutes
+          },
+          {
+            key: 'X-RateLimit-Limit',
+            value: '8',
+          },
+
+          // Validation spécifique à la suppression
+          {
+            key: 'X-Resource-Validation',
+            value: 'article-id-required',
+          },
+          {
+            key: 'X-UUID-Validation',
+            value: 'cleaned-and-verified',
+          },
+          {
+            key: 'X-Business-Rule-Validation',
+            value: 'inactive-only',
+          },
+          {
+            key: 'X-Media-Management',
+            value: 'cloudinary-full-cleanup',
+          },
+
+          // Operation type et criticité spécifiques
+          {
+            key: 'X-Operation-Type',
+            value: 'delete',
+          },
+          {
+            key: 'X-Operation-Criticality',
+            value: 'high',
+          },
+          {
+            key: 'X-Database-Operations',
+            value: '3', // connection + check + delete
+          },
+          {
+            key: 'X-Validation-Steps',
+            value: 'business-rules',
+          },
+          {
+            key: 'X-Resource-State-Check',
+            value: 'required',
+          },
+
+          // Headers de sécurité spécifiques aux suppressions
+          {
+            key: 'X-Irreversible-Operation',
+            value: 'true',
+          },
+          {
+            key: 'X-Data-Loss-Warning',
+            value: 'permanent',
+          },
+          {
+            key: 'X-Resource-ID',
+            value: 'dynamic', // ID dans l'URL
+          },
+        ],
+      },
+
+      // ===== CONFIGURATION POUR LES AUTRES API BLOG (LECTURES) - SANS CACHE =====
+      {
+        source:
+          '/api/dashboard/blog/((?!add|[^/]+/edit|[^/]+/delete|add/sign-image).*)',
+        headers: [
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization, X-Requested-With',
+          },
+          // Pas de cache selon vos instructions
+          {
+            key: 'Cache-Control',
+            value: 'no-store, no-cache, must-revalidate',
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+          {
+            key: 'Expires',
+            value: '0',
+          },
+        ],
+      },
+
       // ===== HEADERS SPÉCIFIQUES POUR PLATFORMS/ADD UNIQUEMENT =====
       {
         source: '/api/dashboard/platforms/add',
