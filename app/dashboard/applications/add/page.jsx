@@ -1,15 +1,23 @@
 import AddApplication from '@/ui/pages/applications/AddApplication';
-import axios from 'axios';
 
 async function getTemplates() {
   let templates = [];
 
-  await axios
-    .get('https://benew-admin-next15.vercel.app/api/dashboard/templates')
-    .then((response) => {
-      templates = response.data.templates;
-    })
-    .catch((error) => console.log(error));
+  try {
+    const response = await fetch(
+      'https://benew-admin-next15.vercel.app/api/dashboard/templates',
+    );
+
+    // Vérifier si la réponse est ok
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    templates = data.templates;
+  } catch (error) {
+    console.log('Error fetching templates:', error);
+  }
 
   return templates;
 }

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import axios from 'axios';
 import styles from '@/ui/styling/dashboard/platforms/editPlatform.module.css';
 import { MdSave, MdCancel, MdInfo, MdEdit } from 'react-icons/md';
 
@@ -92,16 +91,29 @@ const EditPlatform = ({ platform }) => {
     setSuccessMessage('');
 
     try {
-      const response = await axios.put(
+      const response = await fetch(
         `/api/dashboard/platforms/${platform.platform_id}/edit`,
         {
-          platformName: formData.platformName.trim(),
-          platformNumber: formData.platformNumber.trim(),
-          isActive: formData.isActive,
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            platformName: formData.platformName.trim(),
+            platformNumber: formData.platformNumber.trim(),
+            isActive: formData.isActive,
+          }),
         },
       );
 
-      if (response.data.success || response.status === 200) {
+      // Vérifier si la réponse est ok
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success || response.status === 200) {
         setSuccessMessage('Platform updated successfully!');
         setHasChanges(false);
 
@@ -113,13 +125,28 @@ const EditPlatform = ({ platform }) => {
     } catch (error) {
       console.error('Error updating platform:', error);
 
-      if (error.response?.data?.errors) {
+      // Tenter de parser la réponse d'erreur si possible
+      let errorData = null;
+      try {
+        if (error.response) {
+          errorData = await error.response.json();
+        }
+      } catch (parseError) {
+        // Ignorer les erreurs de parsing
+      }
+
+      if (errorData?.errors) {
         // Erreurs de validation du serveur
-        setErrors(error.response.data.errors);
-      } else if (error.response?.data?.error) {
+        setErrors(errorData.errors);
+      } else if (errorData?.error) {
         // Erreur générale du serveur
         setErrors({
-          general: error.response.data.error,
+          general: errorData.error,
+        });
+      } else if (error.message?.includes('HTTP error')) {
+        // Erreur HTTP
+        setErrors({
+          general: 'Server error. Please try again.',
         });
       } else {
         // Erreur de réseau ou autre

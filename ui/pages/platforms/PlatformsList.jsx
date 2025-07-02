@@ -6,7 +6,6 @@ import Search from '@/ui/components/dashboard/search';
 import Link from 'next/link';
 import { MdAdd } from 'react-icons/md';
 import { useRouter } from 'next/navigation';
-import axios from 'axios';
 
 const PlatformsList = ({ data }) => {
   const [platforms, setPlatforms] = useState(data);
@@ -24,13 +23,30 @@ const PlatformsList = ({ data }) => {
       setDeleteId(id);
       setIsDeleting(true);
 
-      const response = await axios.delete(
-        `/api/dashboard/platforms/${id}/delete`,
-      );
+      try {
+        const response = await fetch(`/api/dashboard/platforms/${id}/delete`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
 
-      if (response.data.success) {
+        // Vérifier si la réponse est ok
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+          setIsDeleting(false);
+          router.refresh(); // Refresh the page to reflect changes
+        }
+      } catch (error) {
+        console.error('Delete error:', error);
         setIsDeleting(false);
-        router.refresh(); // Refresh the page to reflect changes
+        // Optionnel: ajouter une gestion d'erreur utilisateur
+        alert('Failed to delete platform. Please try again.');
       }
     }
   };
