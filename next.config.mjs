@@ -402,6 +402,361 @@ const nextConfig = {
         ],
       },
 
+      // ===== HEADERS COMMUNS POUR LES ROUTES PLATFORMS MUTATIONS (ADD/EDIT/DELETE) =====
+      // Configuration spécifique pour les routes de mutation de plateformes (données bancaires sensibles)
+      {
+        source: '/api/dashboard/platforms/(add|[^/]+/edit|[^/]+/delete)/:path*',
+        headers: [
+          // ===== HEADERS COMMUNS ULTRA-SÉCURISÉS (sécurité maximale pour données bancaires) =====
+          // CORS ultra-restrictif (commun aux mutations plateformes)
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization, X-Requested-With',
+          },
+
+          // Anti-cache ultra-strict pour données bancaires (commun)
+          {
+            key: 'Cache-Control',
+            value:
+              'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+          {
+            key: 'Expires',
+            value: '0',
+          },
+
+          // Sécurité renforcée pour données bancaires (commun)
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
+          },
+
+          // Isolation maximale pour données sensibles (commun)
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'credentialless',
+          },
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'same-site',
+          },
+
+          // Sécurité pour mutations de données bancaires (commun)
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+
+          // CSP ultra-restrictive pour manipulation de données bancaires (commun)
+          {
+            key: 'Content-Security-Policy',
+            value: "default-src 'none'; connect-src 'self'",
+          },
+
+          // Headers métier communs aux plateformes mutations
+          {
+            key: 'X-API-Version',
+            value: '1.0',
+          },
+          {
+            key: 'X-Transaction-Type',
+            value: 'mutation',
+          },
+          {
+            key: 'X-Entity-Type',
+            value: 'platform',
+          },
+
+          // Headers de sécurité spécifiques aux données bancaires (commun)
+          {
+            key: 'X-Financial-Data',
+            value: 'true',
+          },
+          {
+            key: 'X-PCI-Compliance',
+            value: 'required',
+          },
+          {
+            key: 'X-Data-Sensitivity',
+            value: 'high',
+          },
+
+          // Headers de cache et validation communs
+          {
+            key: 'X-Cache-Invalidation',
+            value: 'platforms',
+          },
+          {
+            key: 'X-Sanitization-Applied',
+            value: 'true',
+          },
+          {
+            key: 'X-Yup-Validation-Applied',
+            value: 'true',
+          },
+
+          // Headers de traçabilité ultra-sécurisés (commun)
+          {
+            key: 'Vary',
+            value: 'Authorization, Content-Type',
+          },
+          {
+            key: 'X-Permitted-Cross-Domain-Policies',
+            value: 'none',
+          },
+
+          // Headers de monitoring pour données sensibles (commun)
+          {
+            key: 'X-Operation-Criticality',
+            value: 'high',
+          },
+          {
+            key: 'X-Security-Level',
+            value: 'maximum',
+          },
+        ],
+      },
+
+      // ===== HEADERS SPÉCIFIQUES POUR PLATFORMS/ADD UNIQUEMENT =====
+      {
+        source: '/api/dashboard/platforms/add',
+        headers: [
+          // Méthodes spécifiques à add
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'POST, OPTIONS',
+          },
+
+          // Rate limiting ultra-strict pour add (5/10min - le plus restrictif)
+          {
+            key: 'X-RateLimit-Window',
+            value: '600', // 10 minutes
+          },
+          {
+            key: 'X-RateLimit-Limit',
+            value: '5',
+          },
+
+          // Validation spécifique à add (données complètes requises)
+          {
+            key: 'X-Resource-Validation',
+            value: 'platform-data-complete',
+          },
+          {
+            key: 'X-Required-Fields',
+            value: 'platform-name,platform-number',
+          },
+          {
+            key: 'X-Uniqueness-Check',
+            value: 'platform-name-number',
+          },
+          {
+            key: 'X-Business-Rules',
+            value: 'banking-compliance',
+          },
+
+          // Operation type et criticité spécifiques
+          {
+            key: 'X-Operation-Type',
+            value: 'create',
+          },
+          {
+            key: 'X-Database-Operations',
+            value: '3', // connection + uniqueness check + insert
+          },
+          {
+            key: 'X-Validation-Steps',
+            value: 'sanitization,yup,uniqueness',
+          },
+
+          // Headers de sécurité spécifiques à la création
+          {
+            key: 'X-Data-Creation',
+            value: 'new-financial-platform',
+          },
+          {
+            key: 'X-Audit-Required',
+            value: 'true',
+          },
+        ],
+      },
+
+      // ===== HEADERS SPÉCIFIQUES POUR PLATFORMS/EDIT UNIQUEMENT =====
+      {
+        source: '/api/dashboard/platforms/[id]/edit',
+        headers: [
+          // Méthodes spécifiques à edit
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'PUT, OPTIONS',
+          },
+
+          // Rate limiting strict pour edit (10/5min - restrictif mais moins que add)
+          {
+            key: 'X-RateLimit-Window',
+            value: '300', // 5 minutes
+          },
+          {
+            key: 'X-RateLimit-Limit',
+            value: '10',
+          },
+
+          // Validation spécifique à l'édition
+          {
+            key: 'X-Resource-Validation',
+            value: 'platform-id-required',
+          },
+          {
+            key: 'X-UUID-Validation',
+            value: 'cleaned-and-verified',
+          },
+          {
+            key: 'X-Data-Masking',
+            value: 'platform-number',
+          },
+          {
+            key: 'X-Business-Rules',
+            value: 'partial-update-allowed',
+          },
+
+          // Operation type et performance spécifiques
+          {
+            key: 'X-Operation-Type',
+            value: 'update',
+          },
+          {
+            key: 'X-Database-Operations',
+            value: '2', // connection + update (pas de uniqueness check)
+          },
+          {
+            key: 'X-Partial-Update',
+            value: 'enabled',
+          },
+          {
+            key: 'X-Validation-Steps',
+            value: 'sanitization,yup',
+          },
+
+          // Headers de sécurité spécifiques à l'édition
+          {
+            key: 'X-Data-Modification',
+            value: 'existing-financial-platform',
+          },
+          {
+            key: 'X-Change-Tracking',
+            value: 'enabled',
+          },
+        ],
+      },
+
+      // ===== HEADERS SPÉCIFIQUES POUR PLATFORMS/DELETE UNIQUEMENT =====
+      {
+        source: '/api/dashboard/platforms/[id]/delete',
+        headers: [
+          // Méthodes spécifiques à delete
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'DELETE, OPTIONS',
+          },
+
+          // Rate limiting ultra-strict pour delete (3/15min - le plus restrictif)
+          {
+            key: 'X-RateLimit-Window',
+            value: '900', // 15 minutes
+          },
+          {
+            key: 'X-RateLimit-Limit',
+            value: '3',
+          },
+
+          // Validation spécifique à la suppression (la plus stricte)
+          {
+            key: 'X-Resource-Validation',
+            value: 'platform-id-required',
+          },
+          {
+            key: 'X-UUID-Validation',
+            value: 'cleaned-and-verified',
+          },
+          {
+            key: 'X-Business-Rule-Validation',
+            value: 'inactive-only',
+          },
+          {
+            key: 'X-Financial-Safety-Check',
+            value: 'no-active-transactions',
+          },
+          {
+            key: 'X-Dependency-Check',
+            value: 'no-linked-orders',
+          },
+
+          // Operation type et criticité maximale
+          {
+            key: 'X-Operation-Type',
+            value: 'delete',
+          },
+          {
+            key: 'X-Operation-Criticality',
+            value: 'critical',
+          },
+          {
+            key: 'X-Database-Operations',
+            value: '4', // connection + safety checks + dependencies + delete
+          },
+          {
+            key: 'X-Validation-Steps',
+            value: 'business-rules,financial-safety,dependencies',
+          },
+
+          // Headers de sécurité ultra-stricts pour suppressions
+          {
+            key: 'X-Irreversible-Operation',
+            value: 'true',
+          },
+          {
+            key: 'X-Data-Loss-Warning',
+            value: 'permanent-financial-data',
+          },
+          {
+            key: 'X-Audit-Level',
+            value: 'maximum',
+          },
+          {
+            key: 'X-Admin-Approval',
+            value: 'recommended',
+          },
+          {
+            key: 'X-Financial-Impact',
+            value: 'potential',
+          },
+        ],
+      },
+
       // ===== HEADERS SPÉCIFIQUES POUR APPLICATIONS/ADD UNIQUEMENT =====
       {
         source: '/api/dashboard/applications/add',

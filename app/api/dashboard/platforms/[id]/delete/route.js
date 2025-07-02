@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // app/api/dashboard/platforms/[id]/delete/route.js
 import { NextResponse } from 'next/server';
 import { getClient } from '@backend/dbConnect';
@@ -26,8 +27,8 @@ export const dynamic = 'force-dynamic';
 // Créer le middleware de rate limiting spécifique pour la suppression de plateformes
 const deletePlatformRateLimit = applyRateLimit('CONTENT_API', {
   // Configuration personnalisée pour la suppression de plateformes (très restrictif car données bancaires critiques)
-  windowMs: 10 * 60 * 1000, // 10 minutes (plus strict que templates car données bancaires)
-  max: 5, // 5 suppressions par 10 minutes (très restrictif pour sécurité financière)
+  windowMs: 15 * 60 * 1000, // 15 minutes (encore plus strict pour deletion)
+  max: 3, // 3 suppressions par 15 minutes (ultra restrictif pour sécurité financière maximale)
   message:
     'Trop de tentatives de suppression de plateformes de paiement. Veuillez réessayer dans quelques minutes.',
   skipSuccessfulRequests: false, // Compter toutes les suppressions réussies
@@ -127,6 +128,104 @@ const cleanUUID = (uuid) => {
   return uuidRegex.test(cleaned) ? cleaned : null;
 };
 
+// ----- FONCTION POUR CRÉER LES HEADERS DE RÉPONSE SPÉCIFIQUES À LA SUPPRESSION DE PLATEFORMES -----
+const createResponseHeaders = (
+  requestId,
+  responseTime,
+  platformId,
+  rateLimitInfo = null,
+) => {
+  const headers = {
+    // CORS ultra-restrictif pour suppression de plateformes (criticité maximale)
+    'Access-Control-Allow-Origin':
+      process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
+    'Access-Control-Allow-Methods': 'DELETE, OPTIONS',
+    'Access-Control-Allow-Headers':
+      'Content-Type, Authorization, X-Requested-With',
+
+    // Anti-cache absolu pour opérations critiques de suppression
+    'Cache-Control':
+      'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+    Pragma: 'no-cache',
+    Expires: '0',
+
+    // Sécurité maximale pour suppressions de données financières
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Cross-Origin-Resource-Policy': 'same-site',
+    'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+
+    // Isolation absolue pour opérations de suppression critiques
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cross-Origin-Embedder-Policy': 'credentialless',
+
+    // CSP ultra-restrictive pour suppressions de données bancaires
+    'Content-Security-Policy': "default-src 'none'; connect-src 'self'",
+
+    // Headers de sécurité renforcés pour suppressions
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'X-XSS-Protection': '1; mode=block',
+
+    // Headers de traçabilité
+    'X-Request-ID': requestId,
+    'X-Response-Time': `${responseTime}ms`,
+    'X-API-Version': '1.0',
+
+    // Headers spécifiques à la suppression de plateformes
+    'X-Transaction-Type': 'mutation',
+    'X-Operation-Type': 'delete',
+    'X-Entity-Type': 'platform',
+    'X-Resource-ID': platformId,
+    'X-Resource-Validation': 'platform-id-required',
+    'X-Cache-Invalidation': 'platforms',
+    'X-Data-Sensitivity': 'high',
+
+    // Rate limiting ultra-strict pour suppressions (15 minutes / 3 max)
+    'X-RateLimit-Window': '900', // 15 minutes en secondes
+    'X-RateLimit-Limit': '3',
+
+    // Headers de validation spécifiques aux suppressions critiques
+    'X-UUID-Validation': 'cleaned-and-verified',
+    'X-Business-Rule-Validation': 'inactive-only',
+    'X-Financial-Safety-Check': 'no-active-transactions',
+    'X-Dependency-Check': 'no-linked-orders',
+
+    // Headers de criticité maximale pour suppressions
+    'X-Operation-Criticality': 'critical',
+    'X-Database-Operations': '4', // connection + check + dependencies + delete
+    'X-Validation-Steps': 'business-rules,financial-safety,dependencies',
+
+    // Headers de sécurité pour données bancaires critiques
+    'X-Financial-Data': 'true',
+    'X-PCI-Compliance': 'required',
+    'X-Data-Masking': 'platform-number',
+
+    // Headers spécifiques aux suppressions définitives
+    'X-Irreversible-Operation': 'true',
+    'X-Data-Loss-Warning': 'permanent-financial-data',
+    'X-Audit-Level': 'maximum',
+    'X-Admin-Approval': 'recommended',
+    'X-Financial-Impact': 'potential',
+
+    // Headers anti-cache supplémentaires pour criticité
+    Vary: 'Authorization, Content-Type',
+    'X-Permitted-Cross-Domain-Policies': 'none',
+
+    // Headers de monitoring pour opérations critiques
+    'X-Security-Level': 'maximum',
+    'X-Monitoring-Level': 'enhanced',
+  };
+
+  // Ajouter les infos de rate limiting si disponibles
+  if (rateLimitInfo) {
+    headers['X-RateLimit-Remaining'] =
+      rateLimitInfo.remaining?.toString() || '0';
+    headers['X-RateLimit-Reset'] = rateLimitInfo.resetTime?.toString() || '0';
+  }
+
+  return headers;
+};
+
 // ----- API ROUTE PRINCIPALE AVEC RATE LIMITING -----
 
 export async function DELETE(request, { params }) {
@@ -217,6 +316,9 @@ export async function DELETE(request, { params }) {
         },
       });
 
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(requestId, responseTime, id);
+
       return NextResponse.json(
         {
           success: false,
@@ -226,7 +328,7 @@ export async function DELETE(request, { params }) {
             idValidationError.message,
           ],
         },
-        { status: 400 },
+        { status: 400, headers },
       );
     }
 
@@ -241,13 +343,16 @@ export async function DELETE(request, { params }) {
         providedId: id,
       });
 
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(requestId, responseTime, id);
+
       return NextResponse.json(
         {
           success: false,
           error: 'Invalid platform ID format',
           message: 'This platform does not exist',
         },
-        { status: 400 },
+        { status: 400, headers },
       );
     }
 
@@ -292,7 +397,23 @@ export async function DELETE(request, { params }) {
         },
       });
 
-      return rateLimitResponse; // Retourner directement la réponse 429
+      // Ajouter les headers de sécurité même en cas de rate limit
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(
+        requestId,
+        responseTime,
+        cleanedPlatformId,
+        {
+          remaining: 0,
+        },
+      );
+
+      // Modifier la réponse pour inclure nos headers
+      const rateLimitBody = await rateLimitResponse.json();
+      return NextResponse.json(rateLimitBody, {
+        status: 429,
+        headers: headers,
+      });
     }
 
     logger.debug('Rate limiting passed successfully', {
@@ -363,12 +484,19 @@ export async function DELETE(request, { params }) {
         },
       });
 
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(
+        requestId,
+        responseTime,
+        cleanedPlatformId,
+      );
+
       return NextResponse.json(
         {
           success: false,
           error: 'Database connection failed',
         },
-        { status: 503 },
+        { status: 503, headers },
       );
     }
 
@@ -417,12 +545,20 @@ export async function DELETE(request, { params }) {
         });
 
         if (client) await client.cleanup();
+
+        const responseTime = Date.now() - startTime;
+        const headers = createResponseHeaders(
+          requestId,
+          responseTime,
+          cleanedPlatformId,
+        );
+
         return NextResponse.json(
           {
             success: false,
             message: 'This platform does not exist',
           },
-          { status: 404 },
+          { status: 404, headers },
         );
       }
 
@@ -462,6 +598,14 @@ export async function DELETE(request, { params }) {
         });
 
         if (client) await client.cleanup();
+
+        const responseTime = Date.now() - startTime;
+        const headers = createResponseHeaders(
+          requestId,
+          responseTime,
+          cleanedPlatformId,
+        );
+
         return NextResponse.json(
           {
             success: false,
@@ -469,7 +613,7 @@ export async function DELETE(request, { params }) {
               'Cannot delete active platform. Please deactivate the platform first.',
             error: 'Platform is currently active',
           },
-          { status: 400 },
+          { status: 400, headers },
         );
       }
 
@@ -515,13 +659,21 @@ export async function DELETE(request, { params }) {
       });
 
       if (client) await client.cleanup();
+
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(
+        requestId,
+        responseTime,
+        cleanedPlatformId,
+      );
+
       return NextResponse.json(
         {
           success: false,
           error: 'Failed to verify platform status',
           message: 'Something went wrong! Please try again',
         },
-        { status: 500 },
+        { status: 500, headers },
       );
     }
 
@@ -579,6 +731,14 @@ export async function DELETE(request, { params }) {
         });
 
         if (client) await client.cleanup();
+
+        const responseTime = Date.now() - startTime;
+        const headers = createResponseHeaders(
+          requestId,
+          responseTime,
+          cleanedPlatformId,
+        );
+
         return NextResponse.json(
           {
             success: false,
@@ -588,7 +748,7 @@ export async function DELETE(request, { params }) {
               transactionCount,
             },
           },
-          { status: 400 },
+          { status: 400, headers },
         );
       }
 
@@ -635,13 +795,21 @@ export async function DELETE(request, { params }) {
       });
 
       if (client) await client.cleanup();
+
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(
+        requestId,
+        responseTime,
+        cleanedPlatformId,
+      );
+
       return NextResponse.json(
         {
           success: false,
           error: 'Failed to verify platform dependencies',
           message: 'Something went wrong! Please try again',
         },
-        { status: 500 },
+        { status: 500, headers },
       );
     }
 
@@ -694,6 +862,14 @@ export async function DELETE(request, { params }) {
         });
 
         if (client) await client.cleanup();
+
+        const responseTime = Date.now() - startTime;
+        const headers = createResponseHeaders(
+          requestId,
+          responseTime,
+          cleanedPlatformId,
+        );
+
         return NextResponse.json(
           {
             success: false,
@@ -701,7 +877,7 @@ export async function DELETE(request, { params }) {
               'Platform could not be deleted. It may be active or already deleted.',
             error: 'Deletion condition not met',
           },
-          { status: 400 },
+          { status: 400, headers },
         );
       }
 
@@ -749,13 +925,21 @@ export async function DELETE(request, { params }) {
       });
 
       if (client) await client.cleanup();
+
+      const responseTime = Date.now() - startTime;
+      const headers = createResponseHeaders(
+        requestId,
+        responseTime,
+        cleanedPlatformId,
+      );
+
       return NextResponse.json(
         {
           success: false,
           error: 'Failed to delete platform from database',
           message: 'Something went wrong! Please try again',
         },
-        { status: 500 },
+        { status: 500, headers },
       );
     }
 
@@ -809,6 +993,13 @@ export async function DELETE(request, { params }) {
 
     if (client) await client.cleanup();
 
+    // Créer les headers de succès
+    const headers = createResponseHeaders(
+      requestId,
+      responseTime,
+      cleanedPlatformId,
+    );
+
     return NextResponse.json(
       {
         success: true,
@@ -829,10 +1020,7 @@ export async function DELETE(request, { params }) {
       },
       {
         status: 200,
-        headers: {
-          'X-Request-ID': requestId,
-          'X-Response-Time': `${responseTime}ms`,
-        },
+        headers: headers,
       },
     );
   } catch (error) {
@@ -881,6 +1069,9 @@ export async function DELETE(request, { params }) {
 
     if (client) await client.cleanup();
 
+    // Créer les headers même en cas d'erreur globale
+    const headers = createResponseHeaders(requestId, responseTime, id);
+
     return NextResponse.json(
       {
         success: false,
@@ -890,10 +1081,7 @@ export async function DELETE(request, { params }) {
       },
       {
         status: 500,
-        headers: {
-          'X-Request-ID': requestId,
-          'X-Response-Time': `${responseTime}ms`,
-        },
+        headers: headers,
       },
     );
   }
