@@ -7,10 +7,7 @@ export async function middleware(req) {
   const isAuthenticated = !!token;
 
   // Define protected routes
-  const isProtectedRoute =
-    req.nextUrl.pathname.startsWith('/dashboard') ||
-    req.nextUrl.pathname.startsWith('/profile') ||
-    req.nextUrl.pathname.startsWith('/settings');
+  const isProtectedRoute = req.nextUrl.pathname.startsWith('/dashboard');
 
   // Define auth routes (login, register)
   const isAuthRoute =
@@ -34,11 +31,5 @@ export async function middleware(req) {
 
 // Specify which routes this middleware should run on
 export const config = {
-  matcher: [
-    '/dashboard/:path*',
-    '/profile/:path*',
-    '/settings/:path*',
-    '/login',
-    '/register',
-  ],
+  matcher: ['/dashboard/:path*', '/login', '/register'],
 };
