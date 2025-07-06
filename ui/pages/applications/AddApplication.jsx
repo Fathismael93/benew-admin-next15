@@ -7,6 +7,7 @@ import styles from '@/ui/styling/dashboard/applications/add/addApplication.modul
 import { applicationAddingSchema } from '@/utils/schemas/applicationSchema';
 
 function AddApplication({ templates }) {
+  console.log('Templates:', templates);
   const [name, setName] = useState('');
   const [link, setLink] = useState('');
   const [admin, setAdmin] = useState('');
