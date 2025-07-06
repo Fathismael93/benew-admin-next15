@@ -20,9 +20,9 @@ const findUserByEmail = memoizeWithTTL(
   async (email) => {
     let client;
     try {
-      console.log('Searching for user with email:', email);
+      // console.log('Searching for user with email:', email);
       client = await getClient();
-      console.log('client:', client);
+      // console.log('client:', client);
       const query =
         'SELECT user_id, user_name, user_email, user_phone, user_birthdate, user_image, user_password FROM admin.users WHERE user_email = $1';
       const result = await client.query(query, [email]);
@@ -56,7 +56,7 @@ const authOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials, req) {
-        console.log('credentials:', credentials);
+        // console.log('credentials:', credentials);
         const startTime = Date.now();
         const clientIP =
           req?.headers?.['x-forwarded-for'] ||
@@ -88,7 +88,7 @@ const authOptions = {
             password: credentials.password,
           });
 
-          console.log('Sanitized credentials:', sanitizedCredentials);
+          // console.log('Sanitized credentials:', sanitizedCredentials);
 
           logger.debug('Credentials sanitized', {
             ip: clientIP,
@@ -130,7 +130,7 @@ const authOptions = {
               const rateLimitResponse = await rateLimitMiddleware(req);
 
               if (rateLimitResponse !== null) {
-                console.log('Rate limit response:', rateLimitResponse);
+                // console.log('Rate limit response:', rateLimitResponse);
                 // Rate limit dépassé
                 const rateLimitData = await rateLimitResponse.json();
 
@@ -313,11 +313,11 @@ const authOptions = {
             return null;
           }
 
-          console.log('User found:', userRows);
+          // console.log('User found:', userRows);
 
           const user = userRows[0];
 
-          console.log('User details:', user);
+          // console.log('User details:', user);
 
           // 8. Vérification du mot de passe
           let isPasswordValid;
