@@ -130,6 +130,7 @@ const authOptions = {
               const rateLimitResponse = await rateLimitMiddleware(req);
 
               if (rateLimitResponse !== null) {
+                console.log('Rate limit response:', rateLimitResponse);
                 // Rate limit dépassé
                 const rateLimitData = await rateLimitResponse.json();
 
