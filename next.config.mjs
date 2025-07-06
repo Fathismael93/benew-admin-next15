@@ -387,7 +387,7 @@ const nextConfig = {
           {
             key: 'Content-Security-Policy',
             value:
-              "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'",
+              "default-src 'self'; script-src 'self' 'unsafe-inline' https://upload-widget.cloudinary.com; style-src 'self' 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'",
           },
           {
             key: 'Cache-Control',
@@ -1011,7 +1011,7 @@ const nextConfig = {
           {
             key: 'Content-Security-Policy',
             value:
-              "default-src 'none'; connect-src 'self' https://api.cloudinary.com",
+              "script-src https://upload-widget.cloudinary.com; connect-src 'self' https://api.cloudinary.com https://upload-widget.cloudinary.com",
           },
 
           // Permissions limitées
@@ -1589,7 +1589,7 @@ const nextConfig = {
           {
             key: 'Content-Security-Policy',
             value:
-              "default-src 'none'; connect-src 'self' https://api.cloudinary.com",
+              "script-src https://upload-widget.cloudinary.com; connect-src 'self' https://api.cloudinary.com https://upload-widget.cloudinary.com",
           },
 
           // Permissions limitées
@@ -1888,7 +1888,7 @@ const nextConfig = {
           {
             key: 'Content-Security-Policy',
             value:
-              "default-src 'none'; connect-src 'self' https://api.cloudinary.com",
+              "script-src https://upload-widget.cloudinary.com; connect-src 'self' https://api.cloudinary.com https://upload-widget.cloudinary.com",
           },
 
           // Permissions limitées
