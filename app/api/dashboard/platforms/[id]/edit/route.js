@@ -320,12 +320,8 @@ export async function PUT(request, { params }) {
       );
     }
 
-    console.log('ID before cleaning', id);
-
     // Nettoyer l'UUID pour garantir le format correct
     const cleanedPlatformId = cleanUUID(id);
-
-    console.log('ID After cleaning', cleanedPlatformId);
 
     if (!cleanedPlatformId) {
       logger.warn('Platform ID cleaning failed', {
@@ -717,7 +713,7 @@ export async function PUT(request, { params }) {
       const queryText = `
         UPDATE admin.platforms 
         SET ${updateFields.join(', ')}
-        WHERE platform_id = ${paramCounter}
+        WHERE platform_id = ${cleanedPlatformId}
         RETURNING platform_id, platform_name, platform_number, is_active, created_at, updated_at
       `;
 
