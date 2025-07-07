@@ -717,6 +717,14 @@ export async function PUT(request, { params }) {
         RETURNING platform_id, platform_name, platform_number, is_active, created_at, updated_at
       `;
 
+      console.log('Executing platform update query', {
+        cleanedPlatformId,
+        updateFields,
+        updateValues,
+      });
+
+      console.log('Query Text:', queryText);
+
       logger.debug('Executing platform update query', {
         requestId,
         platformId: cleanedPlatformId,
