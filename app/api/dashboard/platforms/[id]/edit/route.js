@@ -320,8 +320,13 @@ export async function PUT(request, { params }) {
       );
     }
 
+    console.log('ID before cleaning', id);
+
     // Nettoyer l'UUID pour garantir le format correct
     const cleanedPlatformId = cleanUUID(id);
+
+    console.log('ID After cleaning', cleanedPlatformId);
+
     if (!cleanedPlatformId) {
       logger.warn('Platform ID cleaning failed', {
         requestId,
