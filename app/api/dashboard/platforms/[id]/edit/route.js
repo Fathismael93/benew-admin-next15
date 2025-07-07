@@ -687,19 +687,19 @@ export async function PUT(request, { params }) {
       let paramCounter = 1;
 
       if (sanitizedPlatformName !== undefined) {
-        updateFields.push(`platform_name = ${paramCounter}`);
+        updateFields.push(`platform_name = $${paramCounter}`);
         updateValues.push(sanitizedPlatformName);
         paramCounter++;
       }
 
       if (sanitizedPlatformNumber !== undefined) {
-        updateFields.push(`platform_number = ${paramCounter}`);
+        updateFields.push(`platform_number = $${paramCounter}`);
         updateValues.push(sanitizedPlatformNumber);
         paramCounter++;
       }
 
       if (sanitizedIsActive !== undefined) {
-        updateFields.push(`is_active = ${paramCounter}`);
+        updateFields.push(`is_active = $${paramCounter}`);
         updateValues.push(sanitizedIsActive);
         paramCounter++;
       }
