@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { CldUploadWidget, CldImage } from 'next-cloudinary';
 import styles from '@/ui/styling/dashboard/templates/editTemplate/editTemplate.module.css';
@@ -20,6 +20,11 @@ const EditTemplate = ({ template }) => {
   const [success, setSuccess] = useState('');
   const [validationErrors, setValidationErrors] = useState({});
   const router = useRouter();
+
+  // Synchroniser avec les changements de template.template_color
+  useEffect(() => {
+    setTemplateColor(template.template_color || '#3b82f6');
+  }, [template.template_color]);
 
   const handleUploadSuccess = (result) => {
     const uploadInfo = result.info;
@@ -219,8 +224,10 @@ const EditTemplate = ({ template }) => {
             <button
               type="button"
               className={styles.colorResetButton}
-              onClick={() => setTemplateColor('#3b82f6')}
-              title="Reset to default color"
+              onClick={() =>
+                setTemplateColor(template.template_color || '#3b82f6')
+              }
+              title="Reset to original color"
             >
               Reset
             </button>

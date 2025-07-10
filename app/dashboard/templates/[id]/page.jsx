@@ -278,19 +278,20 @@ async function getTemplateFromDatabase(templateId) {
     let result;
     try {
       const templateQuery = `
-        SELECT 
-          template_id,
-          template_name,
-          template_image,
-          template_has_web,
-          template_has_mobile,
-          template_added,
-          sales_count,
-          is_active,
-          updated_at
-        FROM catalog.templates 
-        WHERE template_id = $1
-      `;
+  SELECT 
+    template_id,
+    template_name,
+    template_image,
+    template_color,
+    template_has_web,
+    template_has_mobile,
+    template_added,
+    sales_count,
+    is_active,
+    updated_at
+  FROM catalog.templates 
+  WHERE template_id = $1
+`;
 
       logger.debug('Executing template fetch by ID query (Server Component)', {
         requestId,
@@ -389,6 +390,7 @@ async function getTemplateFromDatabase(templateId) {
       template_id: template.template_id,
       template_name: template.template_name || '[No Name]',
       template_image: template.template_image,
+      template_color: template.template_color || null,
       template_has_web: Boolean(template.template_has_web),
       template_has_mobile: Boolean(template.template_has_mobile),
       template_added: template.template_added,
