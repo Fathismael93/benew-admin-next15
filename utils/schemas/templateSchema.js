@@ -122,6 +122,43 @@ export const templateUpdateSchema = yup
         },
       ),
 
+    templateColor: yup
+      .string()
+      .nullable()
+      .test(
+        'valid-hex-color',
+        'Template color must be a valid hexadecimal color (e.g., #3b82f6)',
+        (value) => {
+          // Si la valeur est null, undefined ou chaîne vide, c'est acceptable
+          if (!value || value === null || value === undefined) {
+            return true;
+          }
+
+          // Vérifier le format hexadécimal
+          const hexColorRegex = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
+
+          if (!hexColorRegex.test(value)) {
+            return false;
+          }
+
+          // Validation additionnelle pour s'assurer que ce n'est pas juste des caractères invalides
+          const color = value.toLowerCase();
+
+          // Vérifier que ce n'est pas des couleurs potentiellement problématiques
+          const invalidColors = ['#000', '#fff', '#ffffff', '#000000'];
+
+          return !invalidColors.includes(color);
+        },
+      )
+      .transform((value) => {
+        // Si la valeur est une chaîne vide, la transformer en null
+        if (value === '' || value === undefined) {
+          return null;
+        }
+        // Normaliser la casse (toujours en minuscules)
+        return value?.toLowerCase().trim();
+      }),
+
     templateHasWeb: yup.boolean(),
 
     templateHasMobile: yup.boolean(),
@@ -279,6 +316,34 @@ export const cleanUUID = (uuid) => {
   return isValidUUID(cleaned) ? cleaned : null;
 };
 
+/**
+ * Fonction utilitaire pour valider une couleur hexadécimale
+ * @param {string} color - La couleur à valider
+ * @returns {boolean} - True si la couleur est valide
+ */
+export const isValidHexColor = (color) => {
+  if (!color || typeof color !== 'string') {
+    return false;
+  }
+
+  const hexColorRegex = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
+  return hexColorRegex.test(color);
+};
+
+/**
+ * Fonction utilitaire pour nettoyer et valider une couleur hexadécimale
+ * @param {string} color - La couleur à nettoyer
+ * @returns {string|null} - La couleur nettoyée ou null si invalide
+ */
+export const cleanHexColor = (color) => {
+  if (!color || typeof color !== 'string') {
+    return null;
+  }
+
+  const cleaned = color.toLowerCase().trim();
+  return isValidHexColor(cleaned) ? cleaned : null;
+};
+
 // Export par défaut pour faciliter l'import
 export default {
   templateAddingSchema,
@@ -288,4 +353,6 @@ export default {
   templateSearchSchema,
   isValidUUID,
   cleanUUID,
+  isValidHexColor,
+  cleanHexColor,
 };
