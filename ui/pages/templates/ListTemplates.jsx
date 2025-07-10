@@ -336,9 +336,28 @@ const ListTemplates = ({ data: initialData }) => {
                 </div>
                 <div className={styles.cardContent}>
                   <div className={styles.informations}>
-                    <h3 className={styles.templateName}>
-                      {template.template_name}
-                    </h3>
+                    <div className={styles.templateNameContainer}>
+                      {template.template_color && (
+                        <div
+                          className={styles.colorIndicator}
+                          style={{
+                            backgroundColor: template.template_color || '#fff',
+                          }}
+                          title={`Couleur: ${template.template_color}`}
+                        />
+                      )}
+                      <h3
+                        className={styles.templateName}
+                        style={{
+                          color: template.template_color || '#fff)',
+                          textShadow: template.template_color
+                            ? '0 1px 2px rgba(0,0,0,0.3)'
+                            : 'none',
+                        }}
+                      >
+                        {template.template_name}
+                      </h3>
+                    </div>
                     <div className={styles.platforms}>
                       {template.template_has_web && <MdMonitor />}
                       {template.template_has_mobile && <MdPhoneIphone />}

@@ -164,19 +164,20 @@ async function getTemplatesFromDatabase() {
     let result;
     try {
       const templatesQuery = `
-        SELECT 
-          template_id, 
-          template_name, 
-          template_image, 
-          template_has_web, 
-          template_has_mobile, 
-          template_added, 
-          sales_count, 
-          is_active, 
-          updated_at 
-        FROM catalog.templates 
-        ORDER BY template_added DESC
-      `;
+  SELECT 
+    template_id, 
+    template_name, 
+    template_image, 
+    template_color,
+    template_has_web, 
+    template_has_mobile, 
+    template_added, 
+    sales_count, 
+    is_active, 
+    updated_at 
+  FROM catalog.templates 
+  ORDER BY template_added DESC
+`;
 
       logger.debug('Executing templates query (Server Component)', {
         requestId,
@@ -273,6 +274,7 @@ async function getTemplatesFromDatabase() {
       template_id: template.template_id,
       template_name: template.template_name || '[No Name]',
       template_image: template.template_image,
+      template_color: template.template_color || null,
       template_has_web: Boolean(template.template_has_web),
       template_has_mobile: Boolean(template.template_has_mobile),
       template_added: template.template_added,
