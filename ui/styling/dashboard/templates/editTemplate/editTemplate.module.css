@@ -89,7 +89,6 @@
   border: 2px solid transparent;
   transition: all 0.3s ease;
   text-align: center;
-  /* Suppression des propriétés qui rendaient le texte invisible */
 }
 
 .salesCount:hover {
@@ -129,6 +128,11 @@
   font-size: 14px;
 }
 
+.formGroup label[for='templateColor']::before {
+  content: '🎨';
+  font-size: 14px;
+}
+
 .input {
   padding: 16px 20px;
   background-color: var(--bgSoft);
@@ -153,6 +157,139 @@
 .input::placeholder {
   color: var(--textSoft);
   opacity: 0.7;
+}
+
+.inputError {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+}
+
+.fieldError {
+  color: #ef4444;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.fieldError::before {
+  content: '⚠️';
+  font-size: 12px;
+}
+
+/* Styles pour le color picker */
+.colorPickerContainer {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.colorPreview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 120px;
+  height: 50px;
+  border-radius: 10px;
+  border: 2px solid #2e374a;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.colorPreview:hover {
+  transform: scale(1.05);
+  border-color: #3b82f6;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+.colorValue {
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 4px 8px;
+  border-radius: 6px;
+  backdrop-filter: blur(4px);
+}
+
+.colorPicker {
+  width: 60px;
+  height: 50px;
+  border: 2px solid #2e374a;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: none;
+  padding: 0;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.colorPicker::-webkit-color-swatch-wrapper {
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.colorPicker::-webkit-color-swatch {
+  border: none;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.colorPicker::-moz-color-swatch {
+  border: none;
+  border-radius: 8px;
+}
+
+.colorPicker:hover {
+  transform: scale(1.1);
+  border-color: #3b82f6;
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+}
+
+.colorPicker:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.colorResetButton {
+  background: linear-gradient(135deg, #6b7280, #4b5563);
+  color: white;
+  border: none;
+  padding: 12px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.colorResetButton::before {
+  content: '🔄';
+  font-size: 12px;
+}
+
+.colorResetButton:hover {
+  background: linear-gradient(135deg, #4b5563, #374151);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.colorResetButton:active {
+  transform: translateY(0);
 }
 
 /* Section status améliorée */
@@ -384,16 +521,9 @@
   transform: translateY(0);
 }
 
-.imagePreview {
-  margin-top: 15px;
-  border: 2px solid #2e374a;
-  border-radius: 12px;
-  padding: 15px;
-  background-color: var(--bg);
-  width: fit-content;
-  max-width: 100%;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+.uploadButtonError {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
 }
 
 .imagePreview:hover {
@@ -514,6 +644,18 @@
   .infoGrid {
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   }
+
+  .colorPickerContainer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .colorPreview {
+    min-width: 100%;
+    justify-content: flex-start;
+    padding-left: 15px;
+  }
 }
 
 @media (max-width: 768px) {
@@ -557,6 +699,29 @@
     width: 100%;
   }
 
+  .colorPickerContainer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+  }
+
+  .colorPreview {
+    min-width: 100%;
+    height: 45px;
+    justify-content: center;
+  }
+
+  .colorPicker {
+    width: 100%;
+    height: 45px;
+  }
+
+  .colorResetButton {
+    width: 100%;
+    justify-content: center;
+    padding: 14px 16px;
+  }
+
   .uploadButton {
     padding: 18px 20px;
     font-size: 15px;
@@ -591,4 +756,33 @@
   .salesCount {
     font-size: 18px;
   }
+
+  .colorValue {
+    font-size: 11px;
+  }
+
+  .colorPreview {
+    height: 40px;
+  }
+
+  .colorPicker {
+    height: 40px;
+  }
+
+  .colorResetButton {
+    padding: 12px 14px;
+    font-size: 11px;
+  }
+}
+
+.imagePreview {
+  margin-top: 15px;
+  border: 2px solid #2e374a;
+  border-radius: 12px;
+  padding: 15px;
+  background-color: var(--bg);
+  width: fit-content;
+  max-width: 100%;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
