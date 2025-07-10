@@ -466,6 +466,7 @@ export async function PUT(request, { params }) {
     const {
       templateName,
       templateImageId,
+      templateColor,
       templateHasWeb,
       templateHasMobile,
       isActive,
@@ -480,6 +481,7 @@ export async function PUT(request, { params }) {
       operation: 'edit_template',
       hasTemplateName: !!templateName,
       hasTemplateImageId: !!templateImageId,
+      hasTemplateColor: !!templateColor,
       hasIsActive: isActive !== undefined,
       hasOldImageId: !!oldImageId,
     });
@@ -497,6 +499,7 @@ export async function PUT(request, { params }) {
     const dataToSanitize = {
       templateName,
       templateImageId,
+      templateColor,
       templateHasWeb,
       templateHasMobile,
     };
@@ -516,6 +519,7 @@ export async function PUT(request, { params }) {
     const {
       templateName: sanitizedTemplateName,
       templateImageId: sanitizedTemplateImageId,
+      templateColor: sanitizedTemplateColor,
       templateHasWeb: sanitizedTemplateHasWeb,
       templateHasMobile: sanitizedTemplateHasMobile,
     } = sanitizedInputs;
@@ -524,6 +528,7 @@ export async function PUT(request, { params }) {
     const finalData = {
       templateName: sanitizedTemplateName,
       templateImageId: sanitizedTemplateImageId,
+      templateColor: sanitizedTemplateColor,
       templateHasWeb: sanitizedTemplateHasWeb,
       templateHasMobile: sanitizedTemplateHasMobile,
       isActive, // Non sanitizé
@@ -545,6 +550,7 @@ export async function PUT(request, { params }) {
         Object.entries({
           templateName: sanitizedTemplateName,
           templateImageId: sanitizedTemplateImageId,
+          templateColor: sanitizedTemplateColor,
           templateHasWeb: sanitizedTemplateHasWeb,
           templateHasMobile: sanitizedTemplateHasMobile,
           isActive,
@@ -691,6 +697,12 @@ export async function PUT(request, { params }) {
         paramCounter++;
       }
 
+      if (sanitizedTemplateColor !== undefined) {
+        updateFields.push(`template_color = $${paramCounter}`);
+        updateValues.push(sanitizedTemplateColor);
+        paramCounter++;
+      }
+
       if (sanitizedTemplateHasWeb !== undefined) {
         updateFields.push(`template_has_web = $${paramCounter}`);
         updateValues.push(sanitizedTemplateHasWeb);
@@ -833,6 +845,7 @@ export async function PUT(request, { params }) {
     logger.info('Template update successful', {
       templateId: id,
       templateName: updatedTemplate.template_name,
+      templateColor: updatedTemplate.template_color,
       response_time_ms: responseTime,
       database_operations: 2, // connection + update
       cache_invalidated: true,
@@ -861,6 +874,7 @@ export async function PUT(request, { params }) {
         requestId,
         templateId: id,
         templateName: updatedTemplate.template_name,
+        templateColor: updatedTemplate.template_color,
         responseTimeMs: responseTime,
         databaseOperations: 2,
         cacheInvalidated: true,
