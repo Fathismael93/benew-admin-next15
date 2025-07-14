@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 // app/api/dashboard/platforms/[id]/delete/route.js
 import { NextResponse } from 'next/server';
 import { getClient } from '@backend/dbConnect';
