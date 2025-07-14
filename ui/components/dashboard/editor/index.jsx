@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useCallback, useRef, memo } from 'react';
+import { useState, useCallback, useRef, memo } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import TextStyle from '@tiptap/extension-text-style';
 import Underline from '@tiptap/extension-underline';
 import Image from '@tiptap/extension-image';
 import { fontSize } from '@/utils/fontSizeExtension';
 import styles from './editor.module.css';
+import { TextStyle } from '@tiptap/extension-text-style';
 
 // Memoized button component for better performance
 const EditorButton = memo(({ onClick, isActive, label, children }) => (
