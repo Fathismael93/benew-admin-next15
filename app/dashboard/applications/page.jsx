@@ -5,7 +5,7 @@ import ApplicationsList from '@/ui/pages/applications/ApplicationsList';
 import { getServerSession } from 'next-auth';
 import { auth } from '@app/api/auth/[...nextauth]/route';
 import { getClient } from '@backend/dbConnect';
-import { redirect, notFound } from 'next/navigation';
+import { redirect } from 'next/navigation';
 
 // ✅ NOUVEAU: Import des fonctions Sentry adaptées pour Server Components
 import {
