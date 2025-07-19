@@ -7,6 +7,8 @@ import {
   captureException,
   captureMessage,
   captureDatabaseError,
+  captureServerComponentError,
+  withServerComponentMonitoring,
 } from '@/monitoring/sentry';
 import { categorizeError, generateRequestId } from '@/utils/helpers';
 import logger from '@/utils/logger';
@@ -19,6 +21,7 @@ export const dynamic = 'force-dynamic'; // Force le rendu dynamique
 
 /**
  * Fonction pour récupérer un article spécifique depuis la base de données
+ * ✅ MISE À JOUR: Utilise la nouvelle architecture Sentry
  * Cette fonction remplace l'appel API et s'exécute directement côté serveur
  * @param {string} articleId - L'ID de l'article à récupérer
  * @returns {Promise<Object|null>} Article ou null si non trouvé/erreur
@@ -38,7 +41,7 @@ async function getSingleArticleFromDatabase(articleId) {
     articleId,
   });
 
-  // Capturer le début du processus de récupération de l'article
+  // ✅ NOUVEAU: Utilisation des fonctions Sentry adaptées
   captureMessage('Get single article process started from Server Component', {
     level: 'info',
     tags: {
@@ -91,7 +94,7 @@ async function getSingleArticleFromDatabase(articleId) {
         operation: 'get_single_article',
       });
 
-      // Capturer l'erreur de validation avec Sentry
+      // ✅ NOUVEAU: captureMessage pour erreurs de validation
       captureMessage(
         'Article ID validation failed with Yup schema (Server Component)',
         {
@@ -162,7 +165,7 @@ async function getSingleArticleFromDatabase(articleId) {
         entity: 'blog_article',
       });
 
-      // Capturer le succès du cache avec Sentry
+      // ✅ NOUVEAU: captureMessage adapté pour Server Components
       captureMessage(
         'Single article served from cache successfully (Server Component)',
         {
@@ -222,7 +225,7 @@ async function getSingleArticleFromDatabase(articleId) {
         },
       );
 
-      // Capturer l'erreur de connexion DB avec Sentry
+      // ✅ NOUVEAU: captureDatabaseError adapté pour Server Components
       captureDatabaseError(dbConnectionError, {
         tags: {
           component: 'single_article_server_component',
@@ -299,7 +302,7 @@ async function getSingleArticleFromDatabase(articleId) {
         operation: 'get_single_article',
       });
 
-      // Capturer l'erreur de requête avec Sentry
+      // ✅ NOUVEAU: captureDatabaseError avec contexte spécifique
       captureDatabaseError(queryError, {
         tags: {
           component: 'single_article_server_component',
@@ -337,6 +340,7 @@ async function getSingleArticleFromDatabase(articleId) {
         },
       );
 
+      // ✅ NOUVEAU: captureMessage pour les problèmes de structure de données
       captureMessage(
         'Single article query returned invalid data structure (Server Component)',
         {
@@ -372,7 +376,7 @@ async function getSingleArticleFromDatabase(articleId) {
         articleId,
       });
 
-      // Capturer l'article non trouvé avec Sentry
+      // ✅ NOUVEAU: captureMessage pour article non trouvé
       captureMessage('Article not found (Server Component)', {
         level: 'info',
         tags: {
@@ -470,7 +474,7 @@ async function getSingleArticleFromDatabase(articleId) {
       yupValidationApplied: true,
     });
 
-    // Capturer le succès de la récupération avec Sentry
+    // ✅ NOUVEAU: captureMessage de succès
     captureMessage(
       'Single article fetch completed successfully (Server Component)',
       {
@@ -519,7 +523,7 @@ async function getSingleArticleFromDatabase(articleId) {
       execution_context: 'server_component',
     });
 
-    // Capturer l'erreur globale avec Sentry
+    // ✅ NOUVEAU: captureException adapté pour Server Components
     captureException(error, {
       level: 'error',
       tags: {
@@ -551,6 +555,7 @@ async function getSingleArticleFromDatabase(articleId) {
 
 /**
  * Fonction pour vérifier l'authentification côté serveur
+ * ✅ MISE À JOUR: Utilise la nouvelle architecture Sentry
  * @returns {Promise<Object|null>} Session utilisateur ou null si non authentifié
  */
 async function checkAuthentication() {
@@ -564,13 +569,14 @@ async function checkAuthentication() {
         timestamp: new Date().toISOString(),
       });
 
-      // Capturer la tentative d'accès non authentifiée
+      // ✅ NOUVEAU: captureMessage pour tentative d'accès non authentifiée
       captureMessage('Unauthenticated access attempt to article view page', {
         level: 'warning',
         tags: {
           component: 'single_article_server_component',
           action: 'auth_check_failed',
           error_category: 'authentication',
+          execution_context: 'server_component',
         },
         extra: {
           timestamp: new Date().toISOString(),
@@ -599,12 +605,14 @@ async function checkAuthentication() {
       action: 'auth_check_error',
     });
 
+    // ✅ NOUVEAU: captureException pour erreurs d'authentification
     captureException(error, {
       level: 'error',
       tags: {
         component: 'single_article_server_component',
         action: 'auth_check_error',
         error_category: 'authentication',
+        execution_context: 'server_component',
       },
       extra: {
         errorMessage: error.message,
@@ -617,9 +625,10 @@ async function checkAuthentication() {
 
 /**
  * Server Component principal pour la page de visualisation d'un article
+ * ✅ NOUVEAU: Wrappé avec monitoring automatique
  * Cette fonction s'exécute côté serveur et remplace l'appel API
  */
-async function ViewArticlePage({ params }) {
+const ViewArticlePageComponent = async ({ params }) => {
   try {
     // Attendre les paramètres (requis en Next.js 15)
     const { id } = await params;
@@ -661,13 +670,14 @@ async function ViewArticlePage({ params }) {
       action: 'page_error',
     });
 
-    captureException(error, {
-      level: 'error',
+    // ✅ NOUVEAU: captureServerComponentError pour erreurs de rendu
+    captureServerComponentError(error, {
+      componentName: 'ViewArticlePage',
+      route: '/dashboard/blog/[id]/view',
+      action: 'page_render',
       tags: {
-        component: 'single_article_server_component',
-        action: 'page_error',
-        error_category: 'page_rendering',
         critical: 'true',
+        page_type: 'dashboard',
       },
       extra: {
         errorMessage: error.message,
@@ -678,6 +688,12 @@ async function ViewArticlePage({ params }) {
     // En cas d'erreur critique, rediriger vers 404
     notFound();
   }
-}
+};
+
+// ✅ NOUVEAU: Export du composant avec monitoring automatique
+const ViewArticlePage = withServerComponentMonitoring(
+  ViewArticlePageComponent,
+  'ViewArticlePage',
+);
 
 export default ViewArticlePage;
