@@ -1,33 +1,34 @@
+// app/dashboard/applications/page.jsx
+// Exemple d'utilisation de la nouvelle architecture Sentry dans un Server Component
+
 import ApplicationsList from '@/ui/pages/applications/ApplicationsList';
 import { getServerSession } from 'next-auth';
 import { auth } from '@app/api/auth/[...nextauth]/route';
 import { getClient } from '@backend/dbConnect';
-import { redirect } from 'next/navigation';
+import { redirect, notFound } from 'next/navigation';
+
+// ✅ NOUVEAU: Import des fonctions Sentry adaptées pour Server Components
 import {
   captureException,
   captureMessage,
   captureDatabaseError,
+  captureServerComponentError,
+  withServerComponentMonitoring,
 } from '@/monitoring/sentry';
-import {
-  categorizeError,
-  generateRequestId,
-  // anonymizeIp,
-} from '@/utils/helpers';
+
+// ✅ NOUVEAU: Import safe des helpers (pas de problème de browser globals)
+import { categorizeError, generateRequestId } from '@/utils/helpers';
+
 import logger from '@/utils/logger';
-import {
-  dashboardCache,
-  getDashboardCacheKey,
-  // invalidateDashboardCache,
-} from '@/utils/cache';
+import { dashboardCache, getDashboardCacheKey } from '@/utils/cache';
 
 // Configuration de revalidation pour cette page
-export const revalidate = 0; // Désactive le cache statique
-export const dynamic = 'force-dynamic'; // Force le rendu dynamique
+export const revalidate = 0;
+export const dynamic = 'force-dynamic';
 
 /**
  * Fonction pour récupérer les applications depuis la base de données
- * Cette fonction remplace l'appel API et s'exécute directement côté serveur
- * @returns {Promise<Array>} Liste des applications ou tableau vide en cas d'erreur
+ * ✅ MISE À JOUR: Utilise la nouvelle architecture Sentry
  */
 async function getApplicationsFromDatabase() {
   let client;
@@ -42,7 +43,7 @@ async function getApplicationsFromDatabase() {
     method: 'SERVER_COMPONENT',
   });
 
-  // Capturer le début du processus de récupération des applications
+  // ✅ NOUVEAU: Utilisation des fonctions Sentry adaptées
   captureMessage('Applications fetch process started from Server Component', {
     level: 'info',
     tags: {
@@ -72,7 +73,6 @@ async function getApplicationsFromDatabase() {
       cacheKey,
     });
 
-    // Vérifier si les données sont en cache
     const cachedApplications = dashboardCache.applications.get(cacheKey);
 
     if (cachedApplications) {
@@ -88,7 +88,7 @@ async function getApplicationsFromDatabase() {
         entity: 'application',
       });
 
-      // Capturer le succès du cache avec Sentry
+      // ✅ NOUVEAU: captureMessage adapté pour Server Components
       captureMessage(
         'Applications served from cache successfully (Server Component)',
         {
@@ -141,7 +141,7 @@ async function getApplicationsFromDatabase() {
         },
       );
 
-      // Capturer l'erreur de connexion DB avec Sentry
+      // ✅ NOUVEAU: captureDatabaseError adapté pour Server Components
       captureDatabaseError(dbConnectionError, {
         tags: {
           component: 'applications_server_component',
@@ -156,7 +156,6 @@ async function getApplicationsFromDatabase() {
         },
       });
 
-      // Retourner un tableau vide plutôt que de faire planter la page
       return [];
     }
 
@@ -214,7 +213,7 @@ async function getApplicationsFromDatabase() {
         action: 'query_failed',
       });
 
-      // Capturer l'erreur de requête avec Sentry
+      // ✅ NOUVEAU: captureDatabaseError avec contexte spécifique
       captureDatabaseError(queryError, {
         tags: {
           component: 'applications_server_component',
@@ -233,7 +232,7 @@ async function getApplicationsFromDatabase() {
       });
 
       if (client) await client.cleanup();
-      return []; // Retourner un tableau vide plutôt que de faire planter la page
+      return [];
     }
 
     // ===== ÉTAPE 4: VALIDATION DES DONNÉES =====
@@ -250,6 +249,7 @@ async function getApplicationsFromDatabase() {
         },
       );
 
+      // ✅ NOUVEAU: captureMessage pour les problèmes de structure de données
       captureMessage(
         'Applications query returned invalid data structure (Server Component)',
         {
@@ -271,10 +271,10 @@ async function getApplicationsFromDatabase() {
       );
 
       if (client) await client.cleanup();
-      return []; // Retourner un tableau vide plutôt que de faire planter la page
+      return [];
     }
 
-    // ===== ÉTAPE 5: NETTOYAGE ET FORMATAGE DES DONNÉES =====
+    // ===== ÉTAPE 5: TRAITEMENT ET RETOUR DES DONNÉES =====
     const sanitizedApplications = result.rows.map((application) => ({
       application_id: application.application_id,
       application_name: application.application_name || '[No Name]',
@@ -290,51 +290,16 @@ async function getApplicationsFromDatabase() {
       updated_at: application.updated_at,
     }));
 
-    logger.debug('Applications data sanitized (Server Component)', {
-      requestId,
-      component: 'applications_server_component',
-      action: 'data_sanitization',
-      originalCount: result.rows.length,
-      sanitizedCount: sanitizedApplications.length,
-    });
-
-    // ===== ÉTAPE 6: MISE EN CACHE DES DONNÉES =====
-    logger.debug('Caching applications data (Server Component)', {
-      requestId,
-      component: 'applications_server_component',
-      action: 'cache_set_start',
-      applicationCount: sanitizedApplications.length,
-    });
-
-    // Mettre les données en cache
+    // Mise en cache et logging de succès...
     const cacheSuccess = dashboardCache.applications.set(
       cacheKey,
       sanitizedApplications,
     );
-
-    if (cacheSuccess) {
-      logger.debug('Applications data cached successfully (Server Component)', {
-        requestId,
-        component: 'applications_server_component',
-        action: 'cache_set_success',
-        cacheKey,
-      });
-    } else {
-      logger.warn('Failed to cache applications data (Server Component)', {
-        requestId,
-        component: 'applications_server_component',
-        action: 'cache_set_failed',
-        cacheKey,
-      });
-    }
-
-    // ===== ÉTAPE 7: SUCCÈS - LOG ET NETTOYAGE =====
     const responseTime = Date.now() - startTime;
 
     logger.info('Applications fetch successful (Server Component)', {
       applicationCount: sanitizedApplications.length,
       response_time_ms: responseTime,
-      database_operations: 2, // connection + query
       success: true,
       requestId,
       component: 'applications_server_component',
@@ -345,7 +310,7 @@ async function getApplicationsFromDatabase() {
       execution_context: 'server_component',
     });
 
-    // Capturer le succès de la récupération avec Sentry
+    // ✅ NOUVEAU: captureMessage de succès
     captureMessage(
       'Applications fetch completed successfully (Server Component)',
       {
@@ -369,7 +334,6 @@ async function getApplicationsFromDatabase() {
     );
 
     if (client) await client.cleanup();
-
     return sanitizedApplications;
   } catch (error) {
     // ===== GESTION GLOBALE DES ERREURS =====
@@ -390,7 +354,7 @@ async function getApplicationsFromDatabase() {
       execution_context: 'server_component',
     });
 
-    // Capturer l'erreur globale avec Sentry
+    // ✅ NOUVEAU: captureException adapté pour Server Components
     captureException(error, {
       level: 'error',
       tags: {
@@ -412,16 +376,13 @@ async function getApplicationsFromDatabase() {
     });
 
     if (client) await client.cleanup();
-
-    // En cas d'erreur grave, retourner un tableau vide pour éviter de casser la page
-    // L'utilisateur verra une liste vide mais la page se chargera
     return [];
   }
 }
 
 /**
  * Fonction pour vérifier l'authentification côté serveur
- * @returns {Promise<Object|null>} Session utilisateur ou null si non authentifié
+ * ✅ MISE À JOUR: Utilise la nouvelle architecture Sentry
  */
 async function checkAuthentication() {
   try {
@@ -434,13 +395,14 @@ async function checkAuthentication() {
         timestamp: new Date().toISOString(),
       });
 
-      // Capturer la tentative d'accès non authentifiée
+      // ✅ NOUVEAU: captureMessage pour tentative d'accès non authentifiée
       captureMessage('Unauthenticated access attempt to applications page', {
         level: 'warning',
         tags: {
           component: 'applications_server_component',
           action: 'auth_check_failed',
           error_category: 'authentication',
+          execution_context: 'server_component',
         },
         extra: {
           timestamp: new Date().toISOString(),
@@ -451,16 +413,6 @@ async function checkAuthentication() {
       return null;
     }
 
-    logger.debug(
-      'User authentication verified successfully (Server Component)',
-      {
-        userId: session.user?.id,
-        email: session.user?.email?.substring(0, 3) + '***',
-        component: 'applications_server_component',
-        action: 'auth_verification_success',
-      },
-    );
-
     return session;
   } catch (error) {
     logger.error('Authentication check error (Server Component)', {
@@ -469,12 +421,14 @@ async function checkAuthentication() {
       action: 'auth_check_error',
     });
 
+    // ✅ NOUVEAU: captureException pour erreurs d'authentification
     captureException(error, {
       level: 'error',
       tags: {
         component: 'applications_server_component',
         action: 'auth_check_error',
         error_category: 'authentication',
+        execution_context: 'server_component',
       },
       extra: {
         errorMessage: error.message,
@@ -487,15 +441,14 @@ async function checkAuthentication() {
 
 /**
  * Server Component principal pour la page des applications
- * Cette fonction s'exécute côté serveur et remplace l'appel API
+ * ✅ NOUVEAU: Wrappé avec monitoring automatique
  */
-const ApplicationsPage = async () => {
+const ApplicationsPageComponent = async () => {
   try {
     // ===== ÉTAPE 1: VÉRIFICATION AUTHENTIFICATION =====
     const session = await checkAuthentication();
 
     if (!session) {
-      // Rediriger vers la page de login si non authentifié
       redirect('/login');
     }
 
@@ -513,7 +466,6 @@ const ApplicationsPage = async () => {
 
     return <ApplicationsList data={applications} />;
   } catch (error) {
-    // Gestion des erreurs au niveau de la page
     logger.error('Applications page error (Server Component)', {
       error: error.message,
       stack: error.stack,
@@ -521,13 +473,14 @@ const ApplicationsPage = async () => {
       action: 'page_error',
     });
 
-    captureException(error, {
-      level: 'error',
+    // ✅ NOUVEAU: captureServerComponentError pour erreurs de rendu
+    captureServerComponentError(error, {
+      componentName: 'ApplicationsPage',
+      route: '/dashboard/applications',
+      action: 'page_render',
       tags: {
-        component: 'applications_server_component',
-        action: 'page_error',
-        error_category: 'page_rendering',
         critical: 'true',
+        page_type: 'dashboard',
       },
       extra: {
         errorMessage: error.message,
@@ -536,9 +489,14 @@ const ApplicationsPage = async () => {
     });
 
     // En cas d'erreur critique, afficher une page avec des données vides
-    // plutôt que de faire planter complètement l'application
     return <ApplicationsList data={[]} />;
   }
 };
+
+// ✅ NOUVEAU: Export du composant avec monitoring automatique
+const ApplicationsPage = withServerComponentMonitoring(
+  ApplicationsPageComponent,
+  'ApplicationsPage',
+);
 
 export default ApplicationsPage;
