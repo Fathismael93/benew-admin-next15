@@ -7,6 +7,8 @@ import {
   captureException,
   captureMessage,
   captureDatabaseError,
+  captureServerComponentError,
+  withServerComponentMonitoring,
 } from '@/monitoring/sentry';
 import {
   categorizeError,
@@ -63,7 +65,7 @@ function cleanOrderUUID(orderId) {
 
 /**
  * Fonction pour récupérer une commande spécifique depuis la base de données
- * Cette fonction remplace l'appel API et s'exécute directement côté serveur
+ * ✅ MISE À JOUR: Utilise la nouvelle architecture Sentry
  * @param {string} orderId - L'ID de la commande à récupérer
  * @returns {Promise<Object|null>} Commande ou null si non trouvée/erreur
  */
@@ -82,7 +84,7 @@ async function getOrderFromDatabase(orderId) {
     orderId: orderId || 'missing',
   });
 
-  // Capturer le début du processus de récupération de la commande
+  // ✅ NOUVEAU: Utilisation des fonctions Sentry adaptées
   captureMessage('Get order by ID process started from Server Component', {
     level: 'info',
     tags: {
@@ -120,7 +122,7 @@ async function getOrderFromDatabase(orderId) {
         operation: 'get_order_by_id',
       });
 
-      // Capturer l'ID manquant avec Sentry
+      // ✅ NOUVEAU: captureMessage pour les problèmes de validation
       captureMessage('Order ID parameter missing (Server Component)', {
         level: 'warning',
         tags: {
@@ -154,7 +156,7 @@ async function getOrderFromDatabase(orderId) {
         providedId: orderId.substring(0, 10), // Tronquer pour les logs
       });
 
-      // Capturer l'erreur de format avec Sentry
+      // ✅ NOUVEAU: captureMessage pour les problèmes de validation
       captureMessage('Order ID format invalid (Server Component)', {
         level: 'warning',
         tags: {
@@ -219,7 +221,7 @@ async function getOrderFromDatabase(orderId) {
         data_type: 'financial',
       });
 
-      // Capturer le succès du cache avec Sentry
+      // ✅ NOUVEAU: captureMessage adapté pour Server Components
       captureMessage(
         'Order by ID served from cache successfully (Server Component)',
         {
@@ -282,7 +284,7 @@ async function getOrderFromDatabase(orderId) {
         },
       );
 
-      // Capturer l'erreur de connexion DB avec Sentry
+      // ✅ NOUVEAU: captureDatabaseError adapté pour Server Components
       captureDatabaseError(dbConnectionError, {
         tags: {
           component: 'order_by_id_server_component',
@@ -385,7 +387,7 @@ async function getOrderFromDatabase(orderId) {
         data_type: 'financial',
       });
 
-      // Capturer l'erreur de requête avec Sentry
+      // ✅ NOUVEAU: captureDatabaseError avec contexte spécifique
       captureDatabaseError(queryError, {
         tags: {
           component: 'order_by_id_server_component',
@@ -419,7 +421,7 @@ async function getOrderFromDatabase(orderId) {
         orderId: cleanedOrderId.substring(0, 8),
       });
 
-      // Capturer la commande non trouvée avec Sentry
+      // ✅ NOUVEAU: captureMessage pour les problèmes de logique métier
       captureMessage('Order not found (Server Component)', {
         level: 'warning',
         tags: {
@@ -586,7 +588,7 @@ async function getOrderFromDatabase(orderId) {
       validationApplied: true,
     });
 
-    // Capturer le succès de la récupération avec Sentry
+    // ✅ NOUVEAU: captureMessage de succès
     captureMessage(
       'Order fetch by ID completed successfully (Server Component)',
       {
@@ -638,7 +640,7 @@ async function getOrderFromDatabase(orderId) {
       execution_context: 'server_component',
     });
 
-    // Capturer l'erreur globale avec Sentry
+    // ✅ NOUVEAU: captureException adapté pour Server Components
     captureException(error, {
       level: 'error',
       tags: {
@@ -671,6 +673,7 @@ async function getOrderFromDatabase(orderId) {
 
 /**
  * Fonction pour vérifier l'authentification côté serveur
+ * ✅ MISE À JOUR: Utilise la nouvelle architecture Sentry
  * @returns {Promise<Object|null>} Session utilisateur ou null si non authentifié
  */
 async function checkAuthentication() {
@@ -684,13 +687,14 @@ async function checkAuthentication() {
         timestamp: new Date().toISOString(),
       });
 
-      // Capturer la tentative d'accès non authentifiée
+      // ✅ NOUVEAU: captureMessage pour tentative d'accès non authentifiée
       captureMessage('Unauthenticated access attempt to order edit page', {
         level: 'warning',
         tags: {
           component: 'order_by_id_server_component',
           action: 'auth_check_failed',
           error_category: 'authentication',
+          execution_context: 'server_component',
         },
         extra: {
           timestamp: new Date().toISOString(),
@@ -719,12 +723,14 @@ async function checkAuthentication() {
       action: 'auth_check_error',
     });
 
+    // ✅ NOUVEAU: captureException pour erreurs d'authentification
     captureException(error, {
       level: 'error',
       tags: {
         component: 'order_by_id_server_component',
         action: 'auth_check_error',
         error_category: 'authentication',
+        execution_context: 'server_component',
       },
       extra: {
         errorMessage: error.message,
@@ -737,9 +743,9 @@ async function checkAuthentication() {
 
 /**
  * Server Component principal pour la page d'édition d'une commande
- * Cette fonction s'exécute côté serveur et remplace l'appel API
+ * ✅ NOUVEAU: Wrappé avec monitoring automatique
  */
-const EditOrderPage = async ({ params }) => {
+const EditOrderPageComponent = async ({ params }) => {
   try {
     // Attendre les paramètres (requis en Next.js 15)
     const { id } = await params;
@@ -782,13 +788,14 @@ const EditOrderPage = async ({ params }) => {
       action: 'page_error',
     });
 
-    captureException(error, {
-      level: 'error',
+    // ✅ NOUVEAU: captureServerComponentError pour erreurs de rendu
+    captureServerComponentError(error, {
+      componentName: 'EditOrderPage',
+      route: '/dashboard/orders/[id]',
+      action: 'page_render',
       tags: {
-        component: 'order_by_id_server_component',
-        action: 'page_error',
-        error_category: 'page_rendering',
         critical: 'true',
+        page_type: 'dashboard',
       },
       extra: {
         errorMessage: error.message,
@@ -800,5 +807,11 @@ const EditOrderPage = async ({ params }) => {
     notFound();
   }
 };
+
+// ✅ NOUVEAU: Export du composant avec monitoring automatique
+const EditOrderPage = withServerComponentMonitoring(
+  EditOrderPageComponent,
+  'EditOrderPage',
+);
 
 export default EditOrderPage;

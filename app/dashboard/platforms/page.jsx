@@ -9,6 +9,8 @@ import {
   captureException,
   captureMessage,
   captureDatabaseError,
+  captureServerComponentError,
+  withServerComponentMonitoring,
 } from '@/monitoring/sentry';
 import { categorizeError, generateRequestId } from '@/utils/helpers';
 import logger from '@/utils/logger';
@@ -24,7 +26,7 @@ export const dynamic = 'force-dynamic'; // Force le rendu dynamique
 
 /**
  * Fonction pour récupérer les plateformes depuis la base de données
- * Cette fonction remplace l'appel API et s'exécute directement côté serveur
+ * ✅ MISE À JOUR: Utilise la nouvelle architecture Sentry
  * @returns {Promise<Array>} Liste des plateformes ou tableau vide en cas d'erreur
  */
 async function getPlatformsFromDatabase() {
@@ -40,7 +42,7 @@ async function getPlatformsFromDatabase() {
     method: 'SERVER_COMPONENT',
   });
 
-  // Capturer le début du processus de récupération des plateformes
+  // ✅ NOUVEAU: Utilisation des fonctions Sentry adaptées
   captureMessage('Platforms fetch process started from Server Component', {
     level: 'info',
     tags: {
@@ -86,7 +88,7 @@ async function getPlatformsFromDatabase() {
         entity: 'platform',
       });
 
-      // Capturer le succès du cache avec Sentry
+      // ✅ NOUVEAU: captureMessage adapté pour Server Components
       captureMessage(
         'Platforms served from cache successfully (Server Component)',
         {
@@ -148,7 +150,7 @@ async function getPlatformsFromDatabase() {
         },
       );
 
-      // Capturer l'erreur de connexion DB avec Sentry
+      // ✅ NOUVEAU: captureDatabaseError adapté pour Server Components
       captureDatabaseError(dbConnectionError, {
         tags: {
           component: 'platforms_server_component',
@@ -212,7 +214,7 @@ async function getPlatformsFromDatabase() {
         action: 'query_failed',
       });
 
-      // Capturer l'erreur de requête avec Sentry
+      // ✅ NOUVEAU: captureDatabaseError avec contexte spécifique
       captureDatabaseError(queryError, {
         tags: {
           component: 'platforms_server_component',
@@ -248,6 +250,7 @@ async function getPlatformsFromDatabase() {
         },
       );
 
+      // ✅ NOUVEAU: captureMessage pour les problèmes de structure de données
       captureMessage(
         'Platforms query returned invalid data structure (Server Component)',
         {
@@ -350,7 +353,7 @@ async function getPlatformsFromDatabase() {
       execution_context: 'server_component',
     });
 
-    // Capturer le succès de la récupération avec Sentry
+    // ✅ NOUVEAU: captureMessage de succès
     captureMessage(
       'Platforms fetch completed successfully (Server Component)',
       {
@@ -397,7 +400,7 @@ async function getPlatformsFromDatabase() {
       execution_context: 'server_component',
     });
 
-    // Capturer l'erreur globale avec Sentry
+    // ✅ NOUVEAU: captureException adapté pour Server Components
     captureException(error, {
       level: 'error',
       tags: {
@@ -428,6 +431,7 @@ async function getPlatformsFromDatabase() {
 
 /**
  * Fonction pour vérifier l'authentification côté serveur
+ * ✅ MISE À JOUR: Utilise la nouvelle architecture Sentry
  * @returns {Promise<Object|null>} Session utilisateur ou null si non authentifié
  */
 async function checkAuthentication() {
@@ -441,13 +445,14 @@ async function checkAuthentication() {
         timestamp: new Date().toISOString(),
       });
 
-      // Capturer la tentative d'accès non authentifiée
+      // ✅ NOUVEAU: captureMessage pour tentative d'accès non authentifiée
       captureMessage('Unauthenticated access attempt to platforms page', {
         level: 'warning',
         tags: {
           component: 'platforms_server_component',
           action: 'auth_check_failed',
           error_category: 'authentication',
+          execution_context: 'server_component',
         },
         extra: {
           timestamp: new Date().toISOString(),
@@ -476,12 +481,14 @@ async function checkAuthentication() {
       action: 'auth_check_error',
     });
 
+    // ✅ NOUVEAU: captureException pour erreurs d'authentification
     captureException(error, {
       level: 'error',
       tags: {
         component: 'platforms_server_component',
         action: 'auth_check_error',
         error_category: 'authentication',
+        execution_context: 'server_component',
       },
       extra: {
         errorMessage: error.message,
@@ -494,9 +501,9 @@ async function checkAuthentication() {
 
 /**
  * Server Component principal pour la page des plateformes
- * Cette fonction s'exécute côté serveur et remplace l'appel API
+ * ✅ NOUVEAU: Wrappé avec monitoring automatique
  */
-const PlatformsPage = async () => {
+const PlatformsPageComponent = async () => {
   try {
     // ===== ÉTAPE 1: VÉRIFICATION AUTHENTIFICATION =====
     const session = await checkAuthentication();
@@ -528,13 +535,14 @@ const PlatformsPage = async () => {
       action: 'page_error',
     });
 
-    captureException(error, {
-      level: 'error',
+    // ✅ NOUVEAU: captureServerComponentError pour erreurs de rendu
+    captureServerComponentError(error, {
+      componentName: 'PlatformsPage',
+      route: '/dashboard/platforms',
+      action: 'page_render',
       tags: {
-        component: 'platforms_server_component',
-        action: 'page_error',
-        error_category: 'page_rendering',
         critical: 'true',
+        page_type: 'dashboard',
       },
       extra: {
         errorMessage: error.message,
@@ -547,5 +555,11 @@ const PlatformsPage = async () => {
     return <PlatformsList data={[]} />;
   }
 };
+
+// ✅ NOUVEAU: Export du composant avec monitoring automatique
+const PlatformsPage = withServerComponentMonitoring(
+  PlatformsPageComponent,
+  'PlatformsPage',
+);
 
 export default PlatformsPage;

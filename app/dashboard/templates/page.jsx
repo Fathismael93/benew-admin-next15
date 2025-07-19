@@ -7,6 +7,8 @@ import {
   captureException,
   captureMessage,
   captureDatabaseError,
+  captureServerComponentError,
+  withServerComponentMonitoring,
 } from '@/monitoring/sentry';
 import {
   categorizeError,
@@ -26,7 +28,7 @@ export const dynamic = 'force-dynamic'; // Force le rendu dynamique
 
 /**
  * Fonction pour récupérer les templates depuis la base de données
- * Cette fonction remplace l'appel API et s'exécute directement côté serveur
+ * ✅ MISE À JOUR: Utilise la nouvelle architecture Sentry
  * @returns {Promise<Array>} Liste des templates ou tableau vide en cas d'erreur
  */
 async function getTemplatesFromDatabase() {
@@ -42,7 +44,7 @@ async function getTemplatesFromDatabase() {
     method: 'SERVER_COMPONENT',
   });
 
-  // Capturer le début du processus de récupération des templates
+  // ✅ NOUVEAU: Utilisation des fonctions Sentry adaptées
   captureMessage('Templates fetch process started from Server Component', {
     level: 'info',
     tags: {
@@ -88,7 +90,7 @@ async function getTemplatesFromDatabase() {
         entity: 'template',
       });
 
-      // Capturer le succès du cache avec Sentry
+      // ✅ NOUVEAU: captureMessage adapté pour Server Components
       captureMessage(
         'Templates served from cache successfully (Server Component)',
         {
@@ -141,7 +143,7 @@ async function getTemplatesFromDatabase() {
         },
       );
 
-      // Capturer l'erreur de connexion DB avec Sentry
+      // ✅ NOUVEAU: captureDatabaseError adapté pour Server Components
       captureDatabaseError(dbConnectionError, {
         tags: {
           component: 'templates_server_component',
@@ -209,7 +211,7 @@ async function getTemplatesFromDatabase() {
         action: 'query_failed',
       });
 
-      // Capturer l'erreur de requête avec Sentry
+      // ✅ NOUVEAU: captureDatabaseError avec contexte spécifique
       captureDatabaseError(queryError, {
         tags: {
           component: 'templates_server_component',
@@ -245,6 +247,7 @@ async function getTemplatesFromDatabase() {
         },
       );
 
+      // ✅ NOUVEAU: captureMessage pour les problèmes de structure de données
       captureMessage(
         'Templates query returned invalid data structure (Server Component)',
         {
@@ -338,7 +341,7 @@ async function getTemplatesFromDatabase() {
       execution_context: 'server_component',
     });
 
-    // Capturer le succès de la récupération avec Sentry
+    // ✅ NOUVEAU: captureMessage de succès
     captureMessage(
       'Templates fetch completed successfully (Server Component)',
       {
@@ -383,7 +386,7 @@ async function getTemplatesFromDatabase() {
       execution_context: 'server_component',
     });
 
-    // Capturer l'erreur globale avec Sentry
+    // ✅ NOUVEAU: captureException adapté pour Server Components
     captureException(error, {
       level: 'error',
       tags: {
@@ -414,6 +417,7 @@ async function getTemplatesFromDatabase() {
 
 /**
  * Fonction pour vérifier l'authentification côté serveur
+ * ✅ MISE À JOUR: Utilise la nouvelle architecture Sentry
  * @returns {Promise<Object|null>} Session utilisateur ou null si non authentifié
  */
 async function checkAuthentication() {
@@ -427,13 +431,14 @@ async function checkAuthentication() {
         timestamp: new Date().toISOString(),
       });
 
-      // Capturer la tentative d'accès non authentifiée
+      // ✅ NOUVEAU: captureMessage pour tentative d'accès non authentifiée
       captureMessage('Unauthenticated access attempt to templates page', {
         level: 'warning',
         tags: {
           component: 'templates_server_component',
           action: 'auth_check_failed',
           error_category: 'authentication',
+          execution_context: 'server_component',
         },
         extra: {
           timestamp: new Date().toISOString(),
@@ -462,12 +467,14 @@ async function checkAuthentication() {
       action: 'auth_check_error',
     });
 
+    // ✅ NOUVEAU: captureException pour erreurs d'authentification
     captureException(error, {
       level: 'error',
       tags: {
         component: 'templates_server_component',
         action: 'auth_check_error',
         error_category: 'authentication',
+        execution_context: 'server_component',
       },
       extra: {
         errorMessage: error.message,
@@ -480,9 +487,9 @@ async function checkAuthentication() {
 
 /**
  * Server Component principal pour la page des templates
- * Cette fonction s'exécute côté serveur et remplace l'appel API
+ * ✅ NOUVEAU: Wrappé avec monitoring automatique
  */
-const TemplatesPage = async () => {
+const TemplatesPageComponent = async () => {
   try {
     // ===== ÉTAPE 1: VÉRIFICATION AUTHENTIFICATION =====
     const session = await checkAuthentication();
@@ -514,13 +521,14 @@ const TemplatesPage = async () => {
       action: 'page_error',
     });
 
-    captureException(error, {
-      level: 'error',
+    // ✅ NOUVEAU: captureServerComponentError pour erreurs de rendu
+    captureServerComponentError(error, {
+      componentName: 'TemplatesPage',
+      route: '/dashboard/templates',
+      action: 'page_render',
       tags: {
-        component: 'templates_server_component',
-        action: 'page_error',
-        error_category: 'page_rendering',
         critical: 'true',
+        page_type: 'dashboard',
       },
       extra: {
         errorMessage: error.message,
@@ -533,5 +541,11 @@ const TemplatesPage = async () => {
     return <ListTemplates data={[]} />;
   }
 };
+
+// ✅ NOUVEAU: Export du composant avec monitoring automatique
+const TemplatesPage = withServerComponentMonitoring(
+  TemplatesPageComponent,
+  'TemplatesPage',
+);
 
 export default TemplatesPage;

@@ -7,6 +7,8 @@ import {
   captureException,
   captureMessage,
   captureDatabaseError,
+  captureServerComponentError,
+  withServerComponentMonitoring,
 } from '@/monitoring/sentry';
 import {
   categorizeError,
@@ -27,7 +29,7 @@ export const dynamic = 'force-dynamic'; // Force le rendu dynamique
 
 /**
  * Fonction pour récupérer un template spécifique depuis la base de données
- * Cette fonction remplace l'appel API et s'exécute directement côté serveur
+ * ✅ MISE À JOUR: Utilise la nouvelle architecture Sentry
  * @param {string} templateId - L'ID du template à récupérer
  * @returns {Promise<Object|null>} Template ou null si non trouvé/erreur
  */
@@ -46,7 +48,7 @@ async function getTemplateFromDatabase(templateId) {
     templateId,
   });
 
-  // Capturer le début du processus de récupération du template
+  // ✅ NOUVEAU: Utilisation des fonctions Sentry adaptées
   captureMessage('Get template by ID process started from Server Component', {
     level: 'info',
     tags: {
@@ -105,7 +107,7 @@ async function getTemplateFromDatabase(templateId) {
         operation: 'get_template_by_id',
       });
 
-      // Capturer l'erreur de validation avec Sentry
+      // ✅ NOUVEAU: captureMessage pour les problèmes de validation
       captureMessage(
         'Template ID validation failed with Yup schema (Server Component)',
         {
@@ -194,7 +196,7 @@ async function getTemplateFromDatabase(templateId) {
         entity: 'template',
       });
 
-      // Capturer le succès du cache avec Sentry
+      // ✅ NOUVEAU: captureMessage adapté pour Server Components
       captureMessage(
         'Template by ID served from cache successfully (Server Component)',
         {
@@ -254,7 +256,7 @@ async function getTemplateFromDatabase(templateId) {
         },
       );
 
-      // Capturer l'erreur de connexion DB avec Sentry
+      // ✅ NOUVEAU: captureDatabaseError adapté pour Server Components
       captureDatabaseError(dbConnectionError, {
         tags: {
           component: 'template_by_id_server_component',
@@ -330,7 +332,7 @@ async function getTemplateFromDatabase(templateId) {
         operation: 'get_template_by_id',
       });
 
-      // Capturer l'erreur de requête avec Sentry
+      // ✅ NOUVEAU: captureDatabaseError avec contexte spécifique
       captureDatabaseError(queryError, {
         tags: {
           component: 'template_by_id_server_component',
@@ -363,7 +365,7 @@ async function getTemplateFromDatabase(templateId) {
         templateId: cleanedTemplateId,
       });
 
-      // Capturer le template non trouvé avec Sentry
+      // ✅ NOUVEAU: captureMessage pour les problèmes de logique métier
       captureMessage('Template not found (Server Component)', {
         level: 'warning',
         tags: {
@@ -459,7 +461,7 @@ async function getTemplateFromDatabase(templateId) {
       yupValidationApplied: true,
     });
 
-    // Capturer le succès de la récupération avec Sentry
+    // ✅ NOUVEAU: captureMessage de succès
     captureMessage(
       'Template fetch by ID completed successfully (Server Component)',
       {
@@ -508,7 +510,7 @@ async function getTemplateFromDatabase(templateId) {
       execution_context: 'server_component',
     });
 
-    // Capturer l'erreur globale avec Sentry
+    // ✅ NOUVEAU: captureException adapté pour Server Components
     captureException(error, {
       level: 'error',
       tags: {
@@ -540,6 +542,7 @@ async function getTemplateFromDatabase(templateId) {
 
 /**
  * Fonction pour vérifier l'authentification côté serveur
+ * ✅ MISE À JOUR: Utilise la nouvelle architecture Sentry
  * @returns {Promise<Object|null>} Session utilisateur ou null si non authentifié
  */
 async function checkAuthentication() {
@@ -553,13 +556,14 @@ async function checkAuthentication() {
         timestamp: new Date().toISOString(),
       });
 
-      // Capturer la tentative d'accès non authentifiée
+      // ✅ NOUVEAU: captureMessage pour tentative d'accès non authentifiée
       captureMessage('Unauthenticated access attempt to template edit page', {
         level: 'warning',
         tags: {
           component: 'template_by_id_server_component',
           action: 'auth_check_failed',
           error_category: 'authentication',
+          execution_context: 'server_component',
         },
         extra: {
           timestamp: new Date().toISOString(),
@@ -588,12 +592,14 @@ async function checkAuthentication() {
       action: 'auth_check_error',
     });
 
+    // ✅ NOUVEAU: captureException pour erreurs d'authentification
     captureException(error, {
       level: 'error',
       tags: {
         component: 'template_by_id_server_component',
         action: 'auth_check_error',
         error_category: 'authentication',
+        execution_context: 'server_component',
       },
       extra: {
         errorMessage: error.message,
@@ -606,9 +612,9 @@ async function checkAuthentication() {
 
 /**
  * Server Component principal pour la page d'édition d'un template
- * Cette fonction s'exécute côté serveur et remplace l'appel API
+ * ✅ NOUVEAU: Wrappé avec monitoring automatique
  */
-const EditTemplatePage = async ({ params }) => {
+const EditTemplatePageComponent = async ({ params }) => {
   try {
     // Attendre les paramètres (requis en Next.js 15)
     const { id } = await params;
@@ -650,13 +656,14 @@ const EditTemplatePage = async ({ params }) => {
       action: 'page_error',
     });
 
-    captureException(error, {
-      level: 'error',
+    // ✅ NOUVEAU: captureServerComponentError pour erreurs de rendu
+    captureServerComponentError(error, {
+      componentName: 'EditTemplatePage',
+      route: '/dashboard/templates/[id]',
+      action: 'page_render',
       tags: {
-        component: 'template_by_id_server_component',
-        action: 'page_error',
-        error_category: 'page_rendering',
         critical: 'true',
+        page_type: 'dashboard',
       },
       extra: {
         errorMessage: error.message,
@@ -668,5 +675,11 @@ const EditTemplatePage = async ({ params }) => {
     notFound();
   }
 };
+
+// ✅ NOUVEAU: Export du composant avec monitoring automatique
+const EditTemplatePage = withServerComponentMonitoring(
+  EditTemplatePageComponent,
+  'EditTemplatePage',
+);
 
 export default EditTemplatePage;

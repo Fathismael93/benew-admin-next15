@@ -7,6 +7,8 @@ import {
   captureException,
   captureMessage,
   captureDatabaseError,
+  captureServerComponentError,
+  withServerComponentMonitoring,
 } from '@/monitoring/sentry';
 import {
   categorizeError,
@@ -30,7 +32,7 @@ export const dynamic = 'force-dynamic'; // Force le rendu dynamique
 
 /**
  * Fonction pour récupérer une application spécifique depuis la base de données
- * Cette fonction remplace l'appel API et s'exécute directement côté serveur
+ * ✅ MISE À JOUR: Utilise la nouvelle architecture Sentry
  * @param {string} applicationId - L'ID de l'application à récupérer
  * @returns {Promise<Object|null>} Application ou null si non trouvée/erreur
  */
@@ -49,7 +51,7 @@ async function getApplicationFromDatabase(applicationId) {
     applicationId,
   });
 
-  // Capturer le début du processus de récupération de l'application
+  // ✅ NOUVEAU: Utilisation des fonctions Sentry adaptées
   captureMessage(
     'Get application by ID process started from Server Component',
     {
@@ -117,7 +119,7 @@ async function getApplicationFromDatabase(applicationId) {
         },
       );
 
-      // Capturer l'erreur de validation avec Sentry
+      // ✅ NOUVEAU: captureMessage pour les problèmes de validation
       captureMessage(
         'Application ID validation failed with Yup schema (Server Component)',
         {
@@ -206,7 +208,7 @@ async function getApplicationFromDatabase(applicationId) {
         entity: 'application',
       });
 
-      // Capturer le succès du cache avec Sentry
+      // ✅ NOUVEAU: captureMessage adapté pour Server Components
       captureMessage(
         'Application by ID served from cache successfully (Server Component)',
         {
@@ -266,7 +268,7 @@ async function getApplicationFromDatabase(applicationId) {
         },
       );
 
-      // Capturer l'erreur de connexion DB avec Sentry
+      // ✅ NOUVEAU: captureDatabaseError adapté pour Server Components
       captureDatabaseError(dbConnectionError, {
         tags: {
           component: 'application_by_id_server_component',
@@ -350,7 +352,7 @@ async function getApplicationFromDatabase(applicationId) {
         operation: 'get_application_by_id',
       });
 
-      // Capturer l'erreur de requête avec Sentry
+      // ✅ NOUVEAU: captureDatabaseError avec contexte spécifique
       captureDatabaseError(queryError, {
         tags: {
           component: 'application_by_id_server_component',
@@ -383,7 +385,7 @@ async function getApplicationFromDatabase(applicationId) {
         applicationId: cleanedApplicationId,
       });
 
-      // Capturer l'application non trouvée avec Sentry
+      // ✅ NOUVEAU: captureMessage pour les problèmes de logique métier
       captureMessage('Application not found (Server Component)', {
         level: 'warning',
         tags: {
@@ -486,7 +488,7 @@ async function getApplicationFromDatabase(applicationId) {
       yupValidationApplied: true,
     });
 
-    // Capturer le succès de la récupération avec Sentry
+    // ✅ NOUVEAU: captureMessage de succès
     captureMessage(
       'Application fetch by ID completed successfully (Server Component)',
       {
@@ -535,7 +537,7 @@ async function getApplicationFromDatabase(applicationId) {
       execution_context: 'server_component',
     });
 
-    // Capturer l'erreur globale avec Sentry
+    // ✅ NOUVEAU: captureException adapté pour Server Components
     captureException(error, {
       level: 'error',
       tags: {
@@ -567,6 +569,7 @@ async function getApplicationFromDatabase(applicationId) {
 
 /**
  * Fonction pour vérifier l'authentification côté serveur
+ * ✅ MISE À JOUR: Utilise la nouvelle architecture Sentry
  * @returns {Promise<Object|null>} Session utilisateur ou null si non authentifié
  */
 async function checkAuthentication() {
@@ -580,7 +583,7 @@ async function checkAuthentication() {
         timestamp: new Date().toISOString(),
       });
 
-      // Capturer la tentative d'accès non authentifiée
+      // ✅ NOUVEAU: captureMessage pour tentative d'accès non authentifiée
       captureMessage(
         'Unauthenticated access attempt to application view page',
         {
@@ -589,6 +592,7 @@ async function checkAuthentication() {
             component: 'application_by_id_server_component',
             action: 'auth_check_failed',
             error_category: 'authentication',
+            execution_context: 'server_component',
           },
           extra: {
             timestamp: new Date().toISOString(),
@@ -618,12 +622,14 @@ async function checkAuthentication() {
       action: 'auth_check_error',
     });
 
+    // ✅ NOUVEAU: captureException pour erreurs d'authentification
     captureException(error, {
       level: 'error',
       tags: {
         component: 'application_by_id_server_component',
         action: 'auth_check_error',
         error_category: 'authentication',
+        execution_context: 'server_component',
       },
       extra: {
         errorMessage: error.message,
@@ -636,9 +642,9 @@ async function checkAuthentication() {
 
 /**
  * Server Component principal pour la page de visualisation d'une application
- * Cette fonction s'exécute côté serveur et remplace l'appel API
+ * ✅ NOUVEAU: Wrappé avec monitoring automatique
  */
-const SingleApplicationPage = async ({ params }) => {
+const SingleApplicationPageComponent = async ({ params }) => {
   try {
     // Attendre les paramètres (requis en Next.js 15)
     const { id } = await params;
@@ -680,13 +686,14 @@ const SingleApplicationPage = async ({ params }) => {
       action: 'page_error',
     });
 
-    captureException(error, {
-      level: 'error',
+    // ✅ NOUVEAU: captureServerComponentError pour erreurs de rendu
+    captureServerComponentError(error, {
+      componentName: 'SingleApplicationPage',
+      route: '/dashboard/applications/[id]',
+      action: 'page_render',
       tags: {
-        component: 'application_by_id_server_component',
-        action: 'page_error',
-        error_category: 'page_rendering',
         critical: 'true',
+        page_type: 'dashboard',
       },
       extra: {
         errorMessage: error.message,
@@ -698,5 +705,11 @@ const SingleApplicationPage = async ({ params }) => {
     notFound();
   }
 };
+
+// ✅ NOUVEAU: Export du composant avec monitoring automatique
+const SingleApplicationPage = withServerComponentMonitoring(
+  SingleApplicationPageComponent,
+  'SingleApplicationPage',
+);
 
 export default SingleApplicationPage;

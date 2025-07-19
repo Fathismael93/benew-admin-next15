@@ -7,6 +7,8 @@ import {
   captureException,
   captureMessage,
   captureDatabaseError,
+  captureServerComponentError,
+  withServerComponentMonitoring,
 } from '@/monitoring/sentry';
 import { categorizeError, generateRequestId } from '@/utils/helpers';
 import logger from '@/utils/logger';
@@ -22,7 +24,7 @@ export const dynamic = 'force-dynamic'; // Force le rendu dynamique
 
 /**
  * Fonction pour récupérer les articles depuis la base de données
- * Cette fonction remplace l'appel API et s'exécute directement côté serveur
+ * ✅ MISE À JOUR: Utilise la nouvelle architecture Sentry
  * @returns {Promise<Array>} Liste des articles ou tableau vide en cas d'erreur
  */
 async function getArticlesFromDatabase() {
@@ -39,7 +41,7 @@ async function getArticlesFromDatabase() {
     operation: 'fetch_articles',
   });
 
-  // Capturer le début du processus de récupération des articles
+  // ✅ NOUVEAU: Utilisation des fonctions Sentry adaptées
   captureMessage('Articles fetch process started from Server Component', {
     level: 'info',
     tags: {
@@ -86,7 +88,7 @@ async function getArticlesFromDatabase() {
         entity: 'article',
       });
 
-      // Capturer le succès du cache avec Sentry
+      // ✅ NOUVEAU: captureMessage adapté pour Server Components
       captureMessage(
         'Articles served from cache successfully (Server Component)',
         {
@@ -150,7 +152,7 @@ async function getArticlesFromDatabase() {
         },
       );
 
-      // Capturer l'erreur de connexion DB avec Sentry
+      // ✅ NOUVEAU: captureDatabaseError adapté pour Server Components
       captureDatabaseError(dbConnectionError, {
         tags: {
           component: 'blog_server_component',
@@ -215,7 +217,7 @@ async function getArticlesFromDatabase() {
         operation: 'fetch_articles',
       });
 
-      // Capturer l'erreur de requête avec Sentry
+      // ✅ NOUVEAU: captureDatabaseError avec contexte spécifique
       captureDatabaseError(queryError, {
         tags: {
           component: 'blog_server_component',
@@ -251,6 +253,7 @@ async function getArticlesFromDatabase() {
         },
       );
 
+      // ✅ NOUVEAU: captureMessage pour les problèmes de structure de données
       captureMessage(
         'Articles query returned invalid data structure (Server Component)',
         {
@@ -353,7 +356,7 @@ async function getArticlesFromDatabase() {
       execution_context: 'server_component',
     });
 
-    // Capturer le succès de la récupération avec Sentry
+    // ✅ NOUVEAU: captureMessage de succès
     captureMessage('Articles fetch completed successfully (Server Component)', {
       level: 'info',
       tags: {
@@ -398,7 +401,7 @@ async function getArticlesFromDatabase() {
       execution_context: 'server_component',
     });
 
-    // Capturer l'erreur globale avec Sentry
+    // ✅ NOUVEAU: captureException adapté pour Server Components
     captureException(error, {
       level: 'error',
       tags: {
@@ -430,6 +433,7 @@ async function getArticlesFromDatabase() {
 
 /**
  * Fonction pour vérifier l'authentification côté serveur
+ * ✅ MISE À JOUR: Utilise la nouvelle architecture Sentry
  * @returns {Promise<Object|null>} Session utilisateur ou null si non authentifié
  */
 async function checkAuthentication() {
@@ -443,13 +447,14 @@ async function checkAuthentication() {
         timestamp: new Date().toISOString(),
       });
 
-      // Capturer la tentative d'accès non authentifiée
+      // ✅ NOUVEAU: captureMessage pour tentative d'accès non authentifiée
       captureMessage('Unauthenticated access attempt to blog page', {
         level: 'warning',
         tags: {
           component: 'blog_server_component',
           action: 'auth_check_failed',
           error_category: 'authentication',
+          execution_context: 'server_component',
         },
         extra: {
           timestamp: new Date().toISOString(),
@@ -478,12 +483,14 @@ async function checkAuthentication() {
       action: 'auth_check_error',
     });
 
+    // ✅ NOUVEAU: captureException pour erreurs d'authentification
     captureException(error, {
       level: 'error',
       tags: {
         component: 'blog_server_component',
         action: 'auth_check_error',
         error_category: 'authentication',
+        execution_context: 'server_component',
       },
       extra: {
         errorMessage: error.message,
@@ -496,9 +503,9 @@ async function checkAuthentication() {
 
 /**
  * Server Component principal pour la page des articles
- * Cette fonction s'exécute côté serveur et remplace l'appel API
+ * ✅ NOUVEAU: Wrappé avec monitoring automatique
  */
-const BlogPage = async () => {
+const BlogPageComponent = async () => {
   try {
     // ===== ÉTAPE 1: VÉRIFICATION AUTHENTIFICATION =====
     const session = await checkAuthentication();
@@ -531,13 +538,14 @@ const BlogPage = async () => {
       action: 'page_error',
     });
 
-    captureException(error, {
-      level: 'error',
+    // ✅ NOUVEAU: captureServerComponentError pour erreurs de rendu
+    captureServerComponentError(error, {
+      componentName: 'BlogPage',
+      route: '/dashboard/blog',
+      action: 'page_render',
       tags: {
-        component: 'blog_server_component',
-        action: 'page_error',
-        error_category: 'page_rendering',
         critical: 'true',
+        page_type: 'dashboard',
       },
       extra: {
         errorMessage: error.message,
@@ -550,5 +558,8 @@ const BlogPage = async () => {
     return <ListArticles data={[]} />;
   }
 };
+
+// ✅ NOUVEAU: Export du composant avec monitoring automatique
+const BlogPage = withServerComponentMonitoring(BlogPageComponent, 'BlogPage');
 
 export default BlogPage;
