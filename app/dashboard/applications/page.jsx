@@ -175,10 +175,7 @@ async function getApplicationsFromDatabase() {
     }));
 
     // Mise en cache et logging de succès...
-    const cacheSuccess = dashboardCache.applications.set(
-      cacheKey,
-      sanitizedApplications,
-    );
+    dashboardCache.applications.set(cacheKey, sanitizedApplications);
     const responseTime = Date.now() - startTime;
 
     logger.info('Applications fetch successful (Server Component)', {
