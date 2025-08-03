@@ -66,8 +66,6 @@ function validateAndSanitizeFilters(filters = {}) {
         'Server Action: Tentative de filtrage avec champ non autorisé',
         {
           field: key,
-          component: 'orders_server_action',
-          action: 'filter_validation_failed',
           security_event: true,
         },
       );
@@ -173,10 +171,6 @@ async function authenticateServerAction(context = {}) {
     if (!session || !session.user) {
       logger.warn("Server Action: Tentative d'accès non authentifiée", {
         requestId,
-        component: 'orders_server_action',
-        action: 'auth_check_failed',
-        timestamp: new Date().toISOString(),
-        context: context.userAgent || 'server_action',
       });
 
       captureMessage('Unauthenticated access attempt to Server Action', {
@@ -204,9 +198,6 @@ async function authenticateServerAction(context = {}) {
         requestId,
         hasUserId: !!session.user.id,
         hasUserEmail: !!session.user.email,
-        component: 'orders_server_action',
-        action: 'invalid_session',
-        context,
       });
 
       throw new Error('Invalid user session');
@@ -219,9 +210,6 @@ async function authenticateServerAction(context = {}) {
       {
         error: error.message,
         requestId,
-        component: 'orders_server_action',
-        action: 'auth_check_error',
-        context,
       },
     );
 
@@ -269,14 +257,10 @@ export async function updateOrderPaymentStatus(orderId, newStatus) {
     requestId = authRequestId;
 
     logger.info('Server Action: Mise à jour statut commande démarrée', {
-      timestamp: new Date().toISOString(),
       requestId,
       userId: session.user.id,
       orderId,
       newStatus,
-      component: 'orders_server_action',
-      action: 'status_update_start',
-      method: 'SERVER_ACTION',
     });
 
     captureMessage('Order status update process started from Server Action', {
@@ -307,8 +291,6 @@ export async function updateOrderPaymentStatus(orderId, newStatus) {
           userId: session.user.id,
           orderId: !!orderId,
           newStatus: !!newStatus,
-          component: 'orders_server_action',
-          action: 'invalid_parameters',
         },
       );
 
@@ -323,9 +305,6 @@ export async function updateOrderPaymentStatus(orderId, newStatus) {
         userId: session.user.id,
         orderId,
         invalidStatus: newStatus,
-        allowedStatuses,
-        component: 'orders_server_action',
-        action: 'invalid_status',
       });
 
       throw new Error(`Invalid payment status: ${newStatus}`);
@@ -339,8 +318,6 @@ export async function updateOrderPaymentStatus(orderId, newStatus) {
         requestId,
         userId: session.user.id,
         orderId,
-        component: 'orders_server_action',
-        action: 'invalid_order_id',
       });
 
       throw new Error(`Invalid order ID: ${orderId}`);
@@ -357,8 +334,6 @@ export async function updateOrderPaymentStatus(orderId, newStatus) {
         message: dbConnectionError.message,
         requestId,
         userId: session.user.id,
-        component: 'orders_server_action',
-        action: 'db_connection_failed',
       });
 
       captureDatabaseError(dbConnectionError, {
@@ -397,8 +372,6 @@ export async function updateOrderPaymentStatus(orderId, newStatus) {
           requestId,
           userId: session.user.id,
           orderId,
-          component: 'orders_server_action',
-          action: 'order_not_found',
         });
 
         throw new Error(`Order #${orderId} not found`);
@@ -416,8 +389,6 @@ export async function updateOrderPaymentStatus(orderId, newStatus) {
           requestId,
           userId: session.user.id,
           orderId,
-          component: 'orders_server_action',
-          action: 'order_check_failed',
         },
       );
 
@@ -464,8 +435,6 @@ export async function updateOrderPaymentStatus(orderId, newStatus) {
           userId: session.user.id,
           orderId,
           newStatus,
-          component: 'orders_server_action',
-          action: 'update_failed',
         });
 
         throw new Error('Failed to update order status');
@@ -479,9 +448,6 @@ export async function updateOrderPaymentStatus(orderId, newStatus) {
         orderId,
         oldStatus: currentOrder.order_payment_status,
         newStatus: updatedOrder.order_payment_status,
-        updatedAt: updatedOrder.order_updated,
-        component: 'orders_server_action',
-        action: 'update_success',
       });
 
       // ===== ÉTAPE 6: INVALIDATION DU CACHE =====
@@ -547,8 +513,6 @@ export async function updateOrderPaymentStatus(orderId, newStatus) {
         userId: session.user.id,
         orderId,
         newStatus,
-        component: 'orders_server_action',
-        action: 'update_query_failed',
       });
 
       captureDatabaseError(updateError, {
@@ -583,18 +547,10 @@ export async function updateOrderPaymentStatus(orderId, newStatus) {
       {
         category: errorCategory,
         response_time_ms: responseTime,
-        reached_global_handler: true,
-        error_name: error.name,
         error_message: error.message,
-        stack_available: !!error.stack,
         requestId: requestId || 'unknown',
         orderId,
         newStatus,
-        component: 'orders_server_action',
-        action: 'global_error_handler_update',
-        entity: 'order',
-        data_type: 'financial',
-        execution_context: 'server_action',
       },
     );
 
@@ -665,20 +621,14 @@ export async function getFilteredOrders(filters = {}) {
       logger.warn('Server Action: Rate limit dépassé', {
         requestId,
         userId: session.user.id,
-        component: 'orders_server_action',
-        action: 'rate_limit_exceeded',
       });
 
       throw new Error('Too many requests. Please try again later.');
     }
 
     logger.info('Server Action: Processus de filtrage des commandes démarré', {
-      timestamp: new Date().toISOString(),
       requestId,
       userId: session.user.id,
-      component: 'orders_server_action',
-      action: 'filter_start',
-      method: 'SERVER_ACTION',
       filtersCount: Object.keys(filters).length,
     });
 
@@ -703,15 +653,6 @@ export async function getFilteredOrders(filters = {}) {
     // ===== ÉTAPE 3: VALIDATION ET ASSAINISSEMENT DES FILTRES =====
     const validatedFilters = validateAndSanitizeFilters(filters);
 
-    logger.debug('Server Action: Filtres validés et nettoyés', {
-      requestId,
-      component: 'orders_server_action',
-      action: 'filters_validated',
-      originalFiltersCount: Object.keys(filters).length,
-      validatedFiltersCount: Object.keys(validatedFilters).length,
-      validatedFilters: validatedFilters,
-    });
-
     // ===== ÉTAPE 4: VÉRIFICATION DU CACHE AVEC CLÉ DYNAMIQUE =====
     const cacheKey = generateFilterCacheKey(validatedFilters);
 
@@ -724,12 +665,8 @@ export async function getFilteredOrders(filters = {}) {
         orderCount: cachedOrders.orders.length,
         totalCount: cachedOrders.totalOrders,
         response_time_ms: responseTime,
-        cache_hit: true,
         requestId,
         userId: session.user.id,
-        component: 'orders_server_action',
-        action: 'cache_hit',
-        entity: 'order',
       });
 
       captureMessage(
@@ -766,11 +703,8 @@ export async function getFilteredOrders(filters = {}) {
       logger.error('Server Action: Erreur de connexion base de données', {
         category: errorCategory,
         message: dbConnectionError.message,
-        timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
         requestId,
         userId: session.user.id,
-        component: 'orders_server_action',
-        action: 'db_connection_failed',
       });
 
       captureDatabaseError(dbConnectionError, {
@@ -832,16 +766,6 @@ export async function getFilteredOrders(filters = {}) {
         ${whereClause}
       `;
 
-      logger.debug('Server Action: Exécution de la requête commandes', {
-        requestId,
-        component: 'orders_server_action',
-        action: 'query_start',
-        table: 'admin.orders',
-        operation: 'SELECT_WITH_JOIN',
-        whereConditions: whereClause ? 'WITH_FILTERS' : 'NO_FILTERS',
-        parametersCount: values.length,
-      });
-
       // Exécution avec timeout intégré
       const queryPromise = Promise.all([
         client.query(mainQuery, values),
@@ -858,42 +782,22 @@ export async function getFilteredOrders(filters = {}) {
 
       const queryTime = Date.now() - queryStartTime;
 
-      logger.debug('Server Action: Requête commandes exécutée avec succès', {
-        requestId,
-        component: 'orders_server_action',
-        action: 'query_success',
-        ordersCount: ordersResult.rows.length,
-        totalCount: countResult.rows[0]?.total || 0,
-        queryTime_ms: queryTime,
-        table: 'admin.orders',
-      });
-
       // Log des requêtes lentes
       if (queryTime > 2000) {
         logger.warn('Server Action: Requête lente détectée', {
           requestId,
           queryTime_ms: queryTime,
-          filters: validatedFilters,
           rowCount: ordersResult.rows.length,
-          component: 'orders_server_action',
-          action: 'slow_query_detected',
         });
       }
     } catch (queryError) {
       const errorCategory = categorizeError(queryError);
-      const queryTime = Date.now() - queryStartTime;
 
       logger.error("Server Action: Erreur lors de l'exécution de la requête", {
         category: errorCategory,
         message: queryError.message,
-        queryTime_ms: queryTime,
-        query: 'orders_filtered_fetch',
-        table: 'admin.orders',
-        parametersCount: values.length,
         requestId,
         userId: session.user.id,
-        component: 'orders_server_action',
-        action: 'query_failed',
       });
 
       captureDatabaseError(queryError, {
@@ -911,7 +815,6 @@ export async function getFilteredOrders(filters = {}) {
           table: 'admin.orders',
           queryType: 'orders_filtered_fetch',
           postgresCode: queryError.code,
-          queryTimeMs: queryTime,
           filters: validatedFilters,
           parametersCount: values.length,
         },
@@ -927,12 +830,7 @@ export async function getFilteredOrders(filters = {}) {
         'Server Action: Structure de données invalide retournée par la requête',
         {
           requestId,
-          component: 'orders_server_action',
-          action: 'invalid_data_structure',
           resultType: typeof ordersResult,
-          hasRows: !!ordersResult?.rows,
-          isArray: Array.isArray(ordersResult?.rows),
-          filters: validatedFilters,
         },
       );
 
@@ -964,8 +862,6 @@ export async function getFilteredOrders(filters = {}) {
     }
 
     // ===== ÉTAPE 9: NETTOYAGE ET FORMATAGE SÉCURISÉ DES DONNÉES =====
-    const sanitizeStartTime = Date.now();
-
     const orders = ordersResult.rows;
     const total = parseInt(countResult.rows[0].total);
 
@@ -997,17 +893,6 @@ export async function getFilteredOrders(filters = {}) {
         : [],
     }));
 
-    const sanitizeTime = Date.now() - sanitizeStartTime;
-
-    logger.debug('Server Action: Données commandes nettoyées et formatées', {
-      requestId,
-      component: 'orders_server_action',
-      action: 'data_sanitization',
-      originalCount: orders.length,
-      sanitizedCount: sanitizedOrders.length,
-      sanitizeTime_ms: sanitizeTime,
-    });
-
     // ===== ÉTAPE 10: FORMATAGE DE LA RÉPONSE =====
     const response = {
       orders: sanitizedOrders,
@@ -1015,56 +900,26 @@ export async function getFilteredOrders(filters = {}) {
     };
 
     // ===== ÉTAPE 11: MISE EN CACHE INTELLIGENTE =====
-    const cacheStartTime = Date.now();
-
     const cacheSuccess = dashboardCache.orders?.set(cacheKey, response);
-    const cacheTime = Date.now() - cacheStartTime;
 
-    if (cacheSuccess) {
-      logger.debug(
-        'Server Action: Données commandes mises en cache avec succès',
-        {
-          requestId,
-          component: 'orders_server_action',
-          action: 'cache_set_success',
-          cacheTime_ms: cacheTime,
-          cacheKey: cacheKey.substring(0, 50),
-        },
-      );
-    } else {
+    if (!cacheSuccess) {
       logger.warn(
         'Server Action: Échec de la mise en cache des données commandes',
         {
           requestId,
-          component: 'orders_server_action',
-          action: 'cache_set_failed',
-          cacheKey: cacheKey.substring(0, 50),
         },
       );
     }
 
     // ===== ÉTAPE 12: LOGGING DE SUCCÈS ET MÉTRIQUES =====
     const responseTime = Date.now() - startTime;
-    const databaseOperations = cacheSuccess ? 3 : 2; // connection + query + cache
 
     logger.info('Server Action: Filtrage commandes terminé avec succès', {
       orderCount: sanitizedOrders.length,
       totalCount: total,
       response_time_ms: responseTime,
-      query_time_ms: Date.now() - queryStartTime,
-      sanitize_time_ms: sanitizeTime,
-      cache_time_ms: cacheTime,
-      database_operations: databaseOperations,
-      success: true,
       requestId,
       userId: session.user.id,
-      component: 'orders_server_action',
-      action: 'filter_success',
-      entity: 'order',
-      cacheMiss: true,
-      cacheSet: cacheSuccess,
-      execution_context: 'server_action',
-      filters_applied: validatedFilters,
     });
 
     captureMessage('Orders filtering completed successfully (Server Action)', {
@@ -1084,14 +939,10 @@ export async function getFilteredOrders(filters = {}) {
         totalCount: total,
         responseTimeMs: responseTime,
         queryTimeMs: Date.now() - queryStartTime,
-        databaseOperations,
+        databaseOperations: cacheSuccess ? 3 : 2,
         cacheMiss: true,
         cacheSet: cacheSuccess,
         filtersApplied: validatedFilters,
-        performanceMetrics: {
-          sanitizeTimeMs: sanitizeTime,
-          cacheTimeMs: cacheTime,
-        },
       },
     });
 
@@ -1108,17 +959,8 @@ export async function getFilteredOrders(filters = {}) {
       {
         category: errorCategory,
         response_time_ms: responseTime,
-        reached_global_handler: true,
-        error_name: error.name,
         error_message: error.message,
-        stack_available: !!error.stack,
         requestId: requestId || 'unknown',
-        component: 'orders_server_action',
-        action: 'global_error_handler',
-        entity: 'order',
-        data_type: 'financial',
-        execution_context: 'server_action',
-        filters: filters,
       },
     );
 
@@ -1171,8 +1013,6 @@ export async function invalidateOrdersCache(orderId = null) {
       requestId,
       userId: session.user.id,
       orderId,
-      component: 'orders_server_action',
-      action: 'cache_invalidation_start',
     });
 
     const invalidatedCount = invalidateDashboardCache('order', orderId);
@@ -1182,8 +1022,6 @@ export async function invalidateOrdersCache(orderId = null) {
       userId: session.user.id,
       orderId,
       invalidatedCount,
-      component: 'orders_server_action',
-      action: 'cache_invalidation_success',
     });
 
     return true;
@@ -1191,8 +1029,6 @@ export async function invalidateOrdersCache(orderId = null) {
     logger.error("Server Action: Erreur lors de l'invalidation du cache", {
       error: error.message,
       orderId,
-      component: 'orders_server_action',
-      action: 'cache_invalidation_failed',
     });
 
     return false;

@@ -10,17 +10,9 @@ import {
   captureServerComponentError,
   withServerComponentMonitoring,
 } from '@/monitoring/sentry';
-import {
-  categorizeError,
-  generateRequestId,
-  // anonymizeIp,
-} from '@/utils/helpers';
+import { categorizeError, generateRequestId } from '@/utils/helpers';
 import logger from '@/utils/logger';
-import {
-  dashboardCache,
-  getDashboardCacheKey,
-  // invalidateDashboardCache,
-} from '@/utils/cache';
+import { dashboardCache, getDashboardCacheKey } from '@/utils/cache';
 
 // Configuration de revalidation pour cette page
 export const revalidate = 0; // Désactive le cache statique
@@ -74,13 +66,8 @@ async function getOrderFromDatabase(orderId) {
   const startTime = Date.now();
   const requestId = generateRequestId();
 
-  logger.info('Order by ID fetch process started (Server Component)', {
-    timestamp: new Date().toISOString(),
+  logger.info('Order by ID fetch process started', {
     requestId,
-    component: 'order_by_id_server_component',
-    action: 'fetch_start',
-    method: 'SERVER_COMPONENT',
-    operation: 'get_order_by_id',
     orderId: orderId || 'missing',
   });
 
@@ -105,21 +92,9 @@ async function getOrderFromDatabase(orderId) {
 
   try {
     // ===== ÉTAPE 1: VALIDATION DE L'ID =====
-    logger.debug('Validating order ID (Server Component)', {
-      requestId,
-      component: 'order_by_id_server_component',
-      action: 'id_validation_start',
-      operation: 'get_order_by_id',
-      providedId: orderId || 'missing',
-    });
-
     if (!orderId) {
-      logger.warn('Order ID parameter missing (Server Component)', {
+      logger.warn('Order ID parameter missing', {
         requestId,
-        component: 'order_by_id_server_component',
-        action: 'id_validation_failed',
-        reason: 'missing_parameter',
-        operation: 'get_order_by_id',
       });
 
       // ✅ NOUVEAU: captureMessage pour les problèmes de validation
@@ -147,13 +122,9 @@ async function getOrderFromDatabase(orderId) {
     // Nettoyer l'UUID pour garantir le format correct
     const cleanedOrderId = cleanOrderUUID(orderId);
     if (!cleanedOrderId) {
-      logger.warn('Order ID format invalid (Server Component)', {
+      logger.warn('Order ID format invalid', {
         requestId,
-        component: 'order_by_id_server_component',
-        action: 'id_validation_failed',
-        reason: 'invalid_uuid_format',
-        operation: 'get_order_by_id',
-        providedId: orderId.substring(0, 10), // Tronquer pour les logs
+        providedId: orderId.substring(0, 10),
       });
 
       // ✅ NOUVEAU: captureMessage pour les problèmes de validation
@@ -179,28 +150,11 @@ async function getOrderFromDatabase(orderId) {
       return null;
     }
 
-    logger.debug('Order ID validation and cleaning passed (Server Component)', {
-      requestId,
-      component: 'order_by_id_server_component',
-      action: 'id_validation_success',
-      operation: 'get_order_by_id',
-      originalId: orderId.substring(0, 10),
-      cleanedId: cleanedOrderId.substring(0, 10),
-    });
-
     // ===== ÉTAPE 2: VÉRIFICATION DU CACHE =====
     const cacheKey = getDashboardCacheKey('single_order', {
       endpoint: 'server_component_order_by_id',
       orderId: cleanedOrderId,
       version: '1.0',
-    });
-
-    logger.debug('Checking cache for order by ID (Server Component)', {
-      requestId,
-      component: 'order_by_id_server_component',
-      action: 'cache_check_start',
-      cacheKey: cacheKey.substring(0, 50), // Tronquer pour les logs
-      orderId: cleanedOrderId.substring(0, 8),
     });
 
     // Vérifier si les données sont en cache
@@ -209,16 +163,11 @@ async function getOrderFromDatabase(orderId) {
     if (cachedOrder) {
       const responseTime = Date.now() - startTime;
 
-      logger.info('Order served from cache (Server Component)', {
+      logger.info('Order served from cache', {
         orderId: cleanedOrderId.substring(0, 8),
         paymentStatus: cachedOrder.order_payment_status,
         response_time_ms: responseTime,
-        cache_hit: true,
         requestId,
-        component: 'order_by_id_server_component',
-        action: 'cache_hit',
-        entity: 'order',
-        data_type: 'financial',
       });
 
       // ✅ NOUVEAU: captureMessage adapté pour Server Components
@@ -248,41 +197,18 @@ async function getOrderFromDatabase(orderId) {
       return cachedOrder;
     }
 
-    logger.debug('Cache miss, fetching from database (Server Component)', {
-      requestId,
-      component: 'order_by_id_server_component',
-      action: 'cache_miss',
-      orderId: cleanedOrderId.substring(0, 8),
-    });
-
     // ===== ÉTAPE 3: CONNEXION BASE DE DONNÉES =====
     try {
       client = await getClient();
-      logger.debug('Database connection successful (Server Component)', {
-        requestId,
-        component: 'order_by_id_server_component',
-        action: 'db_connection_success',
-        operation: 'get_order_by_id',
-        orderId: cleanedOrderId.substring(0, 8),
-      });
     } catch (dbConnectionError) {
       const errorCategory = categorizeError(dbConnectionError);
 
-      logger.error(
-        'Database Connection Error during order fetch by ID (Server Component)',
-        {
-          category: errorCategory,
-          message: dbConnectionError.message,
-          timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
-          requestId,
-          component: 'order_by_id_server_component',
-          action: 'db_connection_failed',
-          operation: 'get_order_by_id',
-          entity: 'order',
-          data_type: 'financial',
-          orderId: cleanedOrderId.substring(0, 8),
-        },
-      );
+      logger.error('Database Connection Error during order fetch by ID', {
+        category: errorCategory,
+        message: dbConnectionError.message,
+        requestId,
+        orderId: cleanedOrderId.substring(0, 8),
+      });
 
       // ✅ NOUVEAU: captureDatabaseError adapté pour Server Components
       captureDatabaseError(dbConnectionError, {
@@ -346,45 +272,15 @@ async function getOrderFromDatabase(orderId) {
         WHERE o.order_id = $1
       `;
 
-      logger.debug('Executing order fetch by ID query (Server Component)', {
-        requestId,
-        component: 'order_by_id_server_component',
-        action: 'query_start',
-        operation: 'get_order_by_id',
-        orderId: cleanedOrderId.substring(0, 8),
-        table: 'admin.orders',
-        operation_type: 'SELECT_WITH_JOINS',
-      });
-
       orderResult = await client.query(orderQuery, [cleanedOrderId]);
-
-      logger.debug(
-        'Order fetch by ID query executed successfully (Server Component)',
-        {
-          requestId,
-          component: 'order_by_id_server_component',
-          action: 'query_success',
-          operation: 'get_order_by_id',
-          orderId: cleanedOrderId.substring(0, 8),
-          found: orderResult.rows.length > 0,
-          table: 'admin.orders',
-        },
-      );
     } catch (queryError) {
       const errorCategory = categorizeError(queryError);
 
-      logger.error('Order Fetch By ID Query Error (Server Component)', {
+      logger.error('Order Fetch By ID Query Error', {
         category: errorCategory,
         message: queryError.message,
-        query: 'order_fetch_by_id_with_relations',
-        table: 'admin.orders',
         orderId: cleanedOrderId.substring(0, 8),
         requestId,
-        component: 'order_by_id_server_component',
-        action: 'query_failed',
-        operation: 'get_order_by_id',
-        entity: 'order',
-        data_type: 'financial',
       });
 
       // ✅ NOUVEAU: captureDatabaseError avec contexte spécifique
@@ -413,11 +309,8 @@ async function getOrderFromDatabase(orderId) {
 
     // ===== ÉTAPE 5: VÉRIFICATION EXISTENCE DE LA COMMANDE =====
     if (orderResult.rows.length === 0) {
-      logger.warn('Order not found (Server Component)', {
+      logger.warn('Order not found', {
         requestId,
-        component: 'order_by_id_server_component',
-        action: 'order_not_found',
-        operation: 'get_order_by_id',
         orderId: cleanedOrderId.substring(0, 8),
       });
 
@@ -460,10 +353,8 @@ async function getOrderFromDatabase(orderId) {
         };
       }
     } catch (clientParseError) {
-      logger.warn('Failed to parse client data (Server Component)', {
+      logger.warn('Failed to parse client data', {
         requestId,
-        component: 'order_by_id_server_component',
-        action: 'client_parse_error',
         error: clientParseError.message,
         orderId: cleanedOrderId.substring(0, 8),
       });
@@ -527,41 +418,13 @@ async function getOrderFromDatabase(orderId) {
       },
     };
 
-    logger.debug('Order data sanitized (Server Component)', {
-      requestId,
-      component: 'order_by_id_server_component',
-      action: 'data_sanitization',
-      operation: 'get_order_by_id',
-      orderId: cleanedOrderId.substring(0, 8),
-      hasClientData: !!clientInfo,
-      paymentStatus: orderData.order_payment_status,
-    });
-
     // ===== ÉTAPE 7: MISE EN CACHE DES DONNÉES =====
-    logger.debug('Caching order data (Server Component)', {
-      requestId,
-      component: 'order_by_id_server_component',
-      action: 'cache_set_start',
-      orderId: cleanedOrderId.substring(0, 8),
-    });
-
     // Mettre les données en cache (TTL court pour données financières)
     const cacheSuccess = dashboardCache.orders.set(cacheKey, sanitizedOrder);
 
-    if (cacheSuccess) {
-      logger.debug('Order data cached successfully (Server Component)', {
+    if (!cacheSuccess) {
+      logger.warn('Failed to cache order data', {
         requestId,
-        component: 'order_by_id_server_component',
-        action: 'cache_set_success',
-        cacheKey: cacheKey.substring(0, 50),
-        orderId: cleanedOrderId.substring(0, 8),
-      });
-    } else {
-      logger.warn('Failed to cache order data (Server Component)', {
-        requestId,
-        component: 'order_by_id_server_component',
-        action: 'cache_set_failed',
-        cacheKey: cacheKey.substring(0, 50),
         orderId: cleanedOrderId.substring(0, 8),
       });
     }
@@ -569,23 +432,12 @@ async function getOrderFromDatabase(orderId) {
     // ===== ÉTAPE 8: SUCCÈS - LOG ET NETTOYAGE =====
     const responseTime = Date.now() - startTime;
 
-    logger.info('Order fetch by ID successful (Server Component)', {
+    logger.info('Order fetch by ID successful', {
       orderId: cleanedOrderId.substring(0, 8),
       paymentStatus: sanitizedOrder.order_payment_status,
       orderPrice: sanitizedOrder.order_price,
       response_time_ms: responseTime,
-      database_operations: 2, // connection + query
-      success: true,
       requestId,
-      component: 'order_by_id_server_component',
-      action: 'fetch_by_id_success',
-      entity: 'order',
-      data_type: 'financial',
-      cacheMiss: true,
-      cacheSet: cacheSuccess,
-      execution_context: 'server_component',
-      operation: 'get_order_by_id',
-      validationApplied: true,
     });
 
     // ✅ NOUVEAU: captureMessage de succès
@@ -623,21 +475,12 @@ async function getOrderFromDatabase(orderId) {
     const errorCategory = categorizeError(error);
     const responseTime = Date.now() - startTime;
 
-    logger.error('Global Order By ID Error (Server Component)', {
+    logger.error('Global Order By ID Error', {
       category: errorCategory,
       response_time_ms: responseTime,
-      reached_global_handler: true,
-      error_name: error.name,
       error_message: error.message,
-      stack_available: !!error.stack,
       requestId,
       orderId: orderId ? orderId.substring(0, 8) : 'unknown',
-      component: 'order_by_id_server_component',
-      action: 'global_error_handler',
-      entity: 'order',
-      data_type: 'financial',
-      operation: 'get_order_by_id',
-      execution_context: 'server_component',
     });
 
     // ✅ NOUVEAU: captureException adapté pour Server Components
@@ -681,11 +524,7 @@ async function checkAuthentication() {
     const session = await getServerSession(auth);
 
     if (!session) {
-      logger.warn('Unauthenticated access attempt to order edit page', {
-        component: 'order_by_id_server_component',
-        action: 'auth_check_failed',
-        timestamp: new Date().toISOString(),
-      });
+      logger.warn('Unauthenticated access attempt to order edit page');
 
       // ✅ NOUVEAU: captureMessage pour tentative d'accès non authentifiée
       captureMessage('Unauthenticated access attempt to order edit page', {
@@ -705,22 +544,10 @@ async function checkAuthentication() {
       return null;
     }
 
-    logger.debug(
-      'User authentication verified successfully (Server Component)',
-      {
-        userId: session.user?.id,
-        email: session.user?.email?.substring(0, 3) + '***',
-        component: 'order_by_id_server_component',
-        action: 'auth_verification_success',
-      },
-    );
-
     return session;
   } catch (error) {
-    logger.error('Authentication check error (Server Component)', {
+    logger.error('Authentication check error', {
       error: error.message,
-      component: 'order_by_id_server_component',
-      action: 'auth_check_error',
     });
 
     // ✅ NOUVEAU: captureException pour erreurs d'authentification
@@ -768,24 +595,18 @@ const EditOrderPageComponent = async ({ params }) => {
     }
 
     // ===== ÉTAPE 4: RENDU DE LA PAGE =====
-    logger.info('Order edit page rendering (Server Component)', {
+    logger.info('Order edit page rendering', {
       orderId: order.order_id.substring(0, 8),
       paymentStatus: order.order_payment_status,
       orderPrice: order.order_price,
       userId: session.user?.id,
-      component: 'order_by_id_server_component',
-      action: 'page_render',
-      timestamp: new Date().toISOString(),
     });
 
     return <EditOrder order={order} />;
   } catch (error) {
     // Gestion des erreurs au niveau de la page
-    logger.error('Order edit page error (Server Component)', {
+    logger.error('Order edit page error', {
       error: error.message,
-      stack: error.stack,
-      component: 'order_by_id_server_component',
-      action: 'page_error',
     });
 
     // ✅ NOUVEAU: captureServerComponentError pour erreurs de rendu

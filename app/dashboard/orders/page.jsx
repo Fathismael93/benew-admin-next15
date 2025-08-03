@@ -10,17 +10,9 @@ import {
   captureServerComponentError,
   withServerComponentMonitoring,
 } from '@/monitoring/sentry';
-import {
-  categorizeError,
-  generateRequestId,
-  // anonymizeIp,
-} from '@/utils/helpers';
+import { categorizeError, generateRequestId } from '@/utils/helpers';
 import logger from '@/utils/logger';
-import {
-  dashboardCache,
-  getDashboardCacheKey,
-  // invalidateDashboardCache,
-} from '@/utils/cache';
+import { dashboardCache, getDashboardCacheKey } from '@/utils/cache';
 
 // Configuration de revalidation pour cette page
 export const revalidate = 0; // Désactive le cache statique
@@ -36,12 +28,8 @@ async function getOrdersFromDatabase() {
   const startTime = Date.now();
   const requestId = generateRequestId();
 
-  logger.info('Orders fetch process started (Server Component)', {
-    timestamp: new Date().toISOString(),
+  logger.info('Orders fetch process started', {
     requestId,
-    component: 'orders_server_component',
-    action: 'fetch_start',
-    method: 'SERVER_COMPONENT',
   });
 
   // ✅ NOUVEAU: Utilisation des fonctions Sentry adaptées
@@ -69,29 +57,17 @@ async function getOrdersFromDatabase() {
       version: '1.0',
     });
 
-    logger.debug('Checking cache for orders (Server Component)', {
-      requestId,
-      component: 'orders_server_component',
-      action: 'cache_check_start',
-      cacheKey: cacheKey.substring(0, 50), // Tronquer pour les logs
-    });
-
     // Vérifier si les données sont en cache
     const cachedOrders = dashboardCache.orders.get(cacheKey);
 
     if (cachedOrders) {
       const responseTime = Date.now() - startTime;
 
-      logger.info('Orders served from cache (Server Component)', {
+      logger.info('Orders served from cache', {
         orderCount: cachedOrders.orders?.length || 0,
         totalCount: cachedOrders.totalOrders || 0,
         response_time_ms: responseTime,
-        cache_hit: true,
         requestId,
-        component: 'orders_server_component',
-        action: 'cache_hit',
-        entity: 'order',
-        data_type: 'financial',
       });
 
       // ✅ NOUVEAU: captureMessage adapté pour Server Components
@@ -120,36 +96,17 @@ async function getOrdersFromDatabase() {
       return cachedOrders;
     }
 
-    logger.debug('Cache miss, fetching from database (Server Component)', {
-      requestId,
-      component: 'orders_server_component',
-      action: 'cache_miss',
-    });
-
     // ===== ÉTAPE 2: CONNEXION BASE DE DONNÉES =====
     try {
       client = await getClient();
-      logger.debug('Database connection successful (Server Component)', {
-        requestId,
-        component: 'orders_server_component',
-        action: 'db_connection_success',
-      });
     } catch (dbConnectionError) {
       const errorCategory = categorizeError(dbConnectionError);
 
-      logger.error(
-        'Database Connection Error during orders fetch (Server Component)',
-        {
-          category: errorCategory,
-          message: dbConnectionError.message,
-          timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
-          requestId,
-          component: 'orders_server_component',
-          action: 'db_connection_failed',
-          entity: 'order',
-          data_type: 'financial',
-        },
-      );
+      logger.error('Database Connection Error during orders fetch', {
+        category: errorCategory,
+        message: dbConnectionError.message,
+        requestId,
+      });
 
       // ✅ NOUVEAU: captureDatabaseError adapté pour Server Components
       captureDatabaseError(dbConnectionError, {
@@ -201,41 +158,18 @@ async function getOrdersFromDatabase() {
         JOIN catalog.applications ON admin.orders.order_application_id = catalog.applications.application_id
       `;
 
-      logger.debug('Executing orders queries (Server Component)', {
-        requestId,
-        component: 'orders_server_component',
-        action: 'query_start',
-        table: 'admin.orders',
-        operation: 'SELECT_WITH_JOIN',
-      });
-
       // Exécuter les requêtes en parallèle
       [ordersResult, countResult] = await Promise.all([
         client.query(mainQuery),
         client.query(countQuery),
       ]);
-
-      logger.debug('Orders queries executed successfully (Server Component)', {
-        requestId,
-        component: 'orders_server_component',
-        action: 'query_success',
-        ordersCount: ordersResult.rows.length,
-        totalCount: countResult.rows[0]?.total || 0,
-        table: 'admin.orders',
-      });
     } catch (queryError) {
       const errorCategory = categorizeError(queryError);
 
-      logger.error('Orders Query Error (Server Component)', {
+      logger.error('Orders Query Error', {
         category: errorCategory,
         message: queryError.message,
-        query: 'orders_fetch_with_relations',
-        table: 'admin.orders',
         requestId,
-        component: 'orders_server_component',
-        action: 'query_failed',
-        entity: 'order',
-        data_type: 'financial',
       });
 
       // ✅ NOUVEAU: captureDatabaseError avec contexte spécifique
@@ -263,17 +197,10 @@ async function getOrdersFromDatabase() {
 
     // ===== ÉTAPE 4: VALIDATION DES DONNÉES =====
     if (!ordersResult || !Array.isArray(ordersResult.rows)) {
-      logger.warn(
-        'Orders query returned invalid data structure (Server Component)',
-        {
-          requestId,
-          component: 'orders_server_component',
-          action: 'invalid_data_structure',
-          resultType: typeof ordersResult,
-          hasRows: !!ordersResult?.rows,
-          isArray: Array.isArray(ordersResult?.rows),
-        },
-      );
+      logger.warn('Orders query returned invalid data structure', {
+        requestId,
+        resultType: typeof ordersResult,
+      });
 
       // ✅ NOUVEAU: captureMessage pour les problèmes de structure de données
       captureMessage(
@@ -317,14 +244,6 @@ async function getOrdersFromDatabase() {
       application_images: order.application_images,
     }));
 
-    logger.debug('Orders data sanitized (Server Component)', {
-      requestId,
-      component: 'orders_server_component',
-      action: 'data_sanitization',
-      originalCount: orders.length,
-      sanitizedCount: sanitizedOrders.length,
-    });
-
     // ===== ÉTAPE 6: FORMATAGE DE LA RÉPONSE =====
     const response = {
       orders: sanitizedOrders,
@@ -332,49 +251,23 @@ async function getOrdersFromDatabase() {
     };
 
     // ===== ÉTAPE 7: MISE EN CACHE DES DONNÉES =====
-    logger.debug('Caching orders data (Server Component)', {
-      requestId,
-      component: 'orders_server_component',
-      action: 'cache_set_start',
-      orderCount: sanitizedOrders.length,
-    });
-
     // Mettre les données en cache
     const cacheSuccess = dashboardCache.orders.set(cacheKey, response);
 
-    if (cacheSuccess) {
-      logger.debug('Orders data cached successfully (Server Component)', {
+    if (!cacheSuccess) {
+      logger.warn('Failed to cache orders data', {
         requestId,
-        component: 'orders_server_component',
-        action: 'cache_set_success',
-        cacheKey: cacheKey.substring(0, 50),
-      });
-    } else {
-      logger.warn('Failed to cache orders data (Server Component)', {
-        requestId,
-        component: 'orders_server_component',
-        action: 'cache_set_failed',
-        cacheKey: cacheKey.substring(0, 50),
       });
     }
 
     // ===== ÉTAPE 8: SUCCÈS - LOG ET NETTOYAGE =====
     const responseTime = Date.now() - startTime;
 
-    logger.info('Orders fetch successful (Server Component)', {
+    logger.info('Orders fetch successful', {
       orderCount: sanitizedOrders.length,
       totalCount: total,
       response_time_ms: responseTime,
-      database_operations: 3, // connection + main query + count query
-      success: true,
       requestId,
-      component: 'orders_server_component',
-      action: 'fetch_success',
-      entity: 'order',
-      data_type: 'financial',
-      cacheMiss: true,
-      cacheSet: cacheSuccess,
-      execution_context: 'server_component',
     });
 
     // ✅ NOUVEAU: captureMessage de succès
@@ -407,19 +300,11 @@ async function getOrdersFromDatabase() {
     const errorCategory = categorizeError(error);
     const responseTime = Date.now() - startTime;
 
-    logger.error('Global Orders Error (Server Component)', {
+    logger.error('Global Orders Error', {
       category: errorCategory,
       response_time_ms: responseTime,
-      reached_global_handler: true,
-      error_name: error.name,
       error_message: error.message,
-      stack_available: !!error.stack,
       requestId,
-      component: 'orders_server_component',
-      action: 'global_error_handler',
-      entity: 'order',
-      data_type: 'financial',
-      execution_context: 'server_component',
     });
 
     // ✅ NOUVEAU: captureException adapté pour Server Components
@@ -462,11 +347,7 @@ async function checkAuthentication() {
     const session = await getServerSession(auth);
 
     if (!session) {
-      logger.warn('Unauthenticated access attempt to orders page', {
-        component: 'orders_server_component',
-        action: 'auth_check_failed',
-        timestamp: new Date().toISOString(),
-      });
+      logger.warn('Unauthenticated access attempt to orders page');
 
       // ✅ NOUVEAU: captureMessage pour tentative d'accès non authentifiée
       captureMessage('Unauthenticated access attempt to orders page', {
@@ -486,22 +367,10 @@ async function checkAuthentication() {
       return null;
     }
 
-    logger.debug(
-      'User authentication verified successfully (Server Component)',
-      {
-        userId: session.user?.id,
-        email: session.user?.email?.substring(0, 3) + '***',
-        component: 'orders_server_component',
-        action: 'auth_verification_success',
-      },
-    );
-
     return session;
   } catch (error) {
-    logger.error('Authentication check error (Server Component)', {
+    logger.error('Authentication check error', {
       error: error.message,
-      component: 'orders_server_component',
-      action: 'auth_check_error',
     });
 
     // ✅ NOUVEAU: captureException pour erreurs d'authentification
@@ -540,23 +409,17 @@ const OrdersPageComponent = async () => {
     const { orders, totalOrders } = await getOrdersFromDatabase();
 
     // ===== ÉTAPE 3: RENDU DE LA PAGE =====
-    logger.info('Orders page rendering (Server Component)', {
+    logger.info('Orders page rendering', {
       orderCount: orders.length,
       totalCount: totalOrders,
       userId: session.user?.id,
-      component: 'orders_server_component',
-      action: 'page_render',
-      timestamp: new Date().toISOString(),
     });
 
     return <OrdersList data={orders} totalOrders={totalOrders} />;
   } catch (error) {
     // Gestion des erreurs au niveau de la page
-    logger.error('Orders page error (Server Component)', {
+    logger.error('Orders page error', {
       error: error.message,
-      stack: error.stack,
-      component: 'orders_server_component',
-      action: 'page_error',
     });
 
     // ✅ NOUVEAU: captureServerComponentError pour erreurs de rendu
