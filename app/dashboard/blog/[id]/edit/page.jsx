@@ -31,13 +31,8 @@ async function getArticleForEditFromDatabase(articleId) {
   const startTime = Date.now();
   const requestId = generateRequestId();
 
-  logger.info('Article for edit fetch process started (Server Component)', {
-    timestamp: new Date().toISOString(),
+  logger.info('Article for edit fetch process started', {
     requestId,
-    component: 'edit_article_server_component',
-    action: 'fetch_start',
-    method: 'SERVER_COMPONENT',
-    operation: 'get_article_for_edit',
     articleId,
   });
 
@@ -61,37 +56,17 @@ async function getArticleForEditFromDatabase(articleId) {
 
   try {
     // ===== ÉTAPE 1: VALIDATION DE L'ID AVEC YUP =====
-    logger.debug('Validating article ID with Yup schema (Server Component)', {
-      requestId,
-      component: 'edit_article_server_component',
-      action: 'id_validation_start',
-      operation: 'get_article_for_edit',
-      providedId: articleId,
-    });
-
     try {
       // Valider l'ID avec le schema Yup
       await articleIdSchema.validate({ id: articleId }, { abortEarly: false });
-
-      logger.debug('Article ID validation with Yup passed (Server Component)', {
-        requestId,
-        component: 'edit_article_server_component',
-        action: 'yup_id_validation_success',
-        operation: 'get_article_for_edit',
-        articleId,
-      });
     } catch (validationError) {
       const errorCategory = categorizeError(validationError);
 
-      logger.warn('Article ID validation failed with Yup (Server Component)', {
+      logger.warn('Article ID validation failed with Yup', {
         category: errorCategory,
         providedId: articleId,
         failed_fields: validationError.inner?.map((err) => err.path) || [],
-        total_errors: validationError.inner?.length || 0,
         requestId,
-        component: 'edit_article_server_component',
-        action: 'yup_id_validation_failed',
-        operation: 'get_article_for_edit',
       });
 
       // ✅ NOUVEAU: captureMessage pour erreurs de validation
@@ -125,27 +100,11 @@ async function getArticleForEditFromDatabase(articleId) {
       return null;
     }
 
-    logger.debug('Article ID validation passed (Server Component)', {
-      requestId,
-      component: 'edit_article_server_component',
-      action: 'id_validation_success',
-      operation: 'get_article_for_edit',
-      articleId,
-    });
-
     // ===== ÉTAPE 2: VÉRIFICATION DU CACHE =====
     const cacheKey = getDashboardCacheKey('edit_article', {
       endpoint: 'server_component_article_edit',
       articleId: articleId,
       version: '1.0',
-    });
-
-    logger.debug('Checking cache for article edit (Server Component)', {
-      requestId,
-      component: 'edit_article_server_component',
-      action: 'cache_check_start',
-      cacheKey,
-      articleId,
     });
 
     // Vérifier si les données sont en cache
@@ -154,15 +113,11 @@ async function getArticleForEditFromDatabase(articleId) {
     if (cachedArticle) {
       const responseTime = Date.now() - startTime;
 
-      logger.info('Article for edit served from cache (Server Component)', {
+      logger.info('Article for edit served from cache', {
         articleId,
         articleTitle: cachedArticle.article_title,
         response_time_ms: responseTime,
-        cache_hit: true,
         requestId,
-        component: 'edit_article_server_component',
-        action: 'cache_hit',
-        entity: 'blog_article',
       });
 
       // ✅ NOUVEAU: captureMessage adapté pour Server Components
@@ -191,39 +146,18 @@ async function getArticleForEditFromDatabase(articleId) {
       return cachedArticle;
     }
 
-    logger.debug('Cache miss, fetching from database (Server Component)', {
-      requestId,
-      component: 'edit_article_server_component',
-      action: 'cache_miss',
-      articleId,
-    });
-
     // ===== ÉTAPE 3: CONNEXION BASE DE DONNÉES =====
     try {
       client = await getClient();
-      logger.debug('Database connection successful (Server Component)', {
-        requestId,
-        component: 'edit_article_server_component',
-        action: 'db_connection_success',
-        operation: 'get_article_for_edit',
-        articleId,
-      });
     } catch (dbConnectionError) {
       const errorCategory = categorizeError(dbConnectionError);
 
-      logger.error(
-        'Database Connection Error during article fetch for edit (Server Component)',
-        {
-          category: errorCategory,
-          message: dbConnectionError.message,
-          timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
-          requestId,
-          component: 'edit_article_server_component',
-          action: 'db_connection_failed',
-          operation: 'get_article_for_edit',
-          articleId,
-        },
-      );
+      logger.error('Database Connection Error during article fetch for edit', {
+        category: errorCategory,
+        message: dbConnectionError.message,
+        requestId,
+        articleId,
+      });
 
       // ✅ NOUVEAU: captureDatabaseError adapté pour Server Components
       captureDatabaseError(dbConnectionError, {
@@ -265,44 +199,15 @@ async function getArticleForEditFromDatabase(articleId) {
         values: [articleId],
       };
 
-      logger.debug(
-        'Executing article fetch for edit query (Server Component)',
-        {
-          requestId,
-          component: 'edit_article_server_component',
-          action: 'query_start',
-          operation: 'get_article_for_edit',
-          articleId,
-          table: 'admin.articles',
-        },
-      );
-
       result = await client.query(articleQuery);
-
-      logger.debug(
-        'Article fetch for edit query executed successfully (Server Component)',
-        {
-          requestId,
-          component: 'edit_article_server_component',
-          action: 'query_success',
-          operation: 'get_article_for_edit',
-          articleId,
-          rowCount: result.rows.length,
-        },
-      );
     } catch (queryError) {
       const errorCategory = categorizeError(queryError);
 
-      logger.error('Article Fetch For Edit Query Error (Server Component)', {
+      logger.error('Article Fetch For Edit Query Error', {
         category: errorCategory,
         message: queryError.message,
-        query: 'article_fetch_for_edit',
-        table: 'admin.articles',
         articleId,
         requestId,
-        component: 'edit_article_server_component',
-        action: 'query_failed',
-        operation: 'get_article_for_edit',
       });
 
       // ✅ NOUVEAU: captureDatabaseError avec contexte spécifique
@@ -330,18 +235,11 @@ async function getArticleForEditFromDatabase(articleId) {
 
     // ===== ÉTAPE 5: VALIDATION DES DONNÉES =====
     if (!result || !Array.isArray(result.rows)) {
-      logger.warn(
-        'Article query returned invalid data structure (Server Component)',
-        {
-          requestId,
-          component: 'edit_article_server_component',
-          action: 'invalid_data_structure',
-          articleId,
-          resultType: typeof result,
-          hasRows: !!result?.rows,
-          isArray: Array.isArray(result?.rows),
-        },
-      );
+      logger.warn('Article query returned invalid data structure', {
+        requestId,
+        articleId,
+        resultType: typeof result,
+      });
 
       // ✅ NOUVEAU: captureMessage pour les problèmes de structure de données
       captureMessage(
@@ -371,11 +269,8 @@ async function getArticleForEditFromDatabase(articleId) {
 
     // ===== ÉTAPE 6: VÉRIFICATION EXISTENCE DE L'ARTICLE =====
     if (result.rows.length === 0) {
-      logger.warn('Article not found for edit (Server Component)', {
+      logger.warn('Article not found for edit', {
         requestId,
-        component: 'edit_article_server_component',
-        action: 'article_not_found',
-        operation: 'get_article_for_edit',
         articleId,
       });
 
@@ -412,46 +307,16 @@ async function getArticleForEditFromDatabase(articleId) {
       updated: rawArticle.updated,
     };
 
-    logger.debug('Article data sanitized for edit (Server Component)', {
-      requestId,
-      component: 'edit_article_server_component',
-      action: 'data_sanitization',
-      operation: 'get_article_for_edit',
-      articleId,
-      hasTitle: !!sanitizedArticle.article_title,
-      hasText: !!sanitizedArticle.article_text,
-      hasImage: !!sanitizedArticle.article_image,
-      textLength: sanitizedArticle.article_text.length,
-    });
-
     // ===== ÉTAPE 8: MISE EN CACHE DES DONNÉES =====
-    logger.debug('Caching article edit data (Server Component)', {
-      requestId,
-      component: 'edit_article_server_component',
-      action: 'cache_set_start',
-      articleId,
-    });
-
     // Mettre les données en cache
     const cacheSuccess = dashboardCache.singleBlogArticle.set(
       cacheKey,
       sanitizedArticle,
     );
 
-    if (cacheSuccess) {
-      logger.debug('Article edit data cached successfully (Server Component)', {
+    if (!cacheSuccess) {
+      logger.warn('Failed to cache article edit data', {
         requestId,
-        component: 'edit_article_server_component',
-        action: 'cache_set_success',
-        cacheKey,
-        articleId,
-      });
-    } else {
-      logger.warn('Failed to cache article edit data (Server Component)', {
-        requestId,
-        component: 'edit_article_server_component',
-        action: 'cache_set_failed',
-        cacheKey,
         articleId,
       });
     }
@@ -459,22 +324,11 @@ async function getArticleForEditFromDatabase(articleId) {
     // ===== ÉTAPE 9: SUCCÈS - LOG ET NETTOYAGE =====
     const responseTime = Date.now() - startTime;
 
-    logger.info('Article fetch for edit successful (Server Component)', {
+    logger.info('Article fetch for edit successful', {
       articleId,
       articleTitle: sanitizedArticle.article_title,
       response_time_ms: responseTime,
-      database_operations: 2, // connection + query
-      success: true,
       requestId,
-      component: 'edit_article_server_component',
-      action: 'fetch_for_edit_success',
-      entity: 'blog_article',
-      cacheMiss: true,
-      cacheSet: cacheSuccess,
-      execution_context: 'server_component',
-      operation: 'get_article_for_edit',
-      yupValidationApplied: true,
-      textLength: sanitizedArticle.article_text.length,
     });
 
     // ✅ NOUVEAU: captureMessage de succès
@@ -511,20 +365,12 @@ async function getArticleForEditFromDatabase(articleId) {
     const errorCategory = categorizeError(error);
     const responseTime = Date.now() - startTime;
 
-    logger.error('Global Article For Edit Error (Server Component)', {
+    logger.error('Global Article For Edit Error', {
       category: errorCategory,
       response_time_ms: responseTime,
-      reached_global_handler: true,
-      error_name: error.name,
       error_message: error.message,
-      stack_available: !!error.stack,
       requestId,
       articleId,
-      component: 'edit_article_server_component',
-      action: 'global_error_handler',
-      entity: 'blog_article',
-      operation: 'get_article_for_edit',
-      execution_context: 'server_component',
     });
 
     // ✅ NOUVEAU: captureException adapté pour Server Components
@@ -567,11 +413,7 @@ async function checkAuthentication() {
     const session = await getServerSession(auth);
 
     if (!session) {
-      logger.warn('Unauthenticated access attempt to article edit page', {
-        component: 'edit_article_server_component',
-        action: 'auth_check_failed',
-        timestamp: new Date().toISOString(),
-      });
+      logger.warn('Unauthenticated access attempt to article edit page');
 
       // ✅ NOUVEAU: captureMessage pour tentative d'accès non authentifiée
       captureMessage('Unauthenticated access attempt to article edit page', {
@@ -591,22 +433,10 @@ async function checkAuthentication() {
       return null;
     }
 
-    logger.debug(
-      'User authentication verified successfully (Server Component)',
-      {
-        userId: session.user?.id,
-        email: session.user?.email?.substring(0, 3) + '***',
-        component: 'edit_article_server_component',
-        action: 'auth_verification_success',
-      },
-    );
-
     return session;
   } catch (error) {
-    logger.error('Authentication check error (Server Component)', {
+    logger.error('Authentication check error', {
       error: error.message,
-      component: 'edit_article_server_component',
-      action: 'auth_check_error',
     });
 
     // ✅ NOUVEAU: captureException pour erreurs d'authentification
@@ -655,24 +485,17 @@ const SingleArticleEditingPageComponent = async ({ params }) => {
     }
 
     // ===== ÉTAPE 4: RENDU DE LA PAGE =====
-    logger.info('Article edit page rendering (Server Component)', {
+    logger.info('Article edit page rendering', {
       articleId: article.article_id,
       articleTitle: article.article_title,
       userId: session.user?.id,
-      component: 'edit_article_server_component',
-      action: 'page_render',
-      timestamp: new Date().toISOString(),
-      textLength: article.article_text?.length || 0,
     });
 
     return <EditArticle data={article} />;
   } catch (error) {
     // Gestion des erreurs au niveau de la page
-    logger.error('Article edit page error (Server Component)', {
+    logger.error('Article edit page error', {
       error: error.message,
-      stack: error.stack,
-      component: 'edit_article_server_component',
-      action: 'page_error',
     });
 
     // ✅ NOUVEAU: captureServerComponentError pour erreurs de rendu

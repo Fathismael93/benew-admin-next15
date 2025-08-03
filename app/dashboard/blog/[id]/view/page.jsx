@@ -31,13 +31,8 @@ async function getSingleArticleFromDatabase(articleId) {
   const startTime = Date.now();
   const requestId = generateRequestId();
 
-  logger.info('Single Article fetch process started (Server Component)', {
-    timestamp: new Date().toISOString(),
+  logger.info('Single Article fetch process started', {
     requestId,
-    component: 'single_article_server_component',
-    action: 'fetch_start',
-    method: 'SERVER_COMPONENT',
-    operation: 'get_single_article',
     articleId,
   });
 
@@ -61,37 +56,17 @@ async function getSingleArticleFromDatabase(articleId) {
 
   try {
     // ===== ÉTAPE 1: VALIDATION DE L'ID AVEC YUP =====
-    logger.debug('Validating article ID with Yup schema (Server Component)', {
-      requestId,
-      component: 'single_article_server_component',
-      action: 'id_validation_start',
-      operation: 'get_single_article',
-      providedId: articleId,
-    });
-
     try {
       // Valider l'ID avec le schema Yup
       await articleIdSchema.validate({ id: articleId }, { abortEarly: false });
-
-      logger.debug('Article ID validation with Yup passed (Server Component)', {
-        requestId,
-        component: 'single_article_server_component',
-        action: 'yup_id_validation_success',
-        operation: 'get_single_article',
-        articleId,
-      });
     } catch (validationError) {
       const errorCategory = categorizeError(validationError);
 
-      logger.warn('Article ID validation failed with Yup (Server Component)', {
+      logger.warn('Article ID validation failed with Yup', {
         category: errorCategory,
         providedId: articleId,
         failed_fields: validationError.inner?.map((err) => err.path) || [],
-        total_errors: validationError.inner?.length || 0,
         requestId,
-        component: 'single_article_server_component',
-        action: 'yup_id_validation_failed',
-        operation: 'get_single_article',
       });
 
       // ✅ NOUVEAU: captureMessage pour erreurs de validation
@@ -125,27 +100,11 @@ async function getSingleArticleFromDatabase(articleId) {
       return null;
     }
 
-    logger.debug('Article ID validation passed (Server Component)', {
-      requestId,
-      component: 'single_article_server_component',
-      action: 'id_validation_success',
-      operation: 'get_single_article',
-      articleId,
-    });
-
     // ===== ÉTAPE 2: VÉRIFICATION DU CACHE =====
     const cacheKey = getDashboardCacheKey('single_article', {
       endpoint: 'server_component_article_view',
       articleId: articleId,
       version: '1.0',
-    });
-
-    logger.debug('Checking cache for single article (Server Component)', {
-      requestId,
-      component: 'single_article_server_component',
-      action: 'cache_check_start',
-      cacheKey,
-      articleId,
     });
 
     // Vérifier si les données sont en cache
@@ -154,15 +113,11 @@ async function getSingleArticleFromDatabase(articleId) {
     if (cachedArticle) {
       const responseTime = Date.now() - startTime;
 
-      logger.info('Single article served from cache (Server Component)', {
+      logger.info('Single article served from cache', {
         articleId,
         articleTitle: cachedArticle.article_title,
         response_time_ms: responseTime,
-        cache_hit: true,
         requestId,
-        component: 'single_article_server_component',
-        action: 'cache_hit',
-        entity: 'blog_article',
       });
 
       // ✅ NOUVEAU: captureMessage adapté pour Server Components
@@ -191,39 +146,18 @@ async function getSingleArticleFromDatabase(articleId) {
       return cachedArticle;
     }
 
-    logger.debug('Cache miss, fetching from database (Server Component)', {
-      requestId,
-      component: 'single_article_server_component',
-      action: 'cache_miss',
-      articleId,
-    });
-
     // ===== ÉTAPE 3: CONNEXION BASE DE DONNÉES =====
     try {
       client = await getClient();
-      logger.debug('Database connection successful (Server Component)', {
-        requestId,
-        component: 'single_article_server_component',
-        action: 'db_connection_success',
-        operation: 'get_single_article',
-        articleId,
-      });
     } catch (dbConnectionError) {
       const errorCategory = categorizeError(dbConnectionError);
 
-      logger.error(
-        'Database Connection Error during single article fetch (Server Component)',
-        {
-          category: errorCategory,
-          message: dbConnectionError.message,
-          timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
-          requestId,
-          component: 'single_article_server_component',
-          action: 'db_connection_failed',
-          operation: 'get_single_article',
-          articleId,
-        },
-      );
+      logger.error('Database Connection Error during single article fetch', {
+        category: errorCategory,
+        message: dbConnectionError.message,
+        requestId,
+        articleId,
+      });
 
       // ✅ NOUVEAU: captureDatabaseError adapté pour Server Components
       captureDatabaseError(dbConnectionError, {
@@ -265,41 +199,15 @@ async function getSingleArticleFromDatabase(articleId) {
         values: [articleId],
       };
 
-      logger.debug('Executing single article query (Server Component)', {
-        requestId,
-        component: 'single_article_server_component',
-        action: 'query_start',
-        operation: 'get_single_article',
-        articleId,
-        table: 'admin.articles',
-      });
-
       result = await client.query(articleQuery);
-
-      logger.debug(
-        'Single article query executed successfully (Server Component)',
-        {
-          requestId,
-          component: 'single_article_server_component',
-          action: 'query_success',
-          operation: 'get_single_article',
-          articleId,
-          rowCount: result.rows.length,
-        },
-      );
     } catch (queryError) {
       const errorCategory = categorizeError(queryError);
 
-      logger.error('Single Article Query Error (Server Component)', {
+      logger.error('Single Article Query Error', {
         category: errorCategory,
         message: queryError.message,
-        query: 'single_article_fetch',
-        table: 'admin.articles',
         articleId,
         requestId,
-        component: 'single_article_server_component',
-        action: 'query_failed',
-        operation: 'get_single_article',
       });
 
       // ✅ NOUVEAU: captureDatabaseError avec contexte spécifique
@@ -327,18 +235,11 @@ async function getSingleArticleFromDatabase(articleId) {
 
     // ===== ÉTAPE 5: VALIDATION DES DONNÉES =====
     if (!result || !Array.isArray(result.rows)) {
-      logger.warn(
-        'Single article query returned invalid data structure (Server Component)',
-        {
-          requestId,
-          component: 'single_article_server_component',
-          action: 'invalid_data_structure',
-          articleId,
-          resultType: typeof result,
-          hasRows: !!result?.rows,
-          isArray: Array.isArray(result?.rows),
-        },
-      );
+      logger.warn('Single article query returned invalid data structure', {
+        requestId,
+        articleId,
+        resultType: typeof result,
+      });
 
       // ✅ NOUVEAU: captureMessage pour les problèmes de structure de données
       captureMessage(
@@ -368,11 +269,8 @@ async function getSingleArticleFromDatabase(articleId) {
 
     // ===== ÉTAPE 6: VÉRIFICATION EXISTENCE DE L'ARTICLE =====
     if (result.rows.length === 0) {
-      logger.info('Article not found (Server Component)', {
+      logger.info('Article not found', {
         requestId,
-        component: 'single_article_server_component',
-        action: 'article_not_found',
-        operation: 'get_single_article',
         articleId,
       });
 
@@ -408,48 +306,16 @@ async function getSingleArticleFromDatabase(articleId) {
       updated: rawArticle.updated,
     };
 
-    logger.debug('Article data sanitized (Server Component)', {
-      requestId,
-      component: 'single_article_server_component',
-      action: 'data_sanitization',
-      operation: 'get_single_article',
-      articleId,
-      hasTitle: !!sanitizedArticle.article_title,
-      hasText: !!sanitizedArticle.article_text,
-      hasImage: !!sanitizedArticle.article_image,
-    });
-
     // ===== ÉTAPE 8: MISE EN CACHE DES DONNÉES =====
-    logger.debug('Caching single article data (Server Component)', {
-      requestId,
-      component: 'single_article_server_component',
-      action: 'cache_set_start',
-      articleId,
-    });
-
     // Mettre les données en cache
     const cacheSuccess = dashboardCache.singleBlogArticle.set(
       cacheKey,
       sanitizedArticle,
     );
 
-    if (cacheSuccess) {
-      logger.debug(
-        'Single article data cached successfully (Server Component)',
-        {
-          requestId,
-          component: 'single_article_server_component',
-          action: 'cache_set_success',
-          cacheKey,
-          articleId,
-        },
-      );
-    } else {
-      logger.warn('Failed to cache single article data (Server Component)', {
+    if (!cacheSuccess) {
+      logger.warn('Failed to cache single article data', {
         requestId,
-        component: 'single_article_server_component',
-        action: 'cache_set_failed',
-        cacheKey,
         articleId,
       });
     }
@@ -457,21 +323,11 @@ async function getSingleArticleFromDatabase(articleId) {
     // ===== ÉTAPE 9: SUCCÈS - LOG ET NETTOYAGE =====
     const responseTime = Date.now() - startTime;
 
-    logger.info('Single article fetch successful (Server Component)', {
+    logger.info('Single article fetch successful', {
       articleId,
       articleTitle: sanitizedArticle.article_title,
       response_time_ms: responseTime,
-      database_operations: 2, // connection + query
-      success: true,
       requestId,
-      component: 'single_article_server_component',
-      action: 'fetch_success',
-      entity: 'blog_article',
-      cacheMiss: true,
-      cacheSet: cacheSuccess,
-      execution_context: 'server_component',
-      operation: 'get_single_article',
-      yupValidationApplied: true,
     });
 
     // ✅ NOUVEAU: captureMessage de succès
@@ -507,20 +363,12 @@ async function getSingleArticleFromDatabase(articleId) {
     const errorCategory = categorizeError(error);
     const responseTime = Date.now() - startTime;
 
-    logger.error('Global Single Article Error (Server Component)', {
+    logger.error('Global Single Article Error', {
       category: errorCategory,
       response_time_ms: responseTime,
-      reached_global_handler: true,
-      error_name: error.name,
       error_message: error.message,
-      stack_available: !!error.stack,
       requestId,
       articleId,
-      component: 'single_article_server_component',
-      action: 'global_error_handler',
-      entity: 'blog_article',
-      operation: 'get_single_article',
-      execution_context: 'server_component',
     });
 
     // ✅ NOUVEAU: captureException adapté pour Server Components
@@ -563,11 +411,7 @@ async function checkAuthentication() {
     const session = await getServerSession(auth);
 
     if (!session) {
-      logger.warn('Unauthenticated access attempt to article view page', {
-        component: 'single_article_server_component',
-        action: 'auth_check_failed',
-        timestamp: new Date().toISOString(),
-      });
+      logger.warn('Unauthenticated access attempt to article view page');
 
       // ✅ NOUVEAU: captureMessage pour tentative d'accès non authentifiée
       captureMessage('Unauthenticated access attempt to article view page', {
@@ -587,22 +431,10 @@ async function checkAuthentication() {
       return null;
     }
 
-    logger.debug(
-      'User authentication verified successfully (Server Component)',
-      {
-        userId: session.user?.id,
-        email: session.user?.email?.substring(0, 3) + '***',
-        component: 'single_article_server_component',
-        action: 'auth_verification_success',
-      },
-    );
-
     return session;
   } catch (error) {
-    logger.error('Authentication check error (Server Component)', {
+    logger.error('Authentication check error', {
       error: error.message,
-      component: 'single_article_server_component',
-      action: 'auth_check_error',
     });
 
     // ✅ NOUVEAU: captureException pour erreurs d'authentification
@@ -651,23 +483,17 @@ const ViewArticlePageComponent = async ({ params }) => {
     }
 
     // ===== ÉTAPE 4: RENDU DE LA PAGE =====
-    logger.info('Article view page rendering (Server Component)', {
+    logger.info('Article view page rendering', {
       articleId: article.article_id,
       articleTitle: article.article_title,
       userId: session.user?.id,
-      component: 'single_article_server_component',
-      action: 'page_render',
-      timestamp: new Date().toISOString(),
     });
 
     return <SingleArticle article={article} />;
   } catch (error) {
     // Gestion des erreurs au niveau de la page
-    logger.error('Article view page error (Server Component)', {
+    logger.error('Article view page error', {
       error: error.message,
-      stack: error.stack,
-      component: 'single_article_server_component',
-      action: 'page_error',
     });
 
     // ✅ NOUVEAU: captureServerComponentError pour erreurs de rendu

@@ -32,13 +32,8 @@ async function getArticlesFromDatabase() {
   const startTime = Date.now();
   const requestId = generateRequestId();
 
-  logger.info('Articles fetch process started (Server Component)', {
-    timestamp: new Date().toISOString(),
+  logger.info('Articles fetch process started', {
     requestId,
-    component: 'blog_server_component',
-    action: 'fetch_start',
-    method: 'SERVER_COMPONENT',
-    operation: 'fetch_articles',
   });
 
   // ✅ NOUVEAU: Utilisation des fonctions Sentry adaptées
@@ -65,27 +60,16 @@ async function getArticlesFromDatabase() {
       version: '1.0',
     });
 
-    logger.debug('Checking cache for articles (Server Component)', {
-      requestId,
-      component: 'blog_server_component',
-      action: 'cache_check_start',
-      cacheKey,
-    });
-
     // Vérifier si les données sont en cache
     const cachedArticles = dashboardCache.blogArticles.get(cacheKey);
 
     if (cachedArticles) {
       const responseTime = Date.now() - startTime;
 
-      logger.info('Articles served from cache (Server Component)', {
+      logger.info('Articles served from cache', {
         articleCount: cachedArticles.length,
         response_time_ms: responseTime,
-        cache_hit: true,
         requestId,
-        component: 'blog_server_component',
-        action: 'cache_hit',
-        entity: 'article',
       });
 
       // ✅ NOUVEAU: captureMessage adapté pour Server Components
@@ -121,36 +105,17 @@ async function getArticlesFromDatabase() {
       return cachedArticles;
     }
 
-    logger.debug('Cache miss, fetching from database (Server Component)', {
-      requestId,
-      component: 'blog_server_component',
-      action: 'cache_miss',
-    });
-
     // ===== ÉTAPE 2: CONNEXION BASE DE DONNÉES =====
     try {
       client = await getClient();
-      logger.debug('Database connection successful (Server Component)', {
-        requestId,
-        component: 'blog_server_component',
-        action: 'db_connection_success',
-        operation: 'fetch_articles',
-      });
     } catch (dbConnectionError) {
       const errorCategory = categorizeError(dbConnectionError);
 
-      logger.error(
-        'Database Connection Error during articles fetch (Server Component)',
-        {
-          category: errorCategory,
-          message: dbConnectionError.message,
-          timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
-          requestId,
-          component: 'blog_server_component',
-          action: 'db_connection_failed',
-          operation: 'fetch_articles',
-        },
-      );
+      logger.error('Database Connection Error during articles fetch', {
+        category: errorCategory,
+        message: dbConnectionError.message,
+        requestId,
+      });
 
       // ✅ NOUVEAU: captureDatabaseError adapté pour Server Components
       captureDatabaseError(dbConnectionError, {
@@ -186,35 +151,14 @@ async function getArticlesFromDatabase() {
         ORDER BY article_created DESC, article_id DESC
       `;
 
-      logger.debug('Executing articles query (Server Component)', {
-        requestId,
-        component: 'blog_server_component',
-        action: 'query_start',
-        table: 'admin.articles',
-        operation: 'SELECT',
-      });
-
       result = await client.query(articlesQuery);
-
-      logger.debug('Articles query executed successfully (Server Component)', {
-        requestId,
-        component: 'blog_server_component',
-        action: 'query_success',
-        rowCount: result.rows.length,
-        table: 'admin.articles',
-      });
     } catch (queryError) {
       const errorCategory = categorizeError(queryError);
 
-      logger.error('Articles Query Error (Server Component)', {
+      logger.error('Articles Query Error', {
         category: errorCategory,
         message: queryError.message,
-        query: 'articles_fetch',
-        table: 'admin.articles',
         requestId,
-        component: 'blog_server_component',
-        action: 'query_failed',
-        operation: 'fetch_articles',
       });
 
       // ✅ NOUVEAU: captureDatabaseError avec contexte spécifique
@@ -241,17 +185,10 @@ async function getArticlesFromDatabase() {
 
     // ===== ÉTAPE 4: VALIDATION DES DONNÉES =====
     if (!result || !Array.isArray(result.rows)) {
-      logger.warn(
-        'Articles query returned invalid data structure (Server Component)',
-        {
-          requestId,
-          component: 'blog_server_component',
-          action: 'invalid_data_structure',
-          resultType: typeof result,
-          hasRows: !!result?.rows,
-          isArray: Array.isArray(result?.rows),
-        },
-      );
+      logger.warn('Articles query returned invalid data structure', {
+        requestId,
+        resultType: typeof result,
+      });
 
       // ✅ NOUVEAU: captureMessage pour les problèmes de structure de données
       captureMessage(
@@ -288,23 +225,7 @@ async function getArticlesFromDatabase() {
       updated: article.updated,
     }));
 
-    logger.debug('Articles data sanitized (Server Component)', {
-      requestId,
-      component: 'blog_server_component',
-      action: 'data_sanitization',
-      originalCount: result.rows.length,
-      sanitizedCount: sanitizedArticles.length,
-      activeArticles: sanitizedArticles.filter((a) => a.isActive).length,
-    });
-
     // ===== ÉTAPE 6: MISE EN CACHE DES DONNÉES =====
-    logger.debug('Caching articles data (Server Component)', {
-      requestId,
-      component: 'blog_server_component',
-      action: 'cache_set_start',
-      articleCount: sanitizedArticles.length,
-    });
-
     // Mettre les données en cache
     const cacheSuccess = dashboardCache.blogArticles.set(
       cacheKey,
@@ -312,13 +233,6 @@ async function getArticlesFromDatabase() {
     );
 
     if (cacheSuccess) {
-      logger.debug('Articles data cached successfully (Server Component)', {
-        requestId,
-        component: 'blog_server_component',
-        action: 'cache_set_success',
-        cacheKey,
-      });
-
       // Émettre un événement de cache set
       cacheEvents.emit('dashboard_set', {
         key: cacheKey,
@@ -329,10 +243,8 @@ async function getArticlesFromDatabase() {
         context: 'server_component',
       });
     } else {
-      logger.warn('Failed to cache articles data (Server Component)', {
+      logger.warn('Failed to cache articles data', {
         requestId,
-        component: 'blog_server_component',
-        action: 'cache_set_failed',
         cacheKey,
       });
     }
@@ -340,20 +252,11 @@ async function getArticlesFromDatabase() {
     // ===== ÉTAPE 7: SUCCÈS - LOG ET NETTOYAGE =====
     const responseTime = Date.now() - startTime;
 
-    logger.info('Articles fetch successful (Server Component)', {
+    logger.info('Articles fetch successful', {
       articleCount: sanitizedArticles.length,
       activeArticles: sanitizedArticles.filter((a) => a.isActive).length,
       response_time_ms: responseTime,
-      database_operations: 2, // connection + query
-      success: true,
       requestId,
-      component: 'blog_server_component',
-      action: 'fetch_success',
-      entity: 'article',
-      cacheMiss: true,
-      cacheSet: cacheSuccess,
-      operation: 'fetch_articles',
-      execution_context: 'server_component',
     });
 
     // ✅ NOUVEAU: captureMessage de succès
@@ -386,19 +289,11 @@ async function getArticlesFromDatabase() {
     const errorCategory = categorizeError(error);
     const responseTime = Date.now() - startTime;
 
-    logger.error('Global Articles Error (Server Component)', {
+    logger.error('Global Articles Error', {
       category: errorCategory,
       response_time_ms: responseTime,
-      reached_global_handler: true,
-      error_name: error.name,
       error_message: error.message,
-      stack_available: !!error.stack,
       requestId,
-      component: 'blog_server_component',
-      action: 'global_error_handler',
-      entity: 'article',
-      operation: 'fetch_articles',
-      execution_context: 'server_component',
     });
 
     // ✅ NOUVEAU: captureException adapté pour Server Components
@@ -441,11 +336,7 @@ async function checkAuthentication() {
     const session = await getServerSession(auth);
 
     if (!session) {
-      logger.warn('Unauthenticated access attempt to blog page', {
-        component: 'blog_server_component',
-        action: 'auth_check_failed',
-        timestamp: new Date().toISOString(),
-      });
+      logger.warn('Unauthenticated access attempt to blog page');
 
       // ✅ NOUVEAU: captureMessage pour tentative d'accès non authentifiée
       captureMessage('Unauthenticated access attempt to blog page', {
@@ -465,22 +356,10 @@ async function checkAuthentication() {
       return null;
     }
 
-    logger.debug(
-      'User authentication verified successfully (Server Component)',
-      {
-        userId: session.user?.id,
-        email: session.user?.email?.substring(0, 3) + '***',
-        component: 'blog_server_component',
-        action: 'auth_verification_success',
-      },
-    );
-
     return session;
   } catch (error) {
-    logger.error('Authentication check error (Server Component)', {
+    logger.error('Authentication check error', {
       error: error.message,
-      component: 'blog_server_component',
-      action: 'auth_check_error',
     });
 
     // ✅ NOUVEAU: captureException pour erreurs d'authentification
@@ -519,23 +398,17 @@ const BlogPageComponent = async () => {
     const articles = await getArticlesFromDatabase();
 
     // ===== ÉTAPE 3: RENDU DE LA PAGE =====
-    logger.info('Blog page rendering (Server Component)', {
+    logger.info('Blog page rendering', {
       articleCount: articles.length,
       activeArticles: articles.filter((a) => a.isActive).length,
       userId: session.user?.id,
-      component: 'blog_server_component',
-      action: 'page_render',
-      timestamp: new Date().toISOString(),
     });
 
     return <ListArticles data={articles} />;
   } catch (error) {
     // Gestion des erreurs au niveau de la page
-    logger.error('Blog page error (Server Component)', {
+    logger.error('Blog page error', {
       error: error.message,
-      stack: error.stack,
-      component: 'blog_server_component',
-      action: 'page_error',
     });
 
     // ✅ NOUVEAU: captureServerComponentError pour erreurs de rendu
