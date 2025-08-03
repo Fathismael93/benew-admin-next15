@@ -71,8 +71,6 @@ function validateAndSanitizeFilters(filters = {}) {
         'Server Action: Tentative de filtrage avec champ non autorisé',
         {
           field: key,
-          component: 'templates_server_action',
-          action: 'filter_validation_failed',
           security_event: true,
         },
       );
@@ -198,10 +196,6 @@ async function authenticateServerAction(context = {}) {
     if (!session || !session.user) {
       logger.warn("Server Action: Tentative d'accès non authentifiée", {
         requestId,
-        component: 'templates_server_action',
-        action: 'auth_check_failed',
-        timestamp: new Date().toISOString(),
-        context: context.userAgent || 'server_action',
       });
 
       captureMessage('Unauthenticated access attempt to Server Action', {
@@ -229,9 +223,6 @@ async function authenticateServerAction(context = {}) {
         requestId,
         hasUserId: !!session.user.id,
         hasUserEmail: !!session.user.email,
-        component: 'templates_server_action',
-        action: 'invalid_session',
-        context,
       });
 
       throw new Error('Invalid user session');
@@ -244,9 +235,6 @@ async function authenticateServerAction(context = {}) {
       {
         error: error.message,
         requestId,
-        component: 'templates_server_action',
-        action: 'auth_check_error',
-        context,
       },
     );
 
@@ -300,20 +288,14 @@ export async function getFilteredTemplates(filters = {}) {
       logger.warn('Server Action: Rate limit dépassé', {
         requestId,
         userId: session.user.id,
-        component: 'templates_server_action',
-        action: 'rate_limit_exceeded',
       });
 
       throw new Error('Too many requests. Please try again later.');
     }
 
     logger.info('Server Action: Processus de filtrage des templates démarré', {
-      timestamp: new Date().toISOString(),
       requestId,
       userId: session.user.id,
-      component: 'templates_server_action',
-      action: 'filter_start',
-      method: 'SERVER_ACTION',
       filtersCount: Object.keys(filters).length,
     });
 
@@ -337,15 +319,6 @@ export async function getFilteredTemplates(filters = {}) {
     // ===== ÉTAPE 3: VALIDATION ET ASSAINISSEMENT DES FILTRES =====
     const validatedFilters = validateAndSanitizeFilters(filters);
 
-    logger.debug('Server Action: Filtres validés et nettoyés', {
-      requestId,
-      component: 'templates_server_action',
-      action: 'filters_validated',
-      originalFiltersCount: Object.keys(filters).length,
-      validatedFiltersCount: Object.keys(validatedFilters).length,
-      validatedFilters: validatedFilters,
-    });
-
     // ===== ÉTAPE 4: VÉRIFICATION DU CACHE AVEC CLÉ DYNAMIQUE =====
     const cacheKey = generateFilterCacheKey(validatedFilters);
 
@@ -357,12 +330,8 @@ export async function getFilteredTemplates(filters = {}) {
       logger.info('Server Action: Templates servis depuis le cache', {
         templateCount: cachedTemplates.length,
         response_time_ms: responseTime,
-        cache_hit: true,
         requestId,
         userId: session.user.id,
-        component: 'templates_server_action',
-        action: 'cache_hit',
-        entity: 'template',
       });
 
       captureMessage(
@@ -398,11 +367,8 @@ export async function getFilteredTemplates(filters = {}) {
       logger.error('Server Action: Erreur de connexion base de données', {
         category: errorCategory,
         message: dbConnectionError.message,
-        timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
         requestId,
         userId: session.user.id,
-        component: 'templates_server_action',
-        action: 'db_connection_failed',
       });
 
       captureDatabaseError(dbConnectionError, {
@@ -449,16 +415,6 @@ export async function getFilteredTemplates(filters = {}) {
         LIMIT 1000
       `;
 
-      logger.debug('Server Action: Exécution de la requête templates', {
-        requestId,
-        component: 'templates_server_action',
-        action: 'query_start',
-        table: 'catalog.templates',
-        operation: 'SELECT',
-        whereConditions: whereClause ? 'WITH_FILTERS' : 'NO_FILTERS',
-        parametersCount: values.length,
-      });
-
       // Exécution avec timeout intégré
       const queryPromise = client.query(templatesQuery, values);
       const timeoutPromise = new Promise((_, reject) =>
@@ -469,41 +425,22 @@ export async function getFilteredTemplates(filters = {}) {
 
       const queryTime = Date.now() - queryStartTime;
 
-      logger.debug('Server Action: Requête templates exécutée avec succès', {
-        requestId,
-        component: 'templates_server_action',
-        action: 'query_success',
-        rowCount: result.rows.length,
-        queryTime_ms: queryTime,
-        table: 'catalog.templates',
-      });
-
       // Log des requêtes lentes
       if (queryTime > 2000) {
         logger.warn('Server Action: Requête lente détectée', {
           requestId,
           queryTime_ms: queryTime,
-          filters: validatedFilters,
           rowCount: result.rows.length,
-          component: 'templates_server_action',
-          action: 'slow_query_detected',
         });
       }
     } catch (queryError) {
       const errorCategory = categorizeError(queryError);
-      const queryTime = Date.now() - queryStartTime;
 
       logger.error("Server Action: Erreur lors de l'exécution de la requête", {
         category: errorCategory,
         message: queryError.message,
-        queryTime_ms: queryTime,
-        query: 'templates_filtered_fetch',
-        table: 'catalog.templates',
-        parametersCount: values.length,
         requestId,
         userId: session.user.id,
-        component: 'templates_server_action',
-        action: 'query_failed',
       });
 
       captureDatabaseError(queryError, {
@@ -520,7 +457,6 @@ export async function getFilteredTemplates(filters = {}) {
           table: 'catalog.templates',
           queryType: 'templates_filtered_fetch',
           postgresCode: queryError.code,
-          queryTimeMs: queryTime,
           filters: validatedFilters,
           parametersCount: values.length,
         },
@@ -536,12 +472,7 @@ export async function getFilteredTemplates(filters = {}) {
         'Server Action: Structure de données invalide retournée par la requête',
         {
           requestId,
-          component: 'templates_server_action',
-          action: 'invalid_data_structure',
           resultType: typeof result,
-          hasRows: !!result?.rows,
-          isArray: Array.isArray(result?.rows),
-          filters: validatedFilters,
         },
       );
 
@@ -572,8 +503,6 @@ export async function getFilteredTemplates(filters = {}) {
     }
 
     // ===== ÉTAPE 9: NETTOYAGE ET FORMATAGE SÉCURISÉ DES DONNÉES =====
-    const sanitizeStartTime = Date.now();
-
     const sanitizedTemplates = result.rows.map((template) => ({
       template_id: template.template_id,
       template_name: template.template_name || '[No Name]',
@@ -586,70 +515,29 @@ export async function getFilteredTemplates(filters = {}) {
       updated_at: template.updated_at,
     }));
 
-    const sanitizeTime = Date.now() - sanitizeStartTime;
-
-    logger.debug('Server Action: Données templates nettoyées et formatées', {
-      requestId,
-      component: 'templates_server_action',
-      action: 'data_sanitization',
-      originalCount: result.rows.length,
-      sanitizedCount: sanitizedTemplates.length,
-      sanitizeTime_ms: sanitizeTime,
-    });
-
     // ===== ÉTAPE 10: MISE EN CACHE INTELLIGENTE =====
-    const cacheStartTime = Date.now();
-
     const cacheSuccess = dashboardCache.templates?.set(
       cacheKey,
       sanitizedTemplates,
     );
-    const cacheTime = Date.now() - cacheStartTime;
 
-    if (cacheSuccess) {
-      logger.debug(
-        'Server Action: Données templates mises en cache avec succès',
-        {
-          requestId,
-          component: 'templates_server_action',
-          action: 'cache_set_success',
-          cacheTime_ms: cacheTime,
-          cacheKey: cacheKey.substring(0, 50),
-        },
-      );
-    } else {
+    if (!cacheSuccess) {
       logger.warn(
         'Server Action: Échec de la mise en cache des données templates',
         {
           requestId,
-          component: 'templates_server_action',
-          action: 'cache_set_failed',
-          cacheKey: cacheKey.substring(0, 50),
         },
       );
     }
 
     // ===== ÉTAPE 11: LOGGING DE SUCCÈS ET MÉTRIQUES =====
     const responseTime = Date.now() - startTime;
-    const databaseOperations = cacheSuccess ? 3 : 2; // connection + query + cache
 
     logger.info('Server Action: Filtrage templates terminé avec succès', {
       templateCount: sanitizedTemplates.length,
       response_time_ms: responseTime,
-      query_time_ms: Date.now() - queryStartTime,
-      sanitize_time_ms: sanitizeTime,
-      cache_time_ms: cacheTime,
-      database_operations: databaseOperations,
-      success: true,
       requestId,
       userId: session.user.id,
-      component: 'templates_server_action',
-      action: 'filter_success',
-      entity: 'template',
-      cacheMiss: true,
-      cacheSet: cacheSuccess,
-      execution_context: 'server_action',
-      filters_applied: validatedFilters,
     });
 
     captureMessage(
@@ -669,14 +557,10 @@ export async function getFilteredTemplates(filters = {}) {
           templateCount: sanitizedTemplates.length,
           responseTimeMs: responseTime,
           queryTimeMs: Date.now() - queryStartTime,
-          databaseOperations,
+          databaseOperations: cacheSuccess ? 3 : 2,
           cacheMiss: true,
           cacheSet: cacheSuccess,
           filtersApplied: validatedFilters,
-          performanceMetrics: {
-            sanitizeTimeMs: sanitizeTime,
-            cacheTimeMs: cacheTime,
-          },
         },
       },
     );
@@ -694,16 +578,8 @@ export async function getFilteredTemplates(filters = {}) {
       {
         category: errorCategory,
         response_time_ms: responseTime,
-        reached_global_handler: true,
-        error_name: error.name,
         error_message: error.message,
-        stack_available: !!error.stack,
         requestId: requestId || 'unknown',
-        component: 'templates_server_action',
-        action: 'global_error_handler',
-        entity: 'template',
-        execution_context: 'server_action',
-        filters: filters,
       },
     );
 
@@ -755,8 +631,6 @@ export async function invalidateTemplatesCache(templateId = null) {
       requestId,
       userId: session.user.id,
       templateId,
-      component: 'templates_server_action',
-      action: 'cache_invalidation_start',
     });
 
     const invalidatedCount = invalidateDashboardCache('template', templateId);
@@ -766,8 +640,6 @@ export async function invalidateTemplatesCache(templateId = null) {
       userId: session.user.id,
       templateId,
       invalidatedCount,
-      component: 'templates_server_action',
-      action: 'cache_invalidation_success',
     });
 
     return true;
@@ -775,8 +647,6 @@ export async function invalidateTemplatesCache(templateId = null) {
     logger.error("Server Action: Erreur lors de l'invalidation du cache", {
       error: error.message,
       templateId,
-      component: 'templates_server_action',
-      action: 'cache_invalidation_failed',
     });
 
     return false;

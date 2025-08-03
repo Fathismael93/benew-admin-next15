@@ -10,17 +10,9 @@ import {
   captureServerComponentError,
   withServerComponentMonitoring,
 } from '@/monitoring/sentry';
-import {
-  categorizeError,
-  generateRequestId,
-  // anonymizeIp,
-} from '@/utils/helpers';
+import { categorizeError, generateRequestId } from '@/utils/helpers';
 import logger from '@/utils/logger';
-import {
-  dashboardCache,
-  getDashboardCacheKey,
-  // invalidateDashboardCache,
-} from '@/utils/cache';
+import { dashboardCache, getDashboardCacheKey } from '@/utils/cache';
 
 // Configuration de revalidation pour cette page
 export const revalidate = 0; // Désactive le cache statique
@@ -36,12 +28,8 @@ async function getTemplatesFromDatabase() {
   const startTime = Date.now();
   const requestId = generateRequestId();
 
-  logger.info('Templates fetch process started (Server Component)', {
-    timestamp: new Date().toISOString(),
+  logger.info('Templates fetch process started', {
     requestId,
-    component: 'templates_server_component',
-    action: 'fetch_start',
-    method: 'SERVER_COMPONENT',
   });
 
   // ✅ NOUVEAU: Utilisation des fonctions Sentry adaptées
@@ -67,27 +55,16 @@ async function getTemplatesFromDatabase() {
       version: '1.0',
     });
 
-    logger.debug('Checking cache for templates (Server Component)', {
-      requestId,
-      component: 'templates_server_component',
-      action: 'cache_check_start',
-      cacheKey,
-    });
-
     // Vérifier si les données sont en cache
     const cachedTemplates = dashboardCache.templates.get(cacheKey);
 
     if (cachedTemplates) {
       const responseTime = Date.now() - startTime;
 
-      logger.info('Templates served from cache (Server Component)', {
+      logger.info('Templates served from cache', {
         templateCount: cachedTemplates.length,
         response_time_ms: responseTime,
-        cache_hit: true,
         requestId,
-        component: 'templates_server_component',
-        action: 'cache_hit',
-        entity: 'template',
       });
 
       // ✅ NOUVEAU: captureMessage adapté pour Server Components
@@ -114,34 +91,17 @@ async function getTemplatesFromDatabase() {
       return cachedTemplates;
     }
 
-    logger.debug('Cache miss, fetching from database (Server Component)', {
-      requestId,
-      component: 'templates_server_component',
-      action: 'cache_miss',
-    });
-
     // ===== ÉTAPE 2: CONNEXION BASE DE DONNÉES =====
     try {
       client = await getClient();
-      logger.debug('Database connection successful (Server Component)', {
-        requestId,
-        component: 'templates_server_component',
-        action: 'db_connection_success',
-      });
     } catch (dbConnectionError) {
       const errorCategory = categorizeError(dbConnectionError);
 
-      logger.error(
-        'Database Connection Error during templates fetch (Server Component)',
-        {
-          category: errorCategory,
-          message: dbConnectionError.message,
-          timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
-          requestId,
-          component: 'templates_server_component',
-          action: 'db_connection_failed',
-        },
-      );
+      logger.error('Database Connection Error during templates fetch', {
+        category: errorCategory,
+        message: dbConnectionError.message,
+        requestId,
+      });
 
       // ✅ NOUVEAU: captureDatabaseError adapté pour Server Components
       captureDatabaseError(dbConnectionError, {
@@ -181,34 +141,14 @@ async function getTemplatesFromDatabase() {
   ORDER BY template_added DESC
 `;
 
-      logger.debug('Executing templates query (Server Component)', {
-        requestId,
-        component: 'templates_server_component',
-        action: 'query_start',
-        table: 'catalog.templates',
-        operation: 'SELECT',
-      });
-
       result = await client.query(templatesQuery);
-
-      logger.debug('Templates query executed successfully (Server Component)', {
-        requestId,
-        component: 'templates_server_component',
-        action: 'query_success',
-        rowCount: result.rows.length,
-        table: 'catalog.templates',
-      });
     } catch (queryError) {
       const errorCategory = categorizeError(queryError);
 
-      logger.error('Templates Query Error (Server Component)', {
+      logger.error('Templates Query Error', {
         category: errorCategory,
         message: queryError.message,
-        query: 'templates_fetch',
-        table: 'catalog.templates',
         requestId,
-        component: 'templates_server_component',
-        action: 'query_failed',
       });
 
       // ✅ NOUVEAU: captureDatabaseError avec contexte spécifique
@@ -235,17 +175,10 @@ async function getTemplatesFromDatabase() {
 
     // ===== ÉTAPE 4: VALIDATION DES DONNÉES =====
     if (!result || !Array.isArray(result.rows)) {
-      logger.warn(
-        'Templates query returned invalid data structure (Server Component)',
-        {
-          requestId,
-          component: 'templates_server_component',
-          action: 'invalid_data_structure',
-          resultType: typeof result,
-          hasRows: !!result?.rows,
-          isArray: Array.isArray(result?.rows),
-        },
-      );
+      logger.warn('Templates query returned invalid data structure', {
+        requestId,
+        resultType: typeof result,
+      });
 
       // ✅ NOUVEAU: captureMessage pour les problèmes de structure de données
       captureMessage(
@@ -286,59 +219,26 @@ async function getTemplatesFromDatabase() {
       updated_at: template.updated_at,
     }));
 
-    logger.debug('Templates data sanitized (Server Component)', {
-      requestId,
-      component: 'templates_server_component',
-      action: 'data_sanitization',
-      originalCount: result.rows.length,
-      sanitizedCount: sanitizedTemplates.length,
-    });
-
     // ===== ÉTAPE 6: MISE EN CACHE DES DONNÉES =====
-    logger.debug('Caching templates data (Server Component)', {
-      requestId,
-      component: 'templates_server_component',
-      action: 'cache_set_start',
-      templateCount: sanitizedTemplates.length,
-    });
-
     // Mettre les données en cache
     const cacheSuccess = dashboardCache.templates.set(
       cacheKey,
       sanitizedTemplates,
     );
 
-    if (cacheSuccess) {
-      logger.debug('Templates data cached successfully (Server Component)', {
+    if (!cacheSuccess) {
+      logger.warn('Failed to cache templates data', {
         requestId,
-        component: 'templates_server_component',
-        action: 'cache_set_success',
-        cacheKey,
-      });
-    } else {
-      logger.warn('Failed to cache templates data (Server Component)', {
-        requestId,
-        component: 'templates_server_component',
-        action: 'cache_set_failed',
-        cacheKey,
       });
     }
 
     // ===== ÉTAPE 7: SUCCÈS - LOG ET NETTOYAGE =====
     const responseTime = Date.now() - startTime;
 
-    logger.info('Templates fetch successful (Server Component)', {
+    logger.info('Templates fetch successful', {
       templateCount: sanitizedTemplates.length,
       response_time_ms: responseTime,
-      database_operations: 2, // connection + query
-      success: true,
       requestId,
-      component: 'templates_server_component',
-      action: 'fetch_success',
-      entity: 'template',
-      cacheMiss: true,
-      cacheSet: cacheSuccess,
-      execution_context: 'server_component',
     });
 
     // ✅ NOUVEAU: captureMessage de succès
@@ -372,18 +272,11 @@ async function getTemplatesFromDatabase() {
     const errorCategory = categorizeError(error);
     const responseTime = Date.now() - startTime;
 
-    logger.error('Global Templates Error (Server Component)', {
+    logger.error('Global Templates Error', {
       category: errorCategory,
       response_time_ms: responseTime,
-      reached_global_handler: true,
-      error_name: error.name,
       error_message: error.message,
-      stack_available: !!error.stack,
       requestId,
-      component: 'templates_server_component',
-      action: 'global_error_handler',
-      entity: 'template',
-      execution_context: 'server_component',
     });
 
     // ✅ NOUVEAU: captureException adapté pour Server Components
@@ -425,11 +318,7 @@ async function checkAuthentication() {
     const session = await getServerSession(auth);
 
     if (!session) {
-      logger.warn('Unauthenticated access attempt to templates page', {
-        component: 'templates_server_component',
-        action: 'auth_check_failed',
-        timestamp: new Date().toISOString(),
-      });
+      logger.warn('Unauthenticated access attempt to templates page');
 
       // ✅ NOUVEAU: captureMessage pour tentative d'accès non authentifiée
       captureMessage('Unauthenticated access attempt to templates page', {
@@ -449,22 +338,10 @@ async function checkAuthentication() {
       return null;
     }
 
-    logger.debug(
-      'User authentication verified successfully (Server Component)',
-      {
-        userId: session.user?.id,
-        email: session.user?.email?.substring(0, 3) + '***',
-        component: 'templates_server_component',
-        action: 'auth_verification_success',
-      },
-    );
-
     return session;
   } catch (error) {
-    logger.error('Authentication check error (Server Component)', {
+    logger.error('Authentication check error', {
       error: error.message,
-      component: 'templates_server_component',
-      action: 'auth_check_error',
     });
 
     // ✅ NOUVEAU: captureException pour erreurs d'authentification
@@ -503,22 +380,16 @@ const TemplatesPageComponent = async () => {
     const templates = await getTemplatesFromDatabase();
 
     // ===== ÉTAPE 3: RENDU DE LA PAGE =====
-    logger.info('Templates page rendering (Server Component)', {
+    logger.info('Templates page rendering', {
       templateCount: templates.length,
       userId: session.user?.id,
-      component: 'templates_server_component',
-      action: 'page_render',
-      timestamp: new Date().toISOString(),
     });
 
     return <ListTemplates data={templates} />;
   } catch (error) {
     // Gestion des erreurs au niveau de la page
-    logger.error('Templates page error (Server Component)', {
+    logger.error('Templates page error', {
       error: error.message,
-      stack: error.stack,
-      component: 'templates_server_component',
-      action: 'page_error',
     });
 
     // ✅ NOUVEAU: captureServerComponentError pour erreurs de rendu
