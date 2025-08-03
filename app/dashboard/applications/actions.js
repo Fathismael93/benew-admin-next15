@@ -67,8 +67,6 @@ function validateAndSanitizeFilters(filters = {}) {
         'Server Action: Tentative de filtrage avec champ non autorisé',
         {
           field: key,
-          component: 'applications_server_action',
-          action: 'filter_validation_failed',
           security_event: true,
         },
       );
@@ -213,10 +211,6 @@ async function authenticateServerAction(context = {}) {
     if (!session || !session.user) {
       logger.warn("Server Action: Tentative d'accès non authentifiée", {
         requestId,
-        component: 'applications_server_action',
-        action: 'auth_check_failed',
-        timestamp: new Date().toISOString(),
-        context: context.userAgent || 'server_action',
       });
 
       captureMessage('Unauthenticated access attempt to Server Action', {
@@ -229,9 +223,7 @@ async function authenticateServerAction(context = {}) {
         },
         extra: {
           requestId,
-          timestamp: new Date().toISOString(),
           serverAction: 'getFilteredApplications',
-          context,
         },
       });
 
@@ -244,22 +236,10 @@ async function authenticateServerAction(context = {}) {
         requestId,
         hasUserId: !!session.user.id,
         hasUserEmail: !!session.user.email,
-        component: 'applications_server_action',
-        action: 'invalid_session',
-        context,
       });
 
       throw new Error('Invalid user session');
     }
-
-    logger.debug('Server Action: Authentification utilisateur réussie', {
-      userId: session.user.id,
-      email: session.user.email?.substring(0, 3) + '***',
-      requestId,
-      component: 'applications_server_action',
-      action: 'auth_verification_success',
-      userAgent: context.userAgent,
-    });
 
     return { session, requestId };
   } catch (error) {
@@ -268,9 +248,6 @@ async function authenticateServerAction(context = {}) {
       {
         error: error.message,
         requestId,
-        component: 'applications_server_action',
-        action: 'auth_check_error',
-        context,
       },
     );
 
@@ -284,9 +261,7 @@ async function authenticateServerAction(context = {}) {
       },
       extra: {
         requestId,
-        errorMessage: error.message,
         serverAction: 'getFilteredApplications',
-        context,
       },
     });
 
@@ -325,77 +300,25 @@ export async function getFilteredApplications(filters = {}) {
       logger.warn('Server Action: Rate limit dépassé', {
         requestId,
         userId: session.user.id,
-        component: 'applications_server_action',
-        action: 'rate_limit_exceeded',
       });
 
       throw new Error('Too many requests. Please try again later.');
     }
 
-    logger.debug('Server Action: Rate limiting passé avec succès', {
-      requestId,
-      userId: session.user.id,
-      component: 'applications_server_action',
-      action: 'rate_limit_passed',
-    });
-
     logger.info(
       'Server Action: Processus de filtrage des applications démarré',
       {
-        timestamp: new Date().toISOString(),
         requestId,
         userId: session.user.id,
-        component: 'applications_server_action',
-        action: 'filter_start',
-        method: 'SERVER_ACTION',
         filtersCount: Object.keys(filters).length,
-      },
-    );
-
-    captureMessage(
-      'Applications filtering process started from Server Action',
-      {
-        level: 'info',
-        tags: {
-          component: 'applications_server_action',
-          action: 'process_start',
-          entity: 'application',
-          execution_context: 'server_action',
-        },
-        extra: {
-          requestId,
-          userId: session.user.id,
-          timestamp: new Date().toISOString(),
-          method: 'SERVER_ACTION',
-          filtersProvided: Object.keys(filters),
-        },
       },
     );
 
     // ===== ÉTAPE 3: VALIDATION ET ASSAINISSEMENT DES FILTRES =====
     const validatedFilters = validateAndSanitizeFilters(filters);
 
-    logger.debug('Server Action: Filtres validés et nettoyés', {
-      requestId,
-      component: 'applications_server_action',
-      action: 'filters_validated',
-      originalFiltersCount: Object.keys(filters).length,
-      validatedFiltersCount: Object.keys(validatedFilters).length,
-      validatedFilters: validatedFilters,
-    });
-
     // ===== ÉTAPE 4: VÉRIFICATION DU CACHE AVEC CLÉ DYNAMIQUE =====
     const cacheKey = generateFilterCacheKey(validatedFilters);
-
-    logger.debug(
-      'Server Action: Vérification du cache pour applications filtrées',
-      {
-        requestId,
-        component: 'applications_server_action',
-        action: 'cache_check_start',
-        cacheKey: cacheKey.substring(0, 50) + '...', // Tronquer pour les logs
-      },
-    );
 
     const cachedApplications = dashboardCache.applications.get(cacheKey);
 
@@ -405,67 +328,24 @@ export async function getFilteredApplications(filters = {}) {
       logger.info('Server Action: Applications servies depuis le cache', {
         applicationCount: cachedApplications.length,
         response_time_ms: responseTime,
-        cache_hit: true,
         requestId,
         userId: session.user.id,
-        component: 'applications_server_action',
-        action: 'cache_hit',
-        entity: 'application',
       });
-
-      captureMessage(
-        'Filtered applications served from cache successfully (Server Action)',
-        {
-          level: 'info',
-          tags: {
-            component: 'applications_server_action',
-            action: 'cache_hit',
-            success: 'true',
-            entity: 'application',
-            execution_context: 'server_action',
-          },
-          extra: {
-            requestId,
-            userId: session.user.id,
-            applicationCount: cachedApplications.length,
-            responseTimeMs: responseTime,
-            cacheKey: cacheKey.substring(0, 50),
-            filtersApplied: validatedFilters,
-          },
-        },
-      );
 
       return cachedApplications;
     }
 
-    logger.debug(
-      'Server Action: Cache miss, récupération depuis la base de données',
-      {
-        requestId,
-        component: 'applications_server_action',
-        action: 'cache_miss',
-      },
-    );
-
     // ===== ÉTAPE 5: CONNEXION BASE DE DONNÉES AVEC RETRY =====
     try {
       client = await getClient();
-      logger.debug('Server Action: Connexion base de données réussie', {
-        requestId,
-        component: 'applications_server_action',
-        action: 'db_connection_success',
-      });
     } catch (dbConnectionError) {
       const errorCategory = categorizeError(dbConnectionError);
 
       logger.error('Server Action: Erreur de connexion base de données', {
         category: errorCategory,
         message: dbConnectionError.message,
-        timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
         requestId,
         userId: session.user.id,
-        component: 'applications_server_action',
-        action: 'db_connection_failed',
       });
 
       captureDatabaseError(dbConnectionError, {
@@ -479,7 +359,6 @@ export async function getFilteredApplications(filters = {}) {
         extra: {
           requestId,
           userId: session.user.id,
-          timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
           filters: validatedFilters,
         },
       });
@@ -515,16 +394,6 @@ export async function getFilteredApplications(filters = {}) {
         LIMIT 1000
       `;
 
-      logger.debug('Server Action: Exécution de la requête applications', {
-        requestId,
-        component: 'applications_server_action',
-        action: 'query_start',
-        table: 'catalog.applications',
-        operation: 'SELECT',
-        whereConditions: whereClause ? 'WITH_FILTERS' : 'NO_FILTERS',
-        parametersCount: values.length,
-      });
-
       // Exécution avec timeout intégré
       const queryPromise = client.query(applicationsQuery, values);
       const timeoutPromise = new Promise(
@@ -536,41 +405,22 @@ export async function getFilteredApplications(filters = {}) {
 
       const queryTime = Date.now() - queryStartTime;
 
-      logger.debug('Server Action: Requête applications exécutée avec succès', {
-        requestId,
-        component: 'applications_server_action',
-        action: 'query_success',
-        rowCount: result.rows.length,
-        queryTime_ms: queryTime,
-        table: 'catalog.applications',
-      });
-
       // Log des requêtes lentes
       if (queryTime > 2000) {
         logger.warn('Server Action: Requête lente détectée', {
           requestId,
           queryTime_ms: queryTime,
-          filters: validatedFilters,
           rowCount: result.rows.length,
-          component: 'applications_server_action',
-          action: 'slow_query_detected',
         });
       }
     } catch (queryError) {
       const errorCategory = categorizeError(queryError);
-      const queryTime = Date.now() - queryStartTime;
 
       logger.error("Server Action: Erreur lors de l'exécution de la requête", {
         category: errorCategory,
         message: queryError.message,
-        queryTime_ms: queryTime,
-        query: 'applications_filtered_fetch',
-        table: 'catalog.applications',
-        parametersCount: values.length,
         requestId,
         userId: session.user.id,
-        component: 'applications_server_action',
-        action: 'query_failed',
       });
 
       captureDatabaseError(queryError, {
@@ -586,10 +436,7 @@ export async function getFilteredApplications(filters = {}) {
           userId: session.user.id,
           table: 'catalog.applications',
           queryType: 'applications_filtered_fetch',
-          postgresCode: queryError.code,
-          queryTimeMs: queryTime,
           filters: validatedFilters,
-          parametersCount: values.length,
         },
       });
 
@@ -603,34 +450,7 @@ export async function getFilteredApplications(filters = {}) {
         'Server Action: Structure de données invalide retournée par la requête',
         {
           requestId,
-          component: 'applications_server_action',
-          action: 'invalid_data_structure',
           resultType: typeof result,
-          hasRows: !!result?.rows,
-          isArray: Array.isArray(result?.rows),
-          filters: validatedFilters,
-        },
-      );
-
-      captureMessage(
-        'Applications query returned invalid data structure (Server Action)',
-        {
-          level: 'warning',
-          tags: {
-            component: 'applications_server_action',
-            action: 'invalid_data_structure',
-            error_category: 'business_logic',
-            entity: 'application',
-            execution_context: 'server_action',
-          },
-          extra: {
-            requestId,
-            userId: session.user.id,
-            resultType: typeof result,
-            hasRows: !!result?.rows,
-            isArray: Array.isArray(result?.rows),
-            filters: validatedFilters,
-          },
         },
       );
 
@@ -639,8 +459,6 @@ export async function getFilteredApplications(filters = {}) {
     }
 
     // ===== ÉTAPE 9: NETTOYAGE ET FORMATAGE SÉCURISÉ DES DONNÉES =====
-    const sanitizeStartTime = Date.now();
-
     const sanitizedApplications = result.rows.map((application) => {
       // Validation et nettoyage de chaque champ
       return {
@@ -680,81 +498,20 @@ export async function getFilteredApplications(filters = {}) {
       };
     });
 
-    const sanitizeTime = Date.now() - sanitizeStartTime;
-
-    logger.debug('Server Action: Données applications nettoyées et formatées', {
-      requestId,
-      component: 'applications_server_action',
-      action: 'data_sanitization',
-      originalCount: result.rows.length,
-      sanitizedCount: sanitizedApplications.length,
-      sanitizeTime_ms: sanitizeTime,
-    });
-
     // ===== ÉTAPE 10: MISE EN CACHE INTELLIGENTE =====
-    const cacheStartTime = Date.now();
-
-    logger.debug(
-      'Server Action: Mise en cache des données applications filtrées',
-      {
-        requestId,
-        component: 'applications_server_action',
-        action: 'cache_set_start',
-        applicationCount: sanitizedApplications.length,
-        cacheKey: cacheKey.substring(0, 50),
-      },
-    );
-
     const cacheSuccess = dashboardCache.applications.set(
       cacheKey,
       sanitizedApplications,
     );
-    const cacheTime = Date.now() - cacheStartTime;
-
-    if (cacheSuccess) {
-      logger.debug(
-        'Server Action: Données applications mises en cache avec succès',
-        {
-          requestId,
-          component: 'applications_server_action',
-          action: 'cache_set_success',
-          cacheTime_ms: cacheTime,
-          cacheKey: cacheKey.substring(0, 50),
-        },
-      );
-    } else {
-      logger.warn(
-        'Server Action: Échec de la mise en cache des données applications',
-        {
-          requestId,
-          component: 'applications_server_action',
-          action: 'cache_set_failed',
-          cacheKey: cacheKey.substring(0, 50),
-        },
-      );
-    }
 
     // ===== ÉTAPE 11: LOGGING DE SUCCÈS ET MÉTRIQUES =====
     const responseTime = Date.now() - startTime;
-    const databaseOperations = cacheSuccess ? 3 : 2; // connection + query + cache
 
     logger.info('Server Action: Filtrage applications terminé avec succès', {
       applicationCount: sanitizedApplications.length,
       response_time_ms: responseTime,
-      query_time_ms: Date.now() - queryStartTime,
-      sanitize_time_ms: sanitizeTime,
-      cache_time_ms: cacheTime,
-      database_operations: databaseOperations,
-      success: true,
       requestId,
       userId: session.user.id,
-      component: 'applications_server_action',
-      action: 'filter_success',
-      entity: 'application',
-      cacheMiss: true,
-      cacheSet: cacheSuccess,
-      execution_context: 'server_action',
-      filters_applied: validatedFilters,
     });
 
     captureMessage(
@@ -773,15 +530,7 @@ export async function getFilteredApplications(filters = {}) {
           userId: session.user.id,
           applicationCount: sanitizedApplications.length,
           responseTimeMs: responseTime,
-          queryTimeMs: Date.now() - queryStartTime,
-          databaseOperations,
-          cacheMiss: true,
-          cacheSet: cacheSuccess,
           filtersApplied: validatedFilters,
-          performanceMetrics: {
-            sanitizeTimeMs: sanitizeTime,
-            cacheTimeMs: cacheTime,
-          },
         },
       },
     );
@@ -799,16 +548,8 @@ export async function getFilteredApplications(filters = {}) {
       {
         category: errorCategory,
         response_time_ms: responseTime,
-        reached_global_handler: true,
-        error_name: error.name,
         error_message: error.message,
-        stack_available: !!error.stack,
         requestId: requestId || 'unknown',
-        component: 'applications_server_action',
-        action: 'global_error_handler',
-        entity: 'application',
-        execution_context: 'server_action',
-        filters: filters,
       },
     );
 
@@ -825,9 +566,6 @@ export async function getFilteredApplications(filters = {}) {
       extra: {
         requestId: requestId || 'unknown',
         responseTimeMs: responseTime,
-        reachedGlobalHandler: true,
-        errorName: error.name,
-        stackAvailable: !!error.stack,
         process: 'applications_filter_server_action',
         filtersProvided: filters,
         serverAction: 'getFilteredApplications',
@@ -860,8 +598,6 @@ export async function invalidateApplicationsCache(applicationId = null) {
       requestId,
       userId: session.user.id,
       applicationId,
-      component: 'applications_server_action',
-      action: 'cache_invalidation_start',
     });
 
     const invalidatedCount = invalidateDashboardCache(
@@ -874,8 +610,6 @@ export async function invalidateApplicationsCache(applicationId = null) {
       userId: session.user.id,
       applicationId,
       invalidatedCount,
-      component: 'applications_server_action',
-      action: 'cache_invalidation_success',
     });
 
     return true;
@@ -883,8 +617,6 @@ export async function invalidateApplicationsCache(applicationId = null) {
     logger.error("Server Action: Erreur lors de l'invalidation du cache", {
       error: error.message,
       applicationId,
-      component: 'applications_server_action',
-      action: 'cache_invalidation_failed',
     });
 
     return false;
