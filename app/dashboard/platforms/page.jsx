@@ -34,12 +34,8 @@ async function getPlatformsFromDatabase() {
   const startTime = Date.now();
   const requestId = generateRequestId();
 
-  logger.info('Platforms fetch process started (Server Component)', {
-    timestamp: new Date().toISOString(),
+  logger.info('Platforms fetch process started', {
     requestId,
-    component: 'platforms_server_component',
-    action: 'fetch_start',
-    method: 'SERVER_COMPONENT',
   });
 
   // ✅ NOUVEAU: Utilisation des fonctions Sentry adaptées
@@ -65,27 +61,16 @@ async function getPlatformsFromDatabase() {
       version: '1.0',
     });
 
-    logger.debug('Checking cache for platforms (Server Component)', {
-      requestId,
-      component: 'platforms_server_component',
-      action: 'cache_check_start',
-      cacheKey,
-    });
-
     // Vérifier si les données sont en cache
     const cachedPlatforms = dashboardCache.platforms.get(cacheKey);
 
     if (cachedPlatforms) {
       const responseTime = Date.now() - startTime;
 
-      logger.info('Platforms served from cache (Server Component)', {
+      logger.info('Platforms served from cache', {
         platformCount: cachedPlatforms.length,
         response_time_ms: responseTime,
-        cache_hit: true,
         requestId,
-        component: 'platforms_server_component',
-        action: 'cache_hit',
-        entity: 'platform',
       });
 
       // ✅ NOUVEAU: captureMessage adapté pour Server Components
@@ -121,34 +106,17 @@ async function getPlatformsFromDatabase() {
       return cachedPlatforms;
     }
 
-    logger.debug('Cache miss, fetching from database (Server Component)', {
-      requestId,
-      component: 'platforms_server_component',
-      action: 'cache_miss',
-    });
-
     // ===== ÉTAPE 2: CONNEXION BASE DE DONNÉES =====
     try {
       client = await getClient();
-      logger.debug('Database connection successful (Server Component)', {
-        requestId,
-        component: 'platforms_server_component',
-        action: 'db_connection_success',
-      });
     } catch (dbConnectionError) {
       const errorCategory = categorizeError(dbConnectionError);
 
-      logger.error(
-        'Database Connection Error during platforms fetch (Server Component)',
-        {
-          category: errorCategory,
-          message: dbConnectionError.message,
-          timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
-          requestId,
-          component: 'platforms_server_component',
-          action: 'db_connection_failed',
-        },
-      );
+      logger.error('Database Connection Error during platforms fetch', {
+        category: errorCategory,
+        message: dbConnectionError.message,
+        requestId,
+      });
 
       // ✅ NOUVEAU: captureDatabaseError adapté pour Server Components
       captureDatabaseError(dbConnectionError, {
@@ -184,34 +152,14 @@ async function getPlatformsFromDatabase() {
         ORDER BY created_at DESC
       `;
 
-      logger.debug('Executing platforms query (Server Component)', {
-        requestId,
-        component: 'platforms_server_component',
-        action: 'query_start',
-        table: 'admin.platforms',
-        operation: 'SELECT',
-      });
-
       result = await client.query(platformsQuery);
-
-      logger.debug('Platforms query executed successfully (Server Component)', {
-        requestId,
-        component: 'platforms_server_component',
-        action: 'query_success',
-        rowCount: result.rows.length,
-        table: 'admin.platforms',
-      });
     } catch (queryError) {
       const errorCategory = categorizeError(queryError);
 
-      logger.error('Platforms Query Error (Server Component)', {
+      logger.error('Platforms Query Error', {
         category: errorCategory,
         message: queryError.message,
-        query: 'platforms_fetch',
-        table: 'admin.platforms',
         requestId,
-        component: 'platforms_server_component',
-        action: 'query_failed',
       });
 
       // ✅ NOUVEAU: captureDatabaseError avec contexte spécifique
@@ -238,17 +186,10 @@ async function getPlatformsFromDatabase() {
 
     // ===== ÉTAPE 4: VALIDATION DES DONNÉES =====
     if (!result || !Array.isArray(result.rows)) {
-      logger.warn(
-        'Platforms query returned invalid data structure (Server Component)',
-        {
-          requestId,
-          component: 'platforms_server_component',
-          action: 'invalid_data_structure',
-          resultType: typeof result,
-          hasRows: !!result?.rows,
-          isArray: Array.isArray(result?.rows),
-        },
-      );
+      logger.warn('Platforms query returned invalid data structure', {
+        requestId,
+        resultType: typeof result,
+      });
 
       // ✅ NOUVEAU: captureMessage pour les problèmes de structure de données
       captureMessage(
@@ -288,35 +229,13 @@ async function getPlatformsFromDatabase() {
       is_active: Boolean(platform.is_active),
     }));
 
-    logger.debug('Platforms data sanitized (Server Component)', {
-      requestId,
-      component: 'platforms_server_component',
-      action: 'data_sanitization',
-      originalCount: result.rows.length,
-      sanitizedCount: sanitizedPlatforms.length,
-    });
-
     // ===== ÉTAPE 6: MISE EN CACHE DES DONNÉES =====
-    logger.debug('Caching platforms data (Server Component)', {
-      requestId,
-      component: 'platforms_server_component',
-      action: 'cache_set_start',
-      platformCount: sanitizedPlatforms.length,
-    });
-
     // Mettre les données en cache (sans les numéros complets pour sécurité)
     const cacheData = sanitizedPlatforms;
 
     const cacheSuccess = dashboardCache.platforms.set(cacheKey, cacheData);
 
     if (cacheSuccess) {
-      logger.debug('Platforms data cached successfully (Server Component)', {
-        requestId,
-        component: 'platforms_server_component',
-        action: 'cache_set_success',
-        cacheKey,
-      });
-
       // Émettre un événement de cache set
       cacheEvents.emit('dashboard_set', {
         key: cacheKey,
@@ -327,30 +246,18 @@ async function getPlatformsFromDatabase() {
         context: 'server_component',
       });
     } else {
-      logger.warn('Failed to cache platforms data (Server Component)', {
+      logger.warn('Failed to cache platforms data', {
         requestId,
-        component: 'platforms_server_component',
-        action: 'cache_set_failed',
-        cacheKey,
       });
     }
 
     // ===== ÉTAPE 7: SUCCÈS - LOG ET NETTOYAGE =====
     const responseTime = Date.now() - startTime;
 
-    logger.info('Platforms fetch successful (Server Component)', {
+    logger.info('Platforms fetch successful', {
       platformCount: sanitizedPlatforms.length,
       response_time_ms: responseTime,
-      database_operations: 2, // connection + query
-      success: true,
       requestId,
-      component: 'platforms_server_component',
-      action: 'fetch_success',
-      entity: 'platform',
-      cacheMiss: true,
-      cacheSet: cacheSuccess,
-      dataSanitized: true,
-      execution_context: 'server_component',
     });
 
     // ✅ NOUVEAU: captureMessage de succès
@@ -386,18 +293,11 @@ async function getPlatformsFromDatabase() {
     const errorCategory = categorizeError(error);
     const responseTime = Date.now() - startTime;
 
-    logger.error('Global Platforms Error (Server Component)', {
+    logger.error('Global Platforms Error', {
       category: errorCategory,
       response_time_ms: responseTime,
-      reached_global_handler: true,
-      error_name: error.name,
       error_message: error.message,
-      stack_available: !!error.stack,
       requestId,
-      component: 'platforms_server_component',
-      action: 'global_error_handler',
-      entity: 'platform',
-      execution_context: 'server_component',
     });
 
     // ✅ NOUVEAU: captureException adapté pour Server Components
@@ -439,11 +339,7 @@ async function checkAuthentication() {
     const session = await getServerSession(auth);
 
     if (!session) {
-      logger.warn('Unauthenticated access attempt to platforms page', {
-        component: 'platforms_server_component',
-        action: 'auth_check_failed',
-        timestamp: new Date().toISOString(),
-      });
+      logger.warn('Unauthenticated access attempt to platforms page');
 
       // ✅ NOUVEAU: captureMessage pour tentative d'accès non authentifiée
       captureMessage('Unauthenticated access attempt to platforms page', {
@@ -463,22 +359,10 @@ async function checkAuthentication() {
       return null;
     }
 
-    logger.debug(
-      'User authentication verified successfully (Server Component)',
-      {
-        userId: session.user?.id,
-        email: session.user?.email?.substring(0, 3) + '***',
-        component: 'platforms_server_component',
-        action: 'auth_verification_success',
-      },
-    );
-
     return session;
   } catch (error) {
-    logger.error('Authentication check error (Server Component)', {
+    logger.error('Authentication check error', {
       error: error.message,
-      component: 'platforms_server_component',
-      action: 'auth_check_error',
     });
 
     // ✅ NOUVEAU: captureException pour erreurs d'authentification
@@ -517,22 +401,16 @@ const PlatformsPageComponent = async () => {
     const platforms = await getPlatformsFromDatabase();
 
     // ===== ÉTAPE 3: RENDU DE LA PAGE =====
-    logger.info('Platforms page rendering (Server Component)', {
+    logger.info('Platforms page rendering', {
       platformCount: platforms.length,
       userId: session.user?.id,
-      component: 'platforms_server_component',
-      action: 'page_render',
-      timestamp: new Date().toISOString(),
     });
 
     return <PlatformsList data={platforms} />;
   } catch (error) {
     // Gestion des erreurs au niveau de la page
-    logger.error('Platforms page error (Server Component)', {
+    logger.error('Platforms page error', {
       error: error.message,
-      stack: error.stack,
-      component: 'platforms_server_component',
-      action: 'page_error',
     });
 
     // ✅ NOUVEAU: captureServerComponentError pour erreurs de rendu
