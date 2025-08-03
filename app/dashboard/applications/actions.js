@@ -202,7 +202,7 @@ function generateFilterCacheKey(filters) {
  * @param {Object} context - Contexte de la requête (optionnel pour Server Actions)
  * @returns {Promise<Object>} - Session utilisateur validée
  */
-async function authenticateServerAction(context = {}) {
+async function authenticateServerAction() {
   const requestId = generateRequestId();
 
   try {
@@ -499,10 +499,7 @@ export async function getFilteredApplications(filters = {}) {
     });
 
     // ===== ÉTAPE 10: MISE EN CACHE INTELLIGENTE =====
-    const cacheSuccess = dashboardCache.applications.set(
-      cacheKey,
-      sanitizedApplications,
-    );
+    dashboardCache.applications.set(cacheKey, sanitizedApplications);
 
     // ===== ÉTAPE 11: LOGGING DE SUCCÈS ET MÉTRIQUES =====
     const responseTime = Date.now() - startTime;

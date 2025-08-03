@@ -269,10 +269,7 @@ async function getApplicationFromDatabase(applicationId) {
     };
 
     // ===== ÉTAPE 7: MISE EN CACHE DES DONNÉES =====
-    const cacheSuccess = dashboardCache.singleApplication.set(
-      cacheKey,
-      sanitizedApplication,
-    );
+    dashboardCache.singleApplication.set(cacheKey, sanitizedApplication);
 
     // ===== ÉTAPE 8: SUCCÈS - LOG ET NETTOYAGE =====
     const responseTime = Date.now() - startTime;

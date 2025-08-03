@@ -10,21 +10,13 @@ import {
   captureServerComponentError,
   withServerComponentMonitoring,
 } from '@/monitoring/sentry';
-import {
-  categorizeError,
-  generateRequestId,
-  // anonymizeIp,
-} from '@/utils/helpers';
+import { categorizeError, generateRequestId } from '@/utils/helpers';
 import logger from '@/utils/logger';
 import {
   applicationIdSchema,
   cleanUUID,
 } from '@/utils/schemas/applicationSchema';
-import {
-  dashboardCache,
-  getDashboardCacheKey,
-  // invalidateDashboardCache,
-} from '@/utils/cache';
+import { dashboardCache, getDashboardCacheKey } from '@/utils/cache';
 
 // Configuration de revalidation pour cette page
 export const revalidate = 0; // Désactive le cache statique
@@ -41,13 +33,8 @@ async function getApplicationForEditFromDatabase(applicationId) {
   const startTime = Date.now();
   const requestId = generateRequestId();
 
-  logger.info('Application for edit fetch process started (Server Component)', {
-    timestamp: new Date().toISOString(),
+  logger.info('Application for edit fetch process started', {
     requestId,
-    component: 'edit_application_server_component',
-    action: 'fetch_start',
-    method: 'SERVER_COMPONENT',
-    operation: 'get_application_for_edit',
     applicationId,
   });
 
@@ -74,50 +61,21 @@ async function getApplicationForEditFromDatabase(applicationId) {
 
   try {
     // ===== ÉTAPE 1: VALIDATION DE L'ID AVEC YUP =====
-    logger.debug(
-      'Validating application ID with Yup schema (Server Component)',
-      {
-        requestId,
-        component: 'edit_application_server_component',
-        action: 'id_validation_start',
-        operation: 'get_application_for_edit',
-        providedId: applicationId,
-      },
-    );
-
     try {
       // Valider l'ID avec le schema Yup
       await applicationIdSchema.validate(
         { id: applicationId },
         { abortEarly: false },
       );
-
-      logger.debug(
-        'Application ID validation with Yup passed (Server Component)',
-        {
-          requestId,
-          component: 'edit_application_server_component',
-          action: 'yup_id_validation_success',
-          operation: 'get_application_for_edit',
-          applicationId,
-        },
-      );
     } catch (validationError) {
       const errorCategory = categorizeError(validationError);
 
-      logger.warn(
-        'Application ID validation failed with Yup (Server Component)',
-        {
-          category: errorCategory,
-          providedId: applicationId,
-          failed_fields: validationError.inner?.map((err) => err.path) || [],
-          total_errors: validationError.inner?.length || 0,
-          requestId,
-          component: 'edit_application_server_component',
-          action: 'yup_id_validation_failed',
-          operation: 'get_application_for_edit',
-        },
-      );
+      logger.warn('Application ID validation failed with Yup', {
+        category: errorCategory,
+        providedId: applicationId,
+        failed_fields: validationError.inner?.map((err) => err.path) || [],
+        requestId,
+      });
 
       // ✅ NOUVEAU: captureMessage pour les problèmes de validation
       captureMessage(
@@ -153,28 +111,13 @@ async function getApplicationForEditFromDatabase(applicationId) {
     // Nettoyer l'UUID pour garantir le format correct
     const cleanedApplicationId = cleanUUID(applicationId);
     if (!cleanedApplicationId) {
-      logger.warn('Application ID cleaning failed (Server Component)', {
+      logger.warn('Application ID cleaning failed', {
         requestId,
-        component: 'edit_application_server_component',
-        action: 'id_cleaning_failed',
-        operation: 'get_application_for_edit',
         providedId: applicationId,
       });
 
       return null;
     }
-
-    logger.debug(
-      'Application ID validation and cleaning passed (Server Component)',
-      {
-        requestId,
-        component: 'edit_application_server_component',
-        action: 'id_validation_success',
-        operation: 'get_application_for_edit',
-        originalId: applicationId,
-        cleanedId: cleanedApplicationId,
-      },
-    );
 
     // ===== ÉTAPE 2: VÉRIFICATION DU CACHE =====
     const cacheKey = getDashboardCacheKey('edit_application', {
@@ -183,29 +126,17 @@ async function getApplicationForEditFromDatabase(applicationId) {
       version: '1.0',
     });
 
-    logger.debug('Checking cache for application edit (Server Component)', {
-      requestId,
-      component: 'edit_application_server_component',
-      action: 'cache_check_start',
-      cacheKey,
-      applicationId: cleanedApplicationId,
-    });
-
     // Vérifier si les données sont en cache
     const cachedApplication = dashboardCache.singleApplication.get(cacheKey);
 
     if (cachedApplication) {
       const responseTime = Date.now() - startTime;
 
-      logger.info('Application for edit served from cache (Server Component)', {
+      logger.info('Application for edit served from cache', {
         applicationId: cleanedApplicationId,
         applicationName: cachedApplication.application_name,
         response_time_ms: responseTime,
-        cache_hit: true,
         requestId,
-        component: 'edit_application_server_component',
-        action: 'cache_hit',
-        entity: 'application',
       });
 
       // ✅ NOUVEAU: captureMessage adapté pour Server Components
@@ -234,36 +165,18 @@ async function getApplicationForEditFromDatabase(applicationId) {
       return cachedApplication;
     }
 
-    logger.debug('Cache miss, fetching from database (Server Component)', {
-      requestId,
-      component: 'edit_application_server_component',
-      action: 'cache_miss',
-      applicationId: cleanedApplicationId,
-    });
-
     // ===== ÉTAPE 3: CONNEXION BASE DE DONNÉES =====
     try {
       client = await getClient();
-      logger.debug('Database connection successful (Server Component)', {
-        requestId,
-        component: 'edit_application_server_component',
-        action: 'db_connection_success',
-        operation: 'get_application_for_edit',
-        applicationId: cleanedApplicationId,
-      });
     } catch (dbConnectionError) {
       const errorCategory = categorizeError(dbConnectionError);
 
       logger.error(
-        'Database Connection Error during application fetch for edit (Server Component)',
+        'Database Connection Error during application fetch for edit',
         {
           category: errorCategory,
           message: dbConnectionError.message,
-          timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
           requestId,
-          component: 'edit_application_server_component',
-          action: 'db_connection_failed',
-          operation: 'get_application_for_edit',
           applicationId: cleanedApplicationId,
         },
       );
@@ -312,48 +225,16 @@ async function getApplicationForEditFromDatabase(applicationId) {
         WHERE application_id = $1
       `;
 
-      logger.debug(
-        'Executing application fetch for edit query (Server Component)',
-        {
-          requestId,
-          component: 'edit_application_server_component',
-          action: 'query_start',
-          operation: 'get_application_for_edit',
-          applicationId: cleanedApplicationId,
-          table: 'catalog.applications',
-        },
-      );
-
       result = await client.query(applicationQuery, [cleanedApplicationId]);
-
-      logger.debug(
-        'Application fetch for edit query executed successfully (Server Component)',
-        {
-          requestId,
-          component: 'edit_application_server_component',
-          action: 'query_success',
-          operation: 'get_application_for_edit',
-          applicationId: cleanedApplicationId,
-          rowCount: result.rows.length,
-        },
-      );
     } catch (queryError) {
       const errorCategory = categorizeError(queryError);
 
-      logger.error(
-        'Application Fetch For Edit Query Error (Server Component)',
-        {
-          category: errorCategory,
-          message: queryError.message,
-          query: 'application_fetch_for_edit',
-          table: 'catalog.applications',
-          applicationId: cleanedApplicationId,
-          requestId,
-          component: 'edit_application_server_component',
-          action: 'query_failed',
-          operation: 'get_application_for_edit',
-        },
-      );
+      logger.error('Application Fetch For Edit Query Error', {
+        category: errorCategory,
+        message: queryError.message,
+        applicationId: cleanedApplicationId,
+        requestId,
+      });
 
       // ✅ NOUVEAU: captureDatabaseError avec contexte spécifique
       captureDatabaseError(queryError, {
@@ -380,11 +261,8 @@ async function getApplicationForEditFromDatabase(applicationId) {
 
     // ===== ÉTAPE 5: VÉRIFICATION EXISTENCE DE L'APPLICATION =====
     if (result.rows.length === 0) {
-      logger.warn('Application not found for edit (Server Component)', {
+      logger.warn('Application not found for edit', {
         requestId,
-        component: 'edit_application_server_component',
-        action: 'application_not_found',
-        operation: 'get_application_for_edit',
         applicationId: cleanedApplicationId,
       });
 
@@ -431,45 +309,16 @@ async function getApplicationForEditFromDatabase(applicationId) {
       updated_at: application.updated_at,
     };
 
-    logger.debug('Application data sanitized for edit (Server Component)', {
-      requestId,
-      component: 'edit_application_server_component',
-      action: 'data_sanitization',
-      operation: 'get_application_for_edit',
-      applicationId: cleanedApplicationId,
-    });
-
     // ===== ÉTAPE 7: MISE EN CACHE DES DONNÉES =====
-    logger.debug('Caching application edit data (Server Component)', {
-      requestId,
-      component: 'edit_application_server_component',
-      action: 'cache_set_start',
-      applicationId: cleanedApplicationId,
-    });
-
     // Mettre les données en cache
     const cacheSuccess = dashboardCache.singleApplication.set(
       cacheKey,
       sanitizedApplication,
     );
 
-    if (cacheSuccess) {
-      logger.debug(
-        'Application edit data cached successfully (Server Component)',
-        {
-          requestId,
-          component: 'edit_application_server_component',
-          action: 'cache_set_success',
-          cacheKey,
-          applicationId: cleanedApplicationId,
-        },
-      );
-    } else {
-      logger.warn('Failed to cache application edit data (Server Component)', {
+    if (!cacheSuccess) {
+      logger.warn('Failed to cache application edit data', {
         requestId,
-        component: 'edit_application_server_component',
-        action: 'cache_set_failed',
-        cacheKey,
         applicationId: cleanedApplicationId,
       });
     }
@@ -477,21 +326,11 @@ async function getApplicationForEditFromDatabase(applicationId) {
     // ===== ÉTAPE 8: SUCCÈS - LOG ET NETTOYAGE =====
     const responseTime = Date.now() - startTime;
 
-    logger.info('Application fetch for edit successful (Server Component)', {
+    logger.info('Application fetch for edit successful', {
       applicationId: cleanedApplicationId,
       applicationName: sanitizedApplication.application_name,
       response_time_ms: responseTime,
-      database_operations: 2, // connection + query
-      success: true,
       requestId,
-      component: 'edit_application_server_component',
-      action: 'fetch_for_edit_success',
-      entity: 'application',
-      cacheMiss: true,
-      cacheSet: cacheSuccess,
-      execution_context: 'server_component',
-      operation: 'get_application_for_edit',
-      yupValidationApplied: true,
     });
 
     // ✅ NOUVEAU: captureMessage de succès
@@ -527,20 +366,12 @@ async function getApplicationForEditFromDatabase(applicationId) {
     const errorCategory = categorizeError(error);
     const responseTime = Date.now() - startTime;
 
-    logger.error('Global Application For Edit Error (Server Component)', {
+    logger.error('Global Application For Edit Error', {
       category: errorCategory,
       response_time_ms: responseTime,
-      reached_global_handler: true,
-      error_name: error.name,
       error_message: error.message,
-      stack_available: !!error.stack,
       requestId,
       applicationId,
-      component: 'edit_application_server_component',
-      action: 'global_error_handler',
-      entity: 'application',
-      operation: 'get_application_for_edit',
-      execution_context: 'server_component',
     });
 
     // ✅ NOUVEAU: captureException adapté pour Server Components
@@ -583,11 +414,7 @@ async function checkAuthentication() {
     const session = await getServerSession(auth);
 
     if (!session) {
-      logger.warn('Unauthenticated access attempt to application edit page', {
-        component: 'edit_application_server_component',
-        action: 'auth_check_failed',
-        timestamp: new Date().toISOString(),
-      });
+      logger.warn('Unauthenticated access attempt to application edit page');
 
       // ✅ NOUVEAU: captureMessage pour tentative d'accès non authentifiée
       captureMessage(
@@ -610,22 +437,10 @@ async function checkAuthentication() {
       return null;
     }
 
-    logger.debug(
-      'User authentication verified successfully (Server Component)',
-      {
-        userId: session.user?.id,
-        email: session.user?.email?.substring(0, 3) + '***',
-        component: 'edit_application_server_component',
-        action: 'auth_verification_success',
-      },
-    );
-
     return session;
   } catch (error) {
-    logger.error('Authentication check error (Server Component)', {
+    logger.error('Authentication check error', {
       error: error.message,
-      component: 'edit_application_server_component',
-      action: 'auth_check_error',
     });
 
     // ✅ NOUVEAU: captureException pour erreurs d'authentification
@@ -673,23 +488,17 @@ const EditApplicationPageComponent = async ({ params }) => {
     }
 
     // ===== ÉTAPE 4: RENDU DE LA PAGE =====
-    logger.info('Application edit page rendering (Server Component)', {
+    logger.info('Application edit page rendering', {
       applicationId: application.application_id,
       applicationName: application.application_name,
       userId: session.user?.id,
-      component: 'edit_application_server_component',
-      action: 'page_render',
-      timestamp: new Date().toISOString(),
     });
 
     return <EditApplication application={application} />;
   } catch (error) {
     // Gestion des erreurs au niveau de la page
-    logger.error('Application edit page error (Server Component)', {
+    logger.error('Application edit page error', {
       error: error.message,
-      stack: error.stack,
-      component: 'edit_application_server_component',
-      action: 'page_error',
     });
 
     // ✅ NOUVEAU: captureServerComponentError pour erreurs de rendu

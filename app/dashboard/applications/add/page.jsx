@@ -181,7 +181,7 @@ async function getTemplatesFromDatabase() {
     }
 
     // ===== ÉTAPE 7: MISE EN CACHE DES DONNÉES =====
-    const cacheSuccess = dashboardCache.templates.set(
+    dashboardCache.templates.set(
       cacheKey,
       validTemplatesForApplications,
       { ttl: 10 * 60 * 1000 }, // 10 minutes pour les données de formulaire
