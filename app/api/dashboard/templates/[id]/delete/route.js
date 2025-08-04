@@ -17,25 +17,20 @@ import logger from '@/utils/logger';
 import isAuthenticatedUser from '@backend/authMiddleware';
 import { applyRateLimit } from '@backend/rateLimiter';
 import { templateIdSchema } from '@/utils/schemas/templateSchema';
-// AJOUT POUR L'INVALIDATION DU CACHE
 import { dashboardCache, getDashboardCacheKey } from '@/utils/cache';
 
 export const dynamic = 'force-dynamic';
 
-// ----- CONFIGURATION DU RATE LIMITING POUR LA SUPPRESSION DE TEMPLATES -----
-
 // Créer le middleware de rate limiting spécifique pour la suppression de templates
 const deleteTemplateRateLimit = applyRateLimit('CONTENT_API', {
-  // Configuration personnalisée pour la suppression de templates
-  windowMs: 5 * 60 * 1000, // 5 minutes (plus strict pour les suppressions)
-  max: 10, // 10 suppressions par 5 minutes (très restrictif)
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 10, // 10 suppressions par 5 minutes
   message:
     'Trop de tentatives de suppression de templates. Veuillez réessayer dans quelques minutes.',
-  skipSuccessfulRequests: false, // Compter toutes les suppressions réussies
-  skipFailedRequests: false, // Compter aussi les échecs
-  prefix: 'delete_template', // Préfixe spécifique pour la suppression de templates
+  skipSuccessfulRequests: false,
+  skipFailedRequests: false,
+  prefix: 'delete_template',
 
-  // Fonction personnalisée pour générer la clé (basée sur IP + ID du template)
   keyGenerator: (req) => {
     const ip = extractRealIp(req);
     const url = req.url || req.nextUrl?.pathname || '';
@@ -45,7 +40,7 @@ const deleteTemplateRateLimit = applyRateLimit('CONTENT_API', {
   },
 });
 
-// ----- FONCTION D'INVALIDATION DU CACHE -----
+// Fonction d'invalidation du cache
 const invalidateTemplatesCache = (requestId, templateId) => {
   try {
     const cacheKey = getDashboardCacheKey('templates_list', {
@@ -55,17 +50,6 @@ const invalidateTemplatesCache = (requestId, templateId) => {
 
     const cacheInvalidated = dashboardCache.templates.delete(cacheKey);
 
-    logger.debug('Templates cache invalidation', {
-      requestId,
-      templateId,
-      component: 'templates',
-      action: 'cache_invalidation',
-      operation: 'delete_template',
-      cacheKey,
-      invalidated: cacheInvalidated,
-    });
-
-    // Capturer l'invalidation du cache avec Sentry
     captureMessage('Templates cache invalidated after deletion', {
       level: 'info',
       tags: {
@@ -87,9 +71,6 @@ const invalidateTemplatesCache = (requestId, templateId) => {
     logger.warn('Failed to invalidate templates cache', {
       requestId,
       templateId,
-      component: 'templates',
-      action: 'cache_invalidation_failed',
-      operation: 'delete_template',
       error: cacheError.message,
     });
 
@@ -112,7 +93,7 @@ const invalidateTemplatesCache = (requestId, templateId) => {
   }
 };
 
-// ----- FONCTION POUR CRÉER LES HEADERS DE RÉPONSE -----
+// Fonction pour créer les headers de réponse
 const createResponseHeaders = (
   requestId,
   responseTime,
@@ -120,32 +101,21 @@ const createResponseHeaders = (
   rateLimitInfo = null,
 ) => {
   const headers = {
-    // CORS spécifique pour mutations de suppression
     'Access-Control-Allow-Origin':
       process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
     'Access-Control-Allow-Methods': 'DELETE, OPTIONS',
     'Access-Control-Allow-Headers':
       'Content-Type, Authorization, X-Requested-With',
-
-    // Anti-cache strict pour les mutations
     'Cache-Control':
       'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
     Pragma: 'no-cache',
     Expires: '0',
-
-    // Sécurité pour mutations de données
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Cross-Origin-Resource-Policy': 'same-site',
-
-    // CSP pour manipulation de données
     'Content-Security-Policy': "default-src 'none'; connect-src 'self'",
-
-    // Headers de traçabilité
     'X-Request-ID': requestId,
     'X-Response-Time': `${responseTime}ms`,
     'X-API-Version': '1.0',
-
-    // Headers spécifiques à la suppression
     'X-Transaction-Type': 'mutation',
     'X-Operation-Type': 'delete',
     'X-Operation-Criticality': 'high',
@@ -154,17 +124,12 @@ const createResponseHeaders = (
     'X-Business-Rule-Validation': 'inactive-only',
     'X-Cascade-Operations': 'database,cloudinary',
     'X-Cache-Invalidation': 'templates',
-
-    // Rate limiting strict pour suppressions
-    'X-RateLimit-Window': '300', // 5 minutes en secondes
+    'X-RateLimit-Window': '300',
     'X-RateLimit-Limit': '10',
-
-    // Headers de sécurité supplémentaires pour opération critique
     'X-Irreversible-Operation': 'true',
     'X-Data-Loss-Risk': 'high',
   };
 
-  // Ajouter les infos de rate limiting si disponibles
   if (rateLimitInfo) {
     headers['X-RateLimit-Remaining'] =
       rateLimitInfo.remaining?.toString() || '0';
@@ -174,8 +139,6 @@ const createResponseHeaders = (
   return headers;
 };
 
-// ----- API ROUTE PRINCIPALE AVEC RATE LIMITING -----
-
 export async function DELETE(request, { params }) {
   let client;
   const startTime = Date.now();
@@ -183,16 +146,10 @@ export async function DELETE(request, { params }) {
   const { id } = params;
 
   logger.info('Delete Template API called', {
-    timestamp: new Date().toISOString(),
     requestId,
     templateId: id,
-    component: 'templates',
-    action: 'api_start',
-    method: 'DELETE',
-    operation: 'delete_template',
   });
 
-  // Capturer le début du processus de suppression de template
   captureMessage('Delete template process started', {
     level: 'info',
     tags: {
@@ -212,24 +169,8 @@ export async function DELETE(request, { params }) {
 
   try {
     // ===== ÉTAPE 1: VALIDATION DE L'ID DU TEMPLATE =====
-    logger.debug('Validating template ID', {
-      requestId,
-      templateId: id,
-      component: 'templates',
-      action: 'id_validation_start',
-      operation: 'delete_template',
-    });
-
     try {
       await templateIdSchema.validate({ id }, { abortEarly: false });
-
-      logger.debug('Template ID validation passed', {
-        requestId,
-        templateId: id,
-        component: 'templates',
-        action: 'id_validation_success',
-        operation: 'delete_template',
-      });
     } catch (idValidationError) {
       const errorCategory = categorizeError(idValidationError);
 
@@ -240,12 +181,8 @@ export async function DELETE(request, { params }) {
           (err) => err.message,
         ) || [idValidationError.message],
         requestId,
-        component: 'templates',
-        action: 'id_validation_failed',
-        operation: 'delete_template',
       });
 
-      // Capturer l'erreur de validation d'ID avec Sentry
       captureMessage('Template ID validation failed', {
         level: 'warning',
         tags: {
@@ -281,28 +218,15 @@ export async function DELETE(request, { params }) {
     }
 
     // ===== ÉTAPE 2: APPLIQUER LE RATE LIMITING =====
-    logger.debug('Applying rate limiting for delete template API', {
-      requestId,
-      templateId: id,
-      component: 'templates',
-      action: 'rate_limit_start',
-      operation: 'delete_template',
-    });
-
     const rateLimitResponse = await deleteTemplateRateLimit(request);
 
-    // Si le rate limiter retourne une réponse, cela signifie que la limite est dépassée
     if (rateLimitResponse) {
       logger.warn('Delete template API rate limit exceeded', {
         requestId,
         templateId: id,
-        component: 'templates',
-        action: 'rate_limit_exceeded',
-        operation: 'delete_template',
         ip: anonymizeIp(extractRealIp(request)),
       });
 
-      // Capturer l'événement de rate limiting avec Sentry
       captureMessage('Delete template API rate limit exceeded', {
         level: 'warning',
         tags: {
@@ -321,13 +245,11 @@ export async function DELETE(request, { params }) {
         },
       });
 
-      // Ajouter les headers de sécurité même en cas de rate limit
       const responseTime = Date.now() - startTime;
       const headers = createResponseHeaders(requestId, responseTime, id, {
         remaining: 0,
       });
 
-      // Modifier la réponse pour inclure nos headers
       const rateLimitBody = await rateLimitResponse.json();
       return NextResponse.json(rateLimitBody, {
         status: 429,
@@ -335,58 +257,22 @@ export async function DELETE(request, { params }) {
       });
     }
 
-    logger.debug('Rate limiting passed successfully', {
-      requestId,
-      templateId: id,
-      component: 'templates',
-      action: 'rate_limit_passed',
-      operation: 'delete_template',
-    });
-
     // ===== ÉTAPE 3: VÉRIFICATION AUTHENTIFICATION =====
-    logger.debug('Verifying user authentication', {
-      requestId,
-      templateId: id,
-      component: 'templates',
-      action: 'auth_verification_start',
-      operation: 'delete_template',
-    });
-
     await isAuthenticatedUser(request, NextResponse);
-
-    logger.debug('User authentication verified successfully', {
-      requestId,
-      templateId: id,
-      component: 'templates',
-      action: 'auth_verification_success',
-      operation: 'delete_template',
-    });
 
     // ===== ÉTAPE 4: CONNEXION BASE DE DONNÉES =====
     try {
       client = await getClient();
-      logger.debug('Database connection successful', {
-        requestId,
-        templateId: id,
-        component: 'templates',
-        action: 'db_connection_success',
-        operation: 'delete_template',
-      });
     } catch (dbConnectionError) {
       const errorCategory = categorizeError(dbConnectionError);
 
       logger.error('Database Connection Error during template deletion', {
         category: errorCategory,
         message: dbConnectionError.message,
-        timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
         requestId,
         templateId: id,
-        component: 'templates',
-        action: 'db_connection_failed',
-        operation: 'delete_template',
       });
 
-      // Capturer l'erreur de connexion DB avec Sentry
       captureDatabaseError(dbConnectionError, {
         tags: {
           component: 'templates',
@@ -415,17 +301,9 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    // ===== ÉTAPE 6: VÉRIFICATION DE L'EXISTENCE ET DE L'ÉTAT DU TEMPLATE =====
+    // ===== ÉTAPE 5: VÉRIFICATION DE L'EXISTENCE ET DE L'ÉTAT DU TEMPLATE =====
     let templateToDelete;
     try {
-      logger.debug('Checking template existence and status', {
-        requestId,
-        templateId: id,
-        component: 'templates',
-        action: 'template_check_start',
-        operation: 'delete_template',
-      });
-
       const checkResult = await client.query(
         'SELECT template_id, template_name, template_image, is_active FROM catalog.templates WHERE template_id = $1',
         [id],
@@ -435,12 +313,8 @@ export async function DELETE(request, { params }) {
         logger.warn('Template not found for deletion', {
           requestId,
           templateId: id,
-          component: 'templates',
-          action: 'template_not_found',
-          operation: 'delete_template',
         });
 
-        // Capturer le template non trouvé avec Sentry
         captureMessage('Template not found for deletion', {
           level: 'warning',
           tags: {
@@ -473,19 +347,15 @@ export async function DELETE(request, { params }) {
 
       templateToDelete = checkResult.rows[0];
 
-      // Vérifier que le template est inactif (condition obligatoire pour la suppression)
+      // Vérifier que le template est inactif
       if (templateToDelete.is_active === true) {
         logger.warn('Attempted to delete active template', {
           requestId,
           templateId: id,
           templateName: templateToDelete.template_name,
           isActive: templateToDelete.is_active,
-          component: 'templates',
-          action: 'active_template_deletion_blocked',
-          operation: 'delete_template',
         });
 
-        // Capturer la tentative de suppression d'un template actif avec Sentry
         captureMessage('Attempted to delete active template', {
           level: 'warning',
           tags: {
@@ -519,16 +389,6 @@ export async function DELETE(request, { params }) {
           { status: 400, headers },
         );
       }
-
-      logger.debug('Template validation passed - inactive template found', {
-        requestId,
-        templateId: id,
-        templateName: templateToDelete.template_name,
-        isActive: templateToDelete.is_active,
-        component: 'templates',
-        action: 'template_check_success',
-        operation: 'delete_template',
-      });
     } catch (checkError) {
       const errorCategory = categorizeError(checkError);
 
@@ -537,12 +397,8 @@ export async function DELETE(request, { params }) {
         message: checkError.message,
         requestId,
         templateId: id,
-        component: 'templates',
-        action: 'template_check_failed',
-        operation: 'delete_template',
       });
 
-      // Capturer l'erreur de vérification avec Sentry
       captureDatabaseError(checkError, {
         tags: {
           component: 'templates',
@@ -575,18 +431,9 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    // ===== ÉTAPE 7: SUPPRESSION DU TEMPLATE EN BASE DE DONNÉES =====
+    // ===== ÉTAPE 6: SUPPRESSION DU TEMPLATE EN BASE DE DONNÉES =====
     let deleteResult;
     try {
-      logger.debug('Executing template deletion query', {
-        requestId,
-        templateId: id,
-        component: 'templates',
-        action: 'query_start',
-        operation: 'delete_template',
-        table: 'catalog.templates',
-      });
-
       // Supprimer uniquement si is_active = false (sécurité supplémentaire)
       deleteResult = await client.query(
         `DELETE FROM catalog.templates 
@@ -598,16 +445,11 @@ export async function DELETE(request, { params }) {
       );
 
       if (deleteResult.rowCount === 0) {
-        // Cela ne devrait pas arriver après nos vérifications, mais sécurité supplémentaire
         logger.error('Template deletion failed - no rows affected', {
           requestId,
           templateId: id,
-          component: 'templates',
-          action: 'deletion_no_rows_affected',
-          operation: 'delete_template',
         });
 
-        // Capturer l'échec inattendu avec Sentry
         captureMessage('Template deletion failed - no rows affected', {
           level: 'error',
           tags: {
@@ -639,30 +481,16 @@ export async function DELETE(request, { params }) {
           { status: 400, headers },
         );
       }
-
-      logger.debug('Template deletion query executed successfully', {
-        requestId,
-        templateId: id,
-        templateName: deleteResult.rows[0].template_name,
-        component: 'templates',
-        action: 'query_success',
-        operation: 'delete_template',
-      });
     } catch (deleteError) {
       const errorCategory = categorizeError(deleteError);
 
       logger.error('Template Deletion Error', {
         category: errorCategory,
         message: deleteError.message,
-        operation: 'DELETE FROM catalog.templates',
-        table: 'catalog.templates',
         requestId,
         templateId: id,
-        component: 'templates',
-        action: 'query_failed',
       });
 
-      // Capturer l'erreur de suppression avec Sentry
       captureDatabaseError(deleteError, {
         tags: {
           component: 'templates',
@@ -697,44 +525,22 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    // ===== ÉTAPE 8: SUPPRESSION DE L'IMAGE CLOUDINARY =====
+    // ===== ÉTAPE 7: SUPPRESSION DE L'IMAGE CLOUDINARY =====
     const deletedTemplate = deleteResult.rows[0];
     const cloudinaryImageId =
       templateToDelete.template_image || deletedTemplate.template_image;
 
     if (cloudinaryImageId) {
       try {
-        logger.debug('Deleting image from Cloudinary', {
-          requestId,
-          templateId: id,
-          imageId: cloudinaryImageId,
-          component: 'templates',
-          action: 'cloudinary_delete_start',
-          operation: 'delete_template',
-        });
-
         await cloudinary.uploader.destroy(cloudinaryImageId);
-
-        logger.debug('Image deleted from Cloudinary successfully', {
-          requestId,
-          templateId: id,
-          imageId: cloudinaryImageId,
-          component: 'templates',
-          action: 'cloudinary_delete_success',
-          operation: 'delete_template',
-        });
       } catch (cloudError) {
         logger.error('Error deleting image from Cloudinary', {
           requestId,
           templateId: id,
           imageId: cloudinaryImageId,
           error: cloudError.message,
-          component: 'templates',
-          action: 'cloudinary_delete_failed',
-          operation: 'delete_template',
         });
 
-        // Capturer l'erreur Cloudinary avec Sentry (non critique car le template est déjà supprimé)
         captureException(cloudError, {
           level: 'warning',
           tags: {
@@ -751,35 +557,23 @@ export async function DELETE(request, { params }) {
             templateAlreadyDeleted: true,
           },
         });
-        // Ne pas faire échouer la suppression si Cloudinary échoue
       }
     }
 
-    // ===== ÉTAPE 9: INVALIDATION DU CACHE APRÈS SUCCÈS =====
-    // Invalider le cache des templates après suppression réussie
+    // ===== ÉTAPE 8: INVALIDATION DU CACHE APRÈS SUCCÈS =====
     invalidateTemplatesCache(requestId, id);
 
-    // ===== ÉTAPE 10: SUCCÈS - LOG ET NETTOYAGE =====
+    // ===== ÉTAPE 9: SUCCÈS - LOG ET NETTOYAGE =====
     const responseTime = Date.now() - startTime;
 
     logger.info('Template deletion successful', {
       templateId: id,
       templateName: deletedTemplate.template_name,
-      imageId: cloudinaryImageId,
       response_time_ms: responseTime,
-      database_operations: 3, // connection + check + delete
-      cloudinary_operations: cloudinaryImageId ? 1 : 0,
-      cache_invalidated: true,
       success: true,
       requestId,
-      component: 'templates',
-      action: 'deletion_success',
-      entity: 'template',
-      rateLimitingApplied: true,
-      operation: 'delete_template',
     });
 
-    // Capturer le succès de la suppression avec Sentry
     captureMessage('Template deletion completed successfully', {
       level: 'info',
       tags: {
@@ -805,7 +599,6 @@ export async function DELETE(request, { params }) {
 
     if (client) await client.cleanup();
 
-    // Créer les headers de succès
     const headers = createResponseHeaders(requestId, responseTime, id);
 
     return NextResponse.json(
@@ -834,19 +627,11 @@ export async function DELETE(request, { params }) {
     logger.error('Global Delete Template Error', {
       category: errorCategory,
       response_time_ms: responseTime,
-      reached_global_handler: true,
-      error_name: error.name,
       error_message: error.message,
-      stack_available: !!error.stack,
       requestId,
       templateId: id,
-      component: 'templates',
-      action: 'global_error_handler',
-      entity: 'template',
-      operation: 'delete_template',
     });
 
-    // Capturer l'erreur globale avec Sentry
     captureException(error, {
       level: 'error',
       tags: {
@@ -872,7 +657,6 @@ export async function DELETE(request, { params }) {
 
     if (client) await client.cleanup();
 
-    // Créer les headers même en cas d'erreur globale
     const headers = createResponseHeaders(requestId, responseTime, id);
 
     return NextResponse.json(

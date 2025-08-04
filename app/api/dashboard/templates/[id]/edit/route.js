@@ -22,23 +22,18 @@ import {
   templateUpdateSchema,
   templateIdSchema,
 } from '@/utils/schemas/templateSchema';
-// AJOUT POUR L'INVALIDATION DU CACHE
 import { dashboardCache, getDashboardCacheKey } from '@/utils/cache';
-
-// ----- CONFIGURATION DU RATE LIMITING POUR LA MODIFICATION DE TEMPLATES -----
 
 // Créer le middleware de rate limiting spécifique pour la modification de templates
 const editTemplateRateLimit = applyRateLimit('CONTENT_API', {
-  // Configuration personnalisée pour la modification de templates
   windowMs: 2 * 60 * 1000, // 2 minutes
-  max: 20, // 20 modifications par 2 minutes (plus permissif que l'ajout)
+  max: 20, // 20 modifications par 2 minutes
   message:
     'Trop de tentatives de modification de templates. Veuillez réessayer dans quelques minutes.',
-  skipSuccessfulRequests: false, // Compter toutes les modifications réussies
-  skipFailedRequests: false, // Compter aussi les échecs
-  prefix: 'edit_template', // Préfixe spécifique pour la modification de templates
+  skipSuccessfulRequests: false,
+  skipFailedRequests: false,
+  prefix: 'edit_template',
 
-  // Fonction personnalisée pour générer la clé (basée sur IP + ID du template)
   keyGenerator: (req) => {
     const ip = extractRealIp(req);
     const url = req.url || req.nextUrl?.pathname || '';
@@ -48,7 +43,7 @@ const editTemplateRateLimit = applyRateLimit('CONTENT_API', {
   },
 });
 
-// ----- FONCTION D'INVALIDATION DU CACHE -----
+// Fonction d'invalidation du cache
 const invalidateTemplatesCache = (requestId, templateId) => {
   try {
     const cacheKey = getDashboardCacheKey('templates_list', {
@@ -58,17 +53,6 @@ const invalidateTemplatesCache = (requestId, templateId) => {
 
     const cacheInvalidated = dashboardCache.templates.delete(cacheKey);
 
-    logger.debug('Templates cache invalidation', {
-      requestId,
-      templateId,
-      component: 'templates',
-      action: 'cache_invalidation',
-      operation: 'edit_template',
-      cacheKey,
-      invalidated: cacheInvalidated,
-    });
-
-    // Capturer l'invalidation du cache avec Sentry
     captureMessage('Templates cache invalidated after modification', {
       level: 'info',
       tags: {
@@ -90,9 +74,6 @@ const invalidateTemplatesCache = (requestId, templateId) => {
     logger.warn('Failed to invalidate templates cache', {
       requestId,
       templateId,
-      component: 'templates',
-      action: 'cache_invalidation_failed',
-      operation: 'edit_template',
       error: cacheError.message,
     });
 
@@ -115,7 +96,7 @@ const invalidateTemplatesCache = (requestId, templateId) => {
   }
 };
 
-// ----- FONCTION POUR CRÉER LES HEADERS DE RÉPONSE -----
+// Fonction pour créer les headers de réponse
 const createResponseHeaders = (
   requestId,
   responseTime,
@@ -123,45 +104,29 @@ const createResponseHeaders = (
   rateLimitInfo = null,
 ) => {
   const headers = {
-    // CORS spécifique pour mutations d'édition
     'Access-Control-Allow-Origin':
       process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
     'Access-Control-Allow-Methods': 'PUT, OPTIONS',
     'Access-Control-Allow-Headers':
       'Content-Type, Authorization, X-Requested-With',
-
-    // Anti-cache strict pour les mutations
     'Cache-Control':
       'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
     Pragma: 'no-cache',
     Expires: '0',
-
-    // Sécurité pour mutations de données
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Cross-Origin-Resource-Policy': 'same-site',
-
-    // CSP pour manipulation de données
     'Content-Security-Policy': "default-src 'none'; connect-src 'self'",
-
-    // Headers de traçabilité
     'X-Request-ID': requestId,
     'X-Response-Time': `${responseTime}ms`,
     'X-API-Version': '1.0',
-
-    // Headers spécifiques à l'édition
     'X-Transaction-Type': 'mutation',
     'X-Operation-Type': 'update',
     'X-Resource-ID': templateId,
-    'X-Resource-Validation': 'template-id',
     'X-Cache-Invalidation': 'templates',
-    'X-Media-Management': 'cloudinary',
-
-    // Rate limiting info (différent de add)
-    'X-RateLimit-Window': '120', // 2 minutes en secondes
+    'X-RateLimit-Window': '120',
     'X-RateLimit-Limit': '20',
   };
 
-  // Ajouter les infos de rate limiting si disponibles
   if (rateLimitInfo) {
     headers['X-RateLimit-Remaining'] =
       rateLimitInfo.remaining?.toString() || '0';
@@ -171,8 +136,6 @@ const createResponseHeaders = (
   return headers;
 };
 
-// ----- API ROUTE PRINCIPALE AVEC RATE LIMITING -----
-
 export async function PUT(request, { params }) {
   let client;
   const startTime = Date.now();
@@ -180,16 +143,10 @@ export async function PUT(request, { params }) {
   const { id } = params;
 
   logger.info('Edit Template API called', {
-    timestamp: new Date().toISOString(),
     requestId,
     templateId: id,
-    component: 'templates',
-    action: 'api_start',
-    method: 'PUT',
-    operation: 'edit_template',
   });
 
-  // Capturer le début du processus de modification de template
   captureMessage('Edit template process started', {
     level: 'info',
     tags: {
@@ -209,24 +166,8 @@ export async function PUT(request, { params }) {
 
   try {
     // ===== ÉTAPE 1: VALIDATION DE L'ID DU TEMPLATE =====
-    logger.debug('Validating template ID', {
-      requestId,
-      templateId: id,
-      component: 'templates',
-      action: 'id_validation_start',
-      operation: 'edit_template',
-    });
-
     try {
       await templateIdSchema.validate({ id }, { abortEarly: false });
-
-      logger.debug('Template ID validation passed', {
-        requestId,
-        templateId: id,
-        component: 'templates',
-        action: 'id_validation_success',
-        operation: 'edit_template',
-      });
     } catch (idValidationError) {
       const errorCategory = categorizeError(idValidationError);
 
@@ -237,12 +178,8 @@ export async function PUT(request, { params }) {
           (err) => err.message,
         ) || [idValidationError.message],
         requestId,
-        component: 'templates',
-        action: 'id_validation_failed',
-        operation: 'edit_template',
       });
 
-      // Capturer l'erreur de validation d'ID avec Sentry
       captureMessage('Template ID validation failed', {
         level: 'warning',
         tags: {
@@ -276,28 +213,15 @@ export async function PUT(request, { params }) {
     }
 
     // ===== ÉTAPE 2: APPLIQUER LE RATE LIMITING =====
-    logger.debug('Applying rate limiting for edit template API', {
-      requestId,
-      templateId: id,
-      component: 'templates',
-      action: 'rate_limit_start',
-      operation: 'edit_template',
-    });
-
     const rateLimitResponse = await editTemplateRateLimit(request);
 
-    // Si le rate limiter retourne une réponse, cela signifie que la limite est dépassée
     if (rateLimitResponse) {
       logger.warn('Edit template API rate limit exceeded', {
         requestId,
         templateId: id,
-        component: 'templates',
-        action: 'rate_limit_exceeded',
-        operation: 'edit_template',
         ip: anonymizeIp(extractRealIp(request)),
       });
 
-      // Capturer l'événement de rate limiting avec Sentry
       captureMessage('Edit template API rate limit exceeded', {
         level: 'warning',
         tags: {
@@ -316,13 +240,11 @@ export async function PUT(request, { params }) {
         },
       });
 
-      // Ajouter les headers de sécurité même en cas de rate limit
       const responseTime = Date.now() - startTime;
       const headers = createResponseHeaders(requestId, responseTime, id, {
         remaining: 0,
       });
 
-      // Modifier la réponse pour inclure nos headers
       const rateLimitBody = await rateLimitResponse.json();
       return NextResponse.json(rateLimitBody, {
         status: 429,
@@ -330,58 +252,22 @@ export async function PUT(request, { params }) {
       });
     }
 
-    logger.debug('Rate limiting passed successfully', {
-      requestId,
-      templateId: id,
-      component: 'templates',
-      action: 'rate_limit_passed',
-      operation: 'edit_template',
-    });
-
     // ===== ÉTAPE 3: VÉRIFICATION AUTHENTIFICATION =====
-    logger.debug('Verifying user authentication', {
-      requestId,
-      templateId: id,
-      component: 'templates',
-      action: 'auth_verification_start',
-      operation: 'edit_template',
-    });
-
     await isAuthenticatedUser(request, NextResponse);
-
-    logger.debug('User authentication verified successfully', {
-      requestId,
-      templateId: id,
-      component: 'templates',
-      action: 'auth_verification_success',
-      operation: 'edit_template',
-    });
 
     // ===== ÉTAPE 4: CONNEXION BASE DE DONNÉES =====
     try {
       client = await getClient();
-      logger.debug('Database connection successful', {
-        requestId,
-        templateId: id,
-        component: 'templates',
-        action: 'db_connection_success',
-        operation: 'edit_template',
-      });
     } catch (dbConnectionError) {
       const errorCategory = categorizeError(dbConnectionError);
 
       logger.error('Database Connection Error during template edit', {
         category: errorCategory,
         message: dbConnectionError.message,
-        timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
         requestId,
         templateId: id,
-        component: 'templates',
-        action: 'db_connection_failed',
-        operation: 'edit_template',
       });
 
-      // Capturer l'erreur de connexion DB avec Sentry
       captureDatabaseError(dbConnectionError, {
         tags: {
           component: 'templates',
@@ -411,13 +297,6 @@ export async function PUT(request, { params }) {
     let body;
     try {
       body = await request.json();
-      logger.debug('Request body parsed successfully', {
-        requestId,
-        templateId: id,
-        component: 'templates',
-        action: 'body_parse_success',
-        operation: 'edit_template',
-      });
     } catch (parseError) {
       const errorCategory = categorizeError(parseError);
 
@@ -426,16 +305,8 @@ export async function PUT(request, { params }) {
         message: parseError.message,
         requestId,
         templateId: id,
-        component: 'templates',
-        action: 'json_parse_error',
-        operation: 'edit_template',
-        headers: {
-          'content-type': request.headers.get('content-type'),
-          'user-agent': request.headers.get('user-agent')?.substring(0, 100),
-        },
       });
 
-      // Capturer l'erreur de parsing avec Sentry
       captureException(parseError, {
         level: 'error',
         tags: {
@@ -473,29 +344,7 @@ export async function PUT(request, { params }) {
       oldImageId,
     } = body;
 
-    logger.debug('Template data extracted from request', {
-      requestId,
-      templateId: id,
-      component: 'templates',
-      action: 'data_extraction',
-      operation: 'edit_template',
-      hasTemplateName: !!templateName,
-      hasTemplateImageId: !!templateImageId,
-      hasTemplateColor: !!templateColor,
-      hasIsActive: isActive !== undefined,
-      hasOldImageId: !!oldImageId,
-    });
-
     // ===== ÉTAPE 6: SANITIZATION DES INPUTS (SAUF isActive) =====
-    logger.debug('Sanitizing template inputs', {
-      requestId,
-      templateId: id,
-      component: 'templates',
-      action: 'input_sanitization',
-      operation: 'edit_template',
-    });
-
-    // Préparer les données pour la sanitization (exclure isActive)
     const dataToSanitize = {
       templateName,
       templateImageId,
@@ -504,7 +353,6 @@ export async function PUT(request, { params }) {
       templateHasMobile,
     };
 
-    // Filtrer les valeurs undefined pour la sanitization
     const filteredDataToSanitize = Object.fromEntries(
       Object.entries(dataToSanitize).filter(
         ([_, value]) => value !== undefined,
@@ -515,7 +363,6 @@ export async function PUT(request, { params }) {
       filteredDataToSanitize,
     );
 
-    // Récupérer les données sanitizées et ajouter isActive non sanitizé
     const {
       templateName: sanitizedTemplateName,
       templateImageId: sanitizedTemplateImageId,
@@ -524,7 +371,6 @@ export async function PUT(request, { params }) {
       templateHasMobile: sanitizedTemplateHasMobile,
     } = sanitizedInputs;
 
-    // isActive n'est pas sanitizé selon vos instructions
     const finalData = {
       templateName: sanitizedTemplateName,
       templateImageId: sanitizedTemplateImageId,
@@ -535,17 +381,8 @@ export async function PUT(request, { params }) {
       oldImageId, // Non sanitizé car utilisé pour la logique interne
     };
 
-    logger.debug('Input sanitization completed', {
-      requestId,
-      templateId: id,
-      component: 'templates',
-      action: 'input_sanitization_completed',
-      operation: 'edit_template',
-    });
-
     // ===== ÉTAPE 7: VALIDATION AVEC YUP =====
     try {
-      // Filtrer les champs undefined pour la validation
       const dataToValidate = Object.fromEntries(
         Object.entries({
           templateName: sanitizedTemplateName,
@@ -557,17 +394,8 @@ export async function PUT(request, { params }) {
         }).filter(([_, value]) => value !== undefined),
       );
 
-      // Valider les données avec le schema Yup pour les mises à jour
       await templateUpdateSchema.validate(dataToValidate, {
         abortEarly: false,
-      });
-
-      logger.debug('Template validation with Yup passed', {
-        requestId,
-        templateId: id,
-        component: 'templates',
-        action: 'yup_validation_success',
-        operation: 'edit_template',
       });
     } catch (validationError) {
       const errorCategory = categorizeError(validationError);
@@ -578,12 +406,8 @@ export async function PUT(request, { params }) {
         total_errors: validationError.inner?.length || 0,
         requestId,
         templateId: id,
-        component: 'templates',
-        action: 'yup_validation_failed',
-        operation: 'edit_template',
       });
 
-      // Capturer l'erreur de validation avec Sentry
       captureMessage('Template validation failed with Yup schema', {
         level: 'warning',
         tags: {
@@ -620,44 +444,21 @@ export async function PUT(request, { params }) {
     }
 
     // ===== ÉTAPE 8: GESTION DE L'IMAGE CLOUDINARY =====
-    // Si l'image a changé, supprimer l'ancienne image de Cloudinary
     if (
       oldImageId &&
       sanitizedTemplateImageId &&
       oldImageId !== sanitizedTemplateImageId
     ) {
       try {
-        logger.debug('Deleting old image from Cloudinary', {
-          requestId,
-          templateId: id,
-          oldImageId,
-          component: 'templates',
-          action: 'cloudinary_delete_start',
-          operation: 'edit_template',
-        });
-
         await cloudinary.uploader.destroy(oldImageId);
-
-        logger.debug('Old image deleted from Cloudinary successfully', {
-          requestId,
-          templateId: id,
-          oldImageId,
-          component: 'templates',
-          action: 'cloudinary_delete_success',
-          operation: 'edit_template',
-        });
       } catch (cloudError) {
         logger.error('Error deleting old image from Cloudinary', {
           requestId,
           templateId: id,
           oldImageId,
           error: cloudError.message,
-          component: 'templates',
-          action: 'cloudinary_delete_failed',
-          operation: 'edit_template',
         });
 
-        // Capturer l'erreur Cloudinary avec Sentry (non critique)
         captureException(cloudError, {
           level: 'warning',
           tags: {
@@ -673,14 +474,12 @@ export async function PUT(request, { params }) {
             oldImageId,
           },
         });
-        // Ne pas arrêter le processus pour une erreur Cloudinary
       }
     }
 
     // ===== ÉTAPE 9: MISE À JOUR EN BASE DE DONNÉES =====
     let result;
     try {
-      // Construire la requête dynamiquement selon les champs fournis
       const updateFields = [];
       const updateValues = [];
       let paramCounter = 1;
@@ -721,7 +520,6 @@ export async function PUT(request, { params }) {
         paramCounter++;
       }
 
-      // Ajouter l'ID du template à la fin
       updateValues.push(id);
 
       const queryText = `
@@ -731,28 +529,14 @@ export async function PUT(request, { params }) {
         RETURNING *
       `;
 
-      logger.debug('Executing template update query', {
-        requestId,
-        templateId: id,
-        component: 'templates',
-        action: 'query_start',
-        operation: 'edit_template',
-        table: 'catalog.templates',
-        fieldsToUpdate: updateFields.length,
-      });
-
       result = await client.query(queryText, updateValues);
 
       if (result.rows.length === 0) {
         logger.warn('Template not found for update', {
           requestId,
           templateId: id,
-          component: 'templates',
-          action: 'template_not_found',
-          operation: 'edit_template',
         });
 
-        // Capturer le template non trouvé avec Sentry
         captureMessage('Template not found for update', {
           level: 'warning',
           tags: {
@@ -779,30 +563,16 @@ export async function PUT(request, { params }) {
           { status: 404, headers },
         );
       }
-
-      logger.debug('Template update query executed successfully', {
-        requestId,
-        templateId: id,
-        component: 'templates',
-        action: 'query_success',
-        operation: 'edit_template',
-        updatedFields: updateFields.length,
-      });
     } catch (updateError) {
       const errorCategory = categorizeError(updateError);
 
       logger.error('Template Update Error', {
         category: errorCategory,
         message: updateError.message,
-        operation: 'UPDATE catalog.templates',
-        table: 'catalog.templates',
         requestId,
         templateId: id,
-        component: 'templates',
-        action: 'query_failed',
       });
 
-      // Capturer l'erreur de mise à jour avec Sentry
       captureDatabaseError(updateError, {
         tags: {
           component: 'templates',
@@ -836,7 +606,6 @@ export async function PUT(request, { params }) {
     // ===== ÉTAPE 10: INVALIDATION DU CACHE APRÈS SUCCÈS =====
     const updatedTemplate = result.rows[0];
 
-    // Invalider le cache des templates après modification réussie
     invalidateTemplatesCache(requestId, id);
 
     // ===== ÉTAPE 11: SUCCÈS - LOG ET NETTOYAGE =====
@@ -845,22 +614,11 @@ export async function PUT(request, { params }) {
     logger.info('Template update successful', {
       templateId: id,
       templateName: updatedTemplate.template_name,
-      templateColor: updatedTemplate.template_color,
       response_time_ms: responseTime,
-      database_operations: 2, // connection + update
-      cache_invalidated: true,
       success: true,
       requestId,
-      component: 'templates',
-      action: 'update_success',
-      entity: 'template',
-      rateLimitingApplied: true,
-      operation: 'edit_template',
-      sanitizationApplied: true,
-      yupValidationApplied: true,
     });
 
-    // Capturer le succès de la mise à jour avec Sentry
     captureMessage('Template update completed successfully', {
       level: 'info',
       tags: {
@@ -887,7 +645,6 @@ export async function PUT(request, { params }) {
 
     if (client) await client.cleanup();
 
-    // Créer les headers de succès
     const headers = createResponseHeaders(requestId, responseTime, id);
 
     return NextResponse.json(
@@ -912,19 +669,11 @@ export async function PUT(request, { params }) {
     logger.error('Global Edit Template Error', {
       category: errorCategory,
       response_time_ms: responseTime,
-      reached_global_handler: true,
-      error_name: error.name,
       error_message: error.message,
-      stack_available: !!error.stack,
       requestId,
       templateId: id,
-      component: 'templates',
-      action: 'global_error_handler',
-      entity: 'template',
-      operation: 'edit_template',
     });
 
-    // Capturer l'erreur globale avec Sentry
     captureException(error, {
       level: 'error',
       tags: {
@@ -950,7 +699,6 @@ export async function PUT(request, { params }) {
 
     if (client) await client.cleanup();
 
-    // Créer les headers même en cas d'erreur globale
     const headers = createResponseHeaders(requestId, responseTime, id);
 
     return NextResponse.json(
