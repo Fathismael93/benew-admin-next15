@@ -21,11 +21,6 @@ import {
 import logger from '@utils/logger';
 import { sanitizeRegistrationInputsStrict } from '@utils/sanitizers/sanitizeRegistrationInputs';
 
-// ----- FONCTIONS UTILITAIRES IMPORTÉES -----
-// Note: Les fonctions utilitaires sont maintenant centralisées dans instrumentation.js
-
-// ----- CONFIGURATION DU RATE LIMITING POUR L'INSCRIPTION -----
-
 // Créer le middleware de rate limiting spécifique pour l'inscription
 const registrationRateLimit = applyRateLimit('AUTH_ENDPOINTS', {
   // Configuration personnalisée pour l'inscription
@@ -62,72 +57,62 @@ const registrationRateLimit = applyRateLimit('AUTH_ENDPOINTS', {
   },
 });
 
-// ----- FONCTION POUR GÉNÉRER LES HEADERS DE SÉCURITÉ SPÉCIFIQUES REGISTRATION -----
+// Fonction pour générer les headers de sécurité spécifiques registration
 const getRegistrationSecurityHeaders = (requestId, responseTime) => {
   return {
-    // ===== CORS SPÉCIFIQUE REGISTRATION (public, pas d'Authorization) =====
+    // CORS spécifique registration
     'Access-Control-Allow-Origin':
       process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS', // Uniquement POST pour inscription
-    'Access-Control-Allow-Headers': 'Content-Type, X-Requested-With', // Pas d'Authorization
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Requested-With',
 
-    // ===== ANTI-CACHE ULTRA-STRICT (données sensibles PII) =====
+    // Anti-cache ultra-strict
     'Cache-Control':
       'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
     Pragma: 'no-cache',
     Expires: '0',
     'Surrogate-Control': 'no-store',
 
-    // ===== SÉCURITÉ RENFORCÉE POUR DONNÉES PII =====
+    // Sécurité renforcée pour données PII
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'X-XSS-Protection': '1; mode=block',
-    'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload', // Plus long pour auth
+    'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
 
-    // ===== ISOLATION MAXIMALE POUR AUTH =====
+    // Isolation maximale pour auth
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Cross-Origin-Resource-Policy': 'same-site',
     'Cross-Origin-Opener-Policy': 'same-origin',
     'Cross-Origin-Embedder-Policy': 'credentialless',
 
-    // ===== CSP SPÉCIFIQUE FORMULAIRES D'INSCRIPTION =====
+    // CSP spécifique formulaires d'inscription
     'Content-Security-Policy':
       "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'",
 
-    // ===== PERMISSIONS LIMITÉES POUR AUTH =====
+    // Permissions limitées pour auth
     'Permissions-Policy':
       'geolocation=(), microphone=(), camera=(), payment=(), usb=(), interest-cohort=()',
 
-    // ===== HEADERS SPÉCIFIQUES REGISTRATION =====
+    // Headers spécifiques registration
     'X-API-Version': '1.0',
-    'X-Transaction-Type': 'registration', // Spécifique vs 'mutation'
+    'X-Transaction-Type': 'registration',
     'X-Operation-Type': 'user-creation',
     'X-Entity-Type': 'user-account',
-
-    // ===== HEADERS DE SÉCURITÉ SPÉCIFIQUES AUTH =====
-    'X-Data-Sensitivity': 'high', // Données PII sensibles
+    'X-Data-Sensitivity': 'high',
     'X-Authentication-Context': 'public-registration',
     'X-Password-Hashing': 'bcrypt',
     'X-PII-Processing': 'true',
-
-    // ===== RATE LIMITING SPÉCIFIQUE REGISTRATION =====
-    'X-RateLimit-Window': '900', // 15 minutes (unique)
-    'X-RateLimit-Limit': '5', // 5 tentatives (unique)
+    'X-RateLimit-Window': '900',
+    'X-RateLimit-Limit': '5',
     'X-Rate-Limiting-Applied': 'true',
     'X-Rate-Limiting-Strategy': 'ip-email-combined',
-
-    // ===== HEADERS MÉTIER REGISTRATION =====
     'X-Sanitization-Applied': 'true',
     'X-Yup-Validation-Applied': 'true',
     'X-Uniqueness-Check': 'email-required',
-    'X-Database-Operations': '3', // connection + check + insert
-
-    // ===== SÉCURITÉ SUPPLÉMENTAIRE =====
+    'X-Database-Operations': '3',
     'X-Permitted-Cross-Domain-Policies': 'none',
-    'X-Robots-Tag': 'noindex, nofollow', // Pas d'indexation des formulaires
+    'X-Robots-Tag': 'noindex, nofollow',
     Vary: 'Content-Type, User-Agent',
-
-    // ===== HEADERS DE TRAÇABILITÉ =====
     'X-Request-ID': requestId,
     'X-Response-Time': `${responseTime}ms`,
     'X-Content-Category': 'user-registration',
@@ -135,19 +120,10 @@ const getRegistrationSecurityHeaders = (requestId, responseTime) => {
   };
 };
 
-// ----- API ROUTE PRINCIPALE AVEC RATE LIMITING ET MONITORING SENTRY -----
-
 export async function POST(req) {
   let client;
   const startTime = Date.now();
   const requestId = generateRequestId();
-
-  console.log(
-    '🚀 Registration API called at:',
-    new Date().toISOString(),
-    '| Request ID:',
-    requestId,
-  );
 
   // Capturer le début du processus d'inscription
   captureMessage('Registration process started', {
@@ -165,14 +141,10 @@ export async function POST(req) {
 
   try {
     // ===== ÉTAPE 1: APPLIQUER LE RATE LIMITING =====
-    console.log('🛡️ Applying rate limiting for registration...');
-
     const rateLimitResponse = await registrationRateLimit(req);
 
     // Si le rate limiter retourne une réponse, cela signifie que la limite est dépassée
     if (rateLimitResponse) {
-      console.warn('⚠️ Registration rate limit exceeded');
-
       // Capturer l'événement de rate limiting avec Sentry
       captureMessage('Registration rate limit exceeded', {
         level: 'warning',
@@ -206,8 +178,6 @@ export async function POST(req) {
       });
     }
 
-    console.log('✅ Rate limiting passed');
-
     // ===== ÉTAPE 2: PARSING DU BODY =====
     let body;
     try {
@@ -219,12 +189,6 @@ export async function POST(req) {
         category: errorCategory,
         message: parseError.message,
         requestId,
-        component: 'registration',
-        action: 'json_parse_error',
-        headers: {
-          'content-type': req.headers.get('content-type'),
-          'user-agent': req.headers.get('user-agent')?.substring(0, 100),
-        },
       });
 
       // Capturer l'erreur de parsing avec Sentry
@@ -268,12 +232,6 @@ export async function POST(req) {
     } = body;
 
     // ===== ÉTAPE 2.5: SANITIZATION DES INPUTS =====
-    logger.debug('Sanitizing registration inputs', {
-      requestId,
-      component: 'registration',
-      action: 'input_sanitization',
-    });
-
     const sanitizedInputs = sanitizeRegistrationInputsStrict({
       username,
       email,
@@ -295,12 +253,6 @@ export async function POST(req) {
       terms: sanitizedTerms,
     } = sanitizedInputs;
 
-    logger.debug('Input sanitization completed', {
-      requestId,
-      component: 'registration',
-      action: 'input_sanitization_completed',
-    });
-
     // Log sécurisé utilisant les fonctions d'anonymisation avec les données sanitizées
     const userDataForLogging = anonymizeUserData({
       username: sanitizedUsername,
@@ -311,8 +263,6 @@ export async function POST(req) {
 
     logger.info('Registration attempt with sanitized data', {
       requestId,
-      component: 'registration',
-      action: 'registration_attempt',
       userContext: userDataForLogging,
     });
 
@@ -331,12 +281,6 @@ export async function POST(req) {
         },
         { abortEarly: false },
       );
-
-      logger.debug('Input validation passed', {
-        requestId,
-        component: 'registration',
-        action: 'validation_success',
-      });
     } catch (validationError) {
       const errorCategory = categorizeError(validationError);
 
@@ -346,8 +290,6 @@ export async function POST(req) {
         total_errors: validationError.inner?.length || 0,
         user_input: userDataForLogging,
         requestId,
-        component: 'registration',
-        action: 'validation_failed',
       });
 
       // Capturer l'erreur de validation avec Sentry
@@ -388,22 +330,14 @@ export async function POST(req) {
     // ===== ÉTAPE 4: CONNEXION BASE DE DONNÉES =====
     try {
       client = await getClient();
-      logger.debug('Database connection successful', {
-        requestId,
-        component: 'registration',
-        action: 'db_connection_success',
-      });
     } catch (dbConnectionError) {
       const errorCategory = categorizeError(dbConnectionError);
 
       logger.error('Database Connection Error during registration', {
         category: errorCategory,
         message: dbConnectionError.message,
-        timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
         user_context: userDataForLogging,
         requestId,
-        component: 'registration',
-        action: 'db_connection_failed',
       });
 
       // Capturer l'erreur de connexion DB avec Sentry
@@ -443,23 +377,14 @@ export async function POST(req) {
       userExistsResult = await client.query(userExistsQuery, [
         sanitizedEmail.toLowerCase(),
       ]);
-      logger.debug('User existence check completed', {
-        requestId,
-        component: 'registration',
-        action: 'user_check_completed',
-      });
     } catch (userCheckError) {
       const errorCategory = categorizeError(userCheckError);
 
       logger.error('User Check Error during registration', {
         category: errorCategory,
         message: userCheckError.message,
-        query: 'user_existence_check',
-        table: 'users',
         user_context: userDataForLogging,
         requestId,
-        component: 'registration',
-        action: 'user_check_failed',
       });
 
       // Capturer l'erreur de vérification utilisateur avec Sentry
@@ -498,8 +423,6 @@ export async function POST(req) {
       logger.warn('User registration attempt with existing email', {
         user_context: userDataForLogging,
         requestId,
-        component: 'registration',
-        action: 'duplicate_email_attempt',
       });
 
       // Capturer la tentative d'inscription avec email existant
@@ -543,27 +466,14 @@ export async function POST(req) {
       if (!hashedPassword) {
         throw new Error('Password hashing returned empty result');
       }
-
-      logger.debug('Password hashed successfully', {
-        requestId,
-        component: 'registration',
-        action: 'password_hashing_success',
-        algorithm: 'bcrypt',
-        salt_rounds: 10,
-      });
     } catch (hashError) {
       const errorCategory = categorizeError(hashError);
 
       logger.error('Password Hashing Error during registration', {
         category: errorCategory,
         message: hashError.message,
-        algorithm: 'bcrypt',
-        salt_rounds: 10,
-        bcrypt_version: 'bcryptjs',
         user_context: userDataForLogging,
         requestId,
-        component: 'registration',
-        action: 'password_hashing_failed',
       });
 
       // Capturer l'erreur de hachage avec Sentry
@@ -616,24 +526,14 @@ export async function POST(req) {
         sanitizedPhone || null,
         sanitizedDateOfBirth || null,
       ]);
-      logger.debug('User inserted successfully', {
-        requestId,
-        component: 'registration',
-        action: 'user_insertion_success',
-        table: 'admin.users',
-      });
     } catch (insertError) {
       const errorCategory = categorizeError(insertError);
 
       logger.error('User Insertion Error during registration', {
         category: errorCategory,
         postgres_error_code: insertError.code || 'unknown',
-        operation: 'INSERT INTO users',
-        table: 'users',
         user_context: userDataForLogging,
         requestId,
-        component: 'registration',
-        action: 'user_insertion_failed',
       });
 
       // Capturer l'erreur d'insertion avec Sentry
@@ -689,13 +589,8 @@ export async function POST(req) {
     logger.info('User registration successful', {
       user: anonymizeUserData(newUser),
       response_time_ms: responseTime,
-      database_operations: 3, // connection + check + insert
       success: true,
-      rate_limiting_applied: true,
       requestId,
-      component: 'registration',
-      action: 'registration_success',
-      sanitization_applied: true,
     });
 
     // Capturer le succès de l'inscription avec Sentry
@@ -747,14 +642,8 @@ export async function POST(req) {
     logger.error('Global Registration Error', {
       category: errorCategory,
       response_time_ms: responseTime,
-      reached_global_handler: true,
-      error_name: error.name,
       error_message: error.message,
-      stack_available: !!error.stack,
-      rate_limiting_context: true,
       requestId,
-      component: 'registration',
-      action: 'global_error_handler',
     });
 
     // Capturer l'erreur globale avec Sentry

@@ -20,17 +20,14 @@ const findUserByEmail = memoizeWithTTL(
   async (email) => {
     let client;
     try {
-      // console.log('Searching for user with email:', email);
       client = await getClient();
-      // console.log('client:', client);
       const query =
         'SELECT user_id, user_name, user_email, user_phone, user_birthdate, user_image, user_password FROM admin.users WHERE user_email = $1';
       const result = await client.query(query, [email]);
 
       logger.info('User search executed', {
-        email: email.substring(0, 3) + '***', // Email partiellement masqué
+        email: email.substring(0, 3) + '***',
         found: result.rows.length > 0,
-        query_duration: Date.now(),
       });
 
       return result.rows;
@@ -56,7 +53,6 @@ const authOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials, req) {
-        // console.log('credentials:', credentials);
         const startTime = Date.now();
         const clientIP =
           req?.headers?.['x-forwarded-for'] ||
@@ -67,11 +63,9 @@ const authOptions = {
         logger.info('Login attempt initiated', {
           ip: clientIP,
           userAgent: req?.headers?.['user-agent'],
-          timestamp: new Date().toISOString(),
         });
 
         try {
-          console.log('Received credentials:', credentials);
           // 1. Validation de base des credentials
           if (!credentials?.email || !credentials?.password) {
             logger.warn('Login attempt with missing credentials', {
@@ -88,13 +82,6 @@ const authOptions = {
             password: credentials.password,
           });
 
-          // console.log('Sanitized credentials:', sanitizedCredentials);
-
-          logger.debug('Credentials sanitized', {
-            ip: clientIP,
-            email: sanitizedCredentials.email.substring(0, 3) + '***',
-          });
-
           // 3. Validation avec Yup schema
           try {
             await loginSchema.validate(sanitizedCredentials, {
@@ -105,7 +92,6 @@ const authOptions = {
               ip: clientIP,
               email: sanitizedCredentials.email.substring(0, 3) + '***',
               errors: validationError.errors,
-              validationType: 'yup_schema',
             });
 
             captureAuthError(validationError, {
@@ -117,83 +103,6 @@ const authOptions = {
               },
               extra: {
                 validationErrors: validationError.errors,
-                email: sanitizedCredentials.email.substring(0, 3) + '***',
-              },
-            });
-
-            return null;
-          }
-
-          // Fonction pour vérifier le rate limiting
-          const checkAuthRateLimit = async (req) => {
-            try {
-              const rateLimitResponse = await rateLimitMiddleware(req);
-
-              if (rateLimitResponse !== null) {
-                // console.log('Rate limit response:', rateLimitResponse);
-                // Rate limit dépassé
-                const rateLimitData = await rateLimitResponse.json();
-
-                logger.warn('Authentication rate limit exceeded', {
-                  ip: req.headers?.['x-forwarded-for'] || 'unknown',
-                  retryAfter: rateLimitData.retryAfter,
-                  reference: rateLimitData.reference,
-                  component: 'auth_rate_limit',
-                });
-
-                return {
-                  isBlocked: true,
-                  response: rateLimitResponse,
-                  retryAfter: rateLimitData.retryAfter,
-                  reference: rateLimitData.reference,
-                };
-              }
-
-              return { isBlocked: false };
-            } catch (error) {
-              logger.error('Error checking auth rate limit', {
-                error: error.message,
-                component: 'auth_rate_limit',
-              });
-
-              captureRateLimitError(error, {
-                preset: 'AUTH_ENDPOINTS',
-                endpoint: '/api/auth/callback/credentials',
-                action: 'rate_limit_check',
-              });
-
-              // En cas d'erreur, laisser passer (fail open)
-              return { isBlocked: false };
-            }
-          };
-
-          // 4. Rate limiting avec votre système avancé
-          const rateLimitCheck = await checkAuthRateLimit({
-            headers: req?.headers || {},
-            body: { email: sanitizedCredentials.email },
-            // connection: req?.connection || {},
-            url: '/api/auth/callback/credentials',
-          });
-
-          if (rateLimitCheck.isBlocked) {
-            logger.warn('Authentication rate limit exceeded', {
-              ip: clientIP,
-              email: sanitizedCredentials.email.substring(0, 3) + '***',
-              retryAfter: rateLimitCheck.retryAfter,
-              reference: rateLimitCheck.reference,
-              rateLimitType: 'auth_endpoints',
-            });
-
-            captureMessage('Authentication rate limit exceeded', {
-              level: 'warning',
-              tags: {
-                rate_limit: true,
-                auth_rate_limit: true,
-                ip: clientIP.substring(0, 8) + '***',
-              },
-              extra: {
-                retryAfter: rateLimitCheck.retryAfter,
-                reference: rateLimitCheck.reference,
                 email: sanitizedCredentials.email.substring(0, 3) + '***',
               },
             });
@@ -231,6 +140,78 @@ const authOptions = {
             },
           });
 
+          // Fonction pour vérifier le rate limiting
+          const checkAuthRateLimit = async (req) => {
+            try {
+              const rateLimitResponse = await rateLimitMiddleware(req);
+
+              if (rateLimitResponse !== null) {
+                // Rate limit dépassé
+                const rateLimitData = await rateLimitResponse.json();
+
+                logger.warn('Authentication rate limit exceeded', {
+                  ip: req.headers?.['x-forwarded-for'] || 'unknown',
+                  retryAfter: rateLimitData.retryAfter,
+                  reference: rateLimitData.reference,
+                });
+
+                return {
+                  isBlocked: true,
+                  response: rateLimitResponse,
+                  retryAfter: rateLimitData.retryAfter,
+                  reference: rateLimitData.reference,
+                };
+              }
+
+              return { isBlocked: false };
+            } catch (error) {
+              logger.error('Error checking auth rate limit', {
+                error: error.message,
+              });
+
+              captureRateLimitError(error, {
+                preset: 'AUTH_ENDPOINTS',
+                endpoint: '/api/auth/callback/credentials',
+                action: 'rate_limit_check',
+              });
+
+              // En cas d'erreur, laisser passer (fail open)
+              return { isBlocked: false };
+            }
+          };
+
+          // 4. Rate limiting avec votre système avancé
+          const rateLimitCheck = await checkAuthRateLimit({
+            headers: req?.headers || {},
+            body: { email: sanitizedCredentials.email },
+            url: '/api/auth/callback/credentials',
+          });
+
+          if (rateLimitCheck.isBlocked) {
+            logger.warn('Authentication rate limit exceeded', {
+              ip: clientIP,
+              email: sanitizedCredentials.email.substring(0, 3) + '***',
+              retryAfter: rateLimitCheck.retryAfter,
+              reference: rateLimitCheck.reference,
+            });
+
+            captureMessage('Authentication rate limit exceeded', {
+              level: 'warning',
+              tags: {
+                rate_limit: true,
+                auth_rate_limit: true,
+                ip: clientIP.substring(0, 8) + '***',
+              },
+              extra: {
+                retryAfter: rateLimitCheck.retryAfter,
+                reference: rateLimitCheck.reference,
+                email: sanitizedCredentials.email.substring(0, 3) + '***',
+              },
+            });
+
+            return null;
+          }
+
           // 5. Détection d'activité suspecte
           const isSuspicious = detectSuspiciousLoginActivity(
             sanitizedCredentials.email,
@@ -239,7 +220,6 @@ const authOptions = {
             logger.warn('Suspicious login activity detected', {
               ip: clientIP,
               email: sanitizedCredentials.email.substring(0, 3) + '***',
-              suspiciousActivity: true,
             });
 
             captureMessage('Suspicious login activity detected', {
@@ -267,7 +247,6 @@ const authOptions = {
               ip: clientIP,
               email: sanitizedCredentials.email.substring(0, 3) + '***',
               error: dbError.message,
-              errorType: 'database_connection',
             });
 
             captureAuthError(dbError, {
@@ -294,7 +273,6 @@ const authOptions = {
               ip: clientIP,
               email: sanitizedCredentials.email.substring(0, 3) + '***',
               duration,
-              result: 'user_not_found',
             });
 
             captureAuthError(new Error('User not found'), {
@@ -313,11 +291,7 @@ const authOptions = {
             return null;
           }
 
-          // console.log('User found:', userRows);
-
           const user = userRows[0];
-
-          // console.log('User details:', user);
 
           // 8. Vérification du mot de passe
           let isPasswordValid;
@@ -331,7 +305,6 @@ const authOptions = {
               ip: clientIP,
               email: sanitizedCredentials.email.substring(0, 3) + '***',
               error: bcryptError.message,
-              errorType: 'bcrypt_comparison',
             });
 
             captureAuthError(bcryptError, {
@@ -355,8 +328,6 @@ const authOptions = {
               email: sanitizedCredentials.email.substring(0, 3) + '***',
               userId: user.user_id,
               duration,
-              result: 'invalid_password',
-              attemptsRemaining: rateLimitCheck.attemptsRemaining - 1,
             });
 
             captureAuthError(new Error('Invalid password'), {
@@ -382,7 +353,6 @@ const authOptions = {
             userId: user.user_id,
             email: sanitizedCredentials.email.substring(0, 3) + '***',
             duration,
-            result: 'success',
           });
 
           captureMessage('Successful user authentication', {
@@ -410,9 +380,7 @@ const authOptions = {
           logger.error('Unexpected error during authentication', {
             ip: clientIP,
             error: error.message,
-            stack: error.stack,
             duration,
-            errorType: 'unexpected_auth_error',
           });
 
           captureAuthError(error, {
@@ -441,19 +409,12 @@ const authOptions = {
           token.id = user.id;
           token.name = user.name;
           token.email = user.email;
-
-          logger.debug('JWT token created', {
-            userId: user.id,
-            email: user.email.substring(0, 3) + '***',
-            tokenGenerated: true,
-          });
         }
         return token;
       } catch (error) {
         logger.error('JWT callback error', {
           error: error.message,
           userId: user?.id,
-          tokenGeneration: false,
         });
 
         captureAuthError(error, {
@@ -476,19 +437,12 @@ const authOptions = {
           session.user.id = token.id;
           session.user.name = token.name;
           session.user.email = token.email;
-
-          logger.debug('Session created', {
-            userId: token.id,
-            email: token.email?.substring(0, 3) + '***',
-            sessionGenerated: true,
-          });
         }
         return session;
       } catch (error) {
         logger.error('Session callback error', {
           error: error.message,
           userId: token?.id,
-          sessionGeneration: false,
         });
 
         captureAuthError(error, {
@@ -521,27 +475,18 @@ const authOptions = {
         userId: message.user?.id,
         email: message.user?.email?.substring(0, 3) + '***',
         provider: message.account?.provider,
-        eventType: 'signIn',
       });
     },
     async signOut(message) {
       logger.info('NextAuth signOut event', {
         userId: message.token?.id,
         email: message.token?.email?.substring(0, 3) + '***',
-        eventType: 'signOut',
       });
     },
     async createUser(message) {
       logger.info('NextAuth createUser event', {
         userId: message.user?.id,
         email: message.user?.email?.substring(0, 3) + '***',
-        eventType: 'createUser',
-      });
-    },
-    async session(message) {
-      logger.debug('NextAuth session event', {
-        userId: message.session?.user?.id,
-        eventType: 'session_access',
       });
     },
   },
@@ -550,7 +495,6 @@ const authOptions = {
       logger.error('NextAuth internal error', {
         errorCode: code,
         metadata: metadata,
-        source: 'nextauth_internal',
       });
 
       captureAuthError(new Error(`NextAuth error: ${code}`), {
@@ -568,7 +512,6 @@ const authOptions = {
     warn(code) {
       logger.warn('NextAuth warning', {
         warningCode: code,
-        source: 'nextauth_internal',
       });
     },
     debug(code, metadata) {
@@ -576,7 +519,6 @@ const authOptions = {
         logger.debug('NextAuth debug', {
           debugCode: code,
           metadata: metadata,
-          source: 'nextauth_internal',
         });
       }
     },
