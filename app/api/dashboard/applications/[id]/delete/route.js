@@ -20,25 +20,20 @@ import {
   applicationIdSchema,
   cleanUUID,
 } from '@/utils/schemas/applicationSchema';
-// AJOUT POUR L'INVALIDATION DU CACHE
 import { dashboardCache, getDashboardCacheKey } from '@/utils/cache';
 
 export const dynamic = 'force-dynamic';
 
-// ----- CONFIGURATION DU RATE LIMITING POUR LA SUPPRESSION D'APPLICATIONS -----
-
 // Créer le middleware de rate limiting spécifique pour la suppression d'applications
 const deleteApplicationRateLimit = applyRateLimit('CONTENT_API', {
-  // Configuration personnalisée pour la suppression d'applications
-  windowMs: 10 * 60 * 1000, // 10 minutes (plus strict que templates car plus sensible)
-  max: 5, // 5 suppressions par 10 minutes (très restrictif)
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: 5, // 5 suppressions par 10 minutes
   message:
     "Trop de tentatives de suppression d'applications. Veuillez réessayer dans quelques minutes.",
-  skipSuccessfulRequests: false, // Compter toutes les suppressions réussies
-  skipFailedRequests: false, // Compter aussi les échecs
-  prefix: 'delete_application', // Préfixe spécifique pour la suppression d'applications
+  skipSuccessfulRequests: false,
+  skipFailedRequests: false,
+  prefix: 'delete_application',
 
-  // Fonction personnalisée pour générer la clé (basée sur IP + ID de l'application)
   keyGenerator: (req) => {
     const ip = extractRealIp(req);
     const url = req.url || req.nextUrl?.pathname || '';
@@ -50,7 +45,7 @@ const deleteApplicationRateLimit = applyRateLimit('CONTENT_API', {
   },
 });
 
-// ----- FONCTION D'INVALIDATION DU CACHE -----
+// Fonction d'invalidation du cache
 const invalidateApplicationsCache = (requestId, applicationId) => {
   try {
     const cacheKey = getDashboardCacheKey('applications_list', {
@@ -59,16 +54,6 @@ const invalidateApplicationsCache = (requestId, applicationId) => {
     });
 
     const cacheInvalidated = dashboardCache.applications.delete(cacheKey);
-
-    logger.debug('Applications cache invalidation', {
-      requestId,
-      applicationId,
-      component: 'applications',
-      action: 'cache_invalidation',
-      operation: 'delete_application',
-      cacheKey,
-      invalidated: cacheInvalidated,
-    });
 
     // Capturer l'invalidation du cache avec Sentry
     captureMessage('Applications cache invalidated after deletion', {
@@ -92,9 +77,6 @@ const invalidateApplicationsCache = (requestId, applicationId) => {
     logger.warn('Failed to invalidate applications cache', {
       requestId,
       applicationId,
-      component: 'applications',
-      action: 'cache_invalidation_failed',
-      operation: 'delete_application',
       error: cacheError.message,
     });
 
@@ -117,7 +99,7 @@ const invalidateApplicationsCache = (requestId, applicationId) => {
   }
 };
 
-// ----- FONCTION POUR CRÉER LES HEADERS DE RÉPONSE SPÉCIFIQUES À LA SUPPRESSION -----
+// Fonction pour créer les headers de réponse spécifiques à la suppression
 const createResponseHeaders = (
   requestId,
   responseTime,
@@ -127,53 +109,35 @@ const createResponseHeaders = (
   businessRulesValidated = false,
 ) => {
   const headers = {
-    // ===== HEADERS COMMUNS (sécurité de base) =====
     'Access-Control-Allow-Origin':
       process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
     'Access-Control-Allow-Methods': 'DELETE, OPTIONS',
     'Access-Control-Allow-Headers':
       'Content-Type, Authorization, X-Requested-With',
-
-    // Anti-cache strict pour les mutations critiques
     'Cache-Control':
       'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
     Pragma: 'no-cache',
     Expires: '0',
-
-    // Sécurité de base
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'X-XSS-Protection': '1; mode=block',
     'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
-
-    // Isolation moderne
     'Cross-Origin-Opener-Policy': 'same-origin',
     'Cross-Origin-Embedder-Policy': 'credentialless',
     'Cross-Origin-Resource-Policy': 'same-site',
-
-    // Sécurité pour mutations de données
     'Referrer-Policy': 'strict-origin-when-cross-origin',
-
-    // CSP pour manipulation de données
     'Content-Security-Policy': "default-src 'none'; connect-src 'self'",
-
-    // ===== HEADERS SPÉCIFIQUES À LA SUPPRESSION D'APPLICATIONS =====
-    // Rate limiting ultra-strict pour suppressions (5/10min)
-    'X-RateLimit-Window': '600', // 10 minutes en secondes
+    'Permissions-Policy':
+      'geolocation=(), microphone=(), camera=(), payment=(), usb=(), interest-cohort=()',
+    'X-RateLimit-Window': '600',
     'X-RateLimit-Limit': '5',
-
-    // Validation spécifique à la suppression
     'X-Resource-Validation': 'application-id-required',
     'X-UUID-Validation': 'cleaned-and-verified',
     'X-Business-Rule-Validation': 'inactive-only',
     'X-Sales-Validation': 'zero-sales-required',
     'X-Media-Management': 'cloudinary-full-cleanup',
-
-    // Cache et base de données (spécifique suppression)
     'X-Cache-Invalidation': 'applications',
-    'X-Database-Operations': '3', // connection + check + delete
-
-    // Headers de traçabilité spécifiques
+    'X-Database-Operations': '3',
     'X-Request-ID': requestId,
     'X-Response-Time': `${responseTime}ms`,
     'X-API-Version': '1.0',
@@ -181,27 +145,16 @@ const createResponseHeaders = (
     'X-Entity-Type': 'application',
     'X-Operation-Type': 'delete',
     'X-Operation-Criticality': 'high',
-
-    // Headers de validation métier
     'X-Validation-Steps': 'business-rules',
     'X-Business-Rules-Validated': businessRulesValidated.toString(),
-
-    // Headers Cloudinary (si des opérations ont eu lieu)
     'X-Cloudinary-Operations': cloudinaryOperations.toString(),
-
-    // Headers de performance et traçabilité
     Vary: 'Authorization, Content-Type',
     'X-Permitted-Cross-Domain-Policies': 'none',
-
-    // Header spécifique pour l'ID de l'application supprimée
     'X-Deleted-Resource-ID': applicationId,
-
-    // Headers de sécurité spécifiques aux suppressions
     'X-Irreversible-Operation': 'true',
     'X-Data-Loss-Warning': 'permanent',
   };
 
-  // Ajouter les infos de rate limiting si disponibles
   if (rateLimitInfo) {
     headers['X-RateLimit-Remaining'] =
       rateLimitInfo.remaining?.toString() || '0';
@@ -210,8 +163,6 @@ const createResponseHeaders = (
 
   return headers;
 };
-
-// ----- API ROUTE PRINCIPALE AVEC RATE LIMITING ET MONITORING SENTRY -----
 
 export async function DELETE(request, { params }) {
   let client;
@@ -222,13 +173,8 @@ export async function DELETE(request, { params }) {
   let businessRulesValidated = false;
 
   logger.info('Delete Application API called', {
-    timestamp: new Date().toISOString(),
     requestId,
     applicationId: id,
-    component: 'applications',
-    action: 'api_start',
-    method: 'DELETE',
-    operation: 'delete_application',
   });
 
   // Capturer le début du processus de suppression d'application
@@ -251,24 +197,8 @@ export async function DELETE(request, { params }) {
 
   try {
     // ===== ÉTAPE 1: VALIDATION DE L'ID DE L'APPLICATION =====
-    logger.debug('Validating application ID', {
-      requestId,
-      applicationId: id,
-      component: 'applications',
-      action: 'id_validation_start',
-      operation: 'delete_application',
-    });
-
     try {
       await applicationIdSchema.validate({ id }, { abortEarly: false });
-
-      logger.debug('Application ID validation passed', {
-        requestId,
-        applicationId: id,
-        component: 'applications',
-        action: 'id_validation_success',
-        operation: 'delete_application',
-      });
     } catch (idValidationError) {
       const errorCategory = categorizeError(idValidationError);
 
@@ -279,9 +209,6 @@ export async function DELETE(request, { params }) {
           (err) => err.message,
         ) || [idValidationError.message],
         requestId,
-        component: 'applications',
-        action: 'id_validation_failed',
-        operation: 'delete_application',
       });
 
       // Capturer l'erreur de validation d'ID avec Sentry
@@ -325,9 +252,6 @@ export async function DELETE(request, { params }) {
     if (!cleanedApplicationId) {
       logger.warn('Application ID cleaning failed', {
         requestId,
-        component: 'applications',
-        action: 'id_cleaning_failed',
-        operation: 'delete_application',
         providedId: id,
       });
 
@@ -345,23 +269,12 @@ export async function DELETE(request, { params }) {
     }
 
     // ===== ÉTAPE 2: APPLIQUER LE RATE LIMITING =====
-    logger.debug('Applying rate limiting for delete application API', {
-      requestId,
-      applicationId: cleanedApplicationId,
-      component: 'applications',
-      action: 'rate_limit_start',
-      operation: 'delete_application',
-    });
-
     const rateLimitResponse = await deleteApplicationRateLimit(request);
 
     if (rateLimitResponse) {
       logger.warn('Delete application API rate limit exceeded', {
         requestId,
         applicationId: cleanedApplicationId,
-        component: 'applications',
-        action: 'rate_limit_exceeded',
-        operation: 'delete_application',
         ip: anonymizeIp(extractRealIp(request)),
       });
 
@@ -384,7 +297,6 @@ export async function DELETE(request, { params }) {
         },
       });
 
-      // Ajouter les headers de sécurité même en cas de rate limit
       const responseTime = Date.now() - startTime;
       const headers = createResponseHeaders(
         requestId,
@@ -393,7 +305,6 @@ export async function DELETE(request, { params }) {
         { remaining: 0 },
       );
 
-      // Modifier la réponse pour inclure nos headers
       const rateLimitBody = await rateLimitResponse.json();
       return NextResponse.json(rateLimitBody, {
         status: 429,
@@ -401,55 +312,20 @@ export async function DELETE(request, { params }) {
       });
     }
 
-    logger.debug('Rate limiting passed successfully', {
-      requestId,
-      applicationId: cleanedApplicationId,
-      component: 'applications',
-      action: 'rate_limit_passed',
-      operation: 'delete_application',
-    });
-
     // ===== ÉTAPE 3: VÉRIFICATION AUTHENTIFICATION =====
-    logger.debug('Verifying user authentication', {
-      requestId,
-      applicationId: cleanedApplicationId,
-      component: 'applications',
-      action: 'auth_verification_start',
-      operation: 'delete_application',
-    });
-
     await isAuthenticatedUser(request, NextResponse);
-
-    logger.debug('User authentication verified successfully', {
-      requestId,
-      applicationId: cleanedApplicationId,
-      component: 'applications',
-      action: 'auth_verification_success',
-      operation: 'delete_application',
-    });
 
     // ===== ÉTAPE 4: CONNEXION BASE DE DONNÉES =====
     try {
       client = await getClient();
-      logger.debug('Database connection successful', {
-        requestId,
-        applicationId: cleanedApplicationId,
-        component: 'applications',
-        action: 'db_connection_success',
-        operation: 'delete_application',
-      });
     } catch (dbConnectionError) {
       const errorCategory = categorizeError(dbConnectionError);
 
       logger.error('Database Connection Error during application deletion', {
         category: errorCategory,
         message: dbConnectionError.message,
-        timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
         requestId,
         applicationId: cleanedApplicationId,
-        component: 'applications',
-        action: 'db_connection_failed',
-        operation: 'delete_application',
       });
 
       // Capturer l'erreur de connexion DB avec Sentry
@@ -488,14 +364,6 @@ export async function DELETE(request, { params }) {
     // ===== ÉTAPE 5: VÉRIFICATION DE L'EXISTENCE ET DE L'ÉTAT DE L'APPLICATION =====
     let applicationToDelete;
     try {
-      logger.debug('Checking application existence and status', {
-        requestId,
-        applicationId: cleanedApplicationId,
-        component: 'applications',
-        action: 'application_check_start',
-        operation: 'delete_application',
-      });
-
       const checkResult = await client.query(
         `SELECT 
           application_id, 
@@ -512,9 +380,6 @@ export async function DELETE(request, { params }) {
         logger.warn('Application not found for deletion', {
           requestId,
           applicationId: cleanedApplicationId,
-          component: 'applications',
-          action: 'application_not_found',
-          operation: 'delete_application',
         });
 
         // Capturer l'application non trouvée avec Sentry
@@ -554,16 +419,13 @@ export async function DELETE(request, { params }) {
 
       applicationToDelete = checkResult.rows[0];
 
-      // Vérifier que l'application est inactive (condition obligatoire pour la suppression)
+      // Vérifier que l'application est inactive
       if (applicationToDelete.is_active === true) {
         logger.warn('Attempted to delete active application', {
           requestId,
           applicationId: cleanedApplicationId,
           applicationName: applicationToDelete.application_name,
           isActive: applicationToDelete.is_active,
-          component: 'applications',
-          action: 'active_application_deletion_blocked',
-          operation: 'delete_application',
         });
 
         // Capturer la tentative de suppression d'une application active avec Sentry
@@ -608,7 +470,7 @@ export async function DELETE(request, { params }) {
         );
       }
 
-      // Vérifier s'il y a des ventes (condition supplémentaire pour la sécurité)
+      // Vérifier s'il y a des ventes
       const salesCount = parseInt(applicationToDelete.sales_count) || 0;
       if (salesCount > 0) {
         logger.warn('Attempted to delete application with sales', {
@@ -616,9 +478,6 @@ export async function DELETE(request, { params }) {
           applicationId: cleanedApplicationId,
           applicationName: applicationToDelete.application_name,
           salesCount,
-          component: 'applications',
-          action: 'application_with_sales_deletion_blocked',
-          operation: 'delete_application',
         });
 
         // Capturer la tentative de suppression d'une application avec ventes
@@ -665,20 +524,6 @@ export async function DELETE(request, { params }) {
 
       // Les règles métier sont validées
       businessRulesValidated = true;
-
-      logger.debug(
-        'Application validation passed - inactive application with no sales found',
-        {
-          requestId,
-          applicationId: cleanedApplicationId,
-          applicationName: applicationToDelete.application_name,
-          isActive: applicationToDelete.is_active,
-          salesCount,
-          component: 'applications',
-          action: 'application_check_success',
-          operation: 'delete_application',
-        },
-      );
     } catch (checkError) {
       const errorCategory = categorizeError(checkError);
 
@@ -687,9 +532,6 @@ export async function DELETE(request, { params }) {
         message: checkError.message,
         requestId,
         applicationId: cleanedApplicationId,
-        component: 'applications',
-        action: 'application_check_failed',
-        operation: 'delete_application',
       });
 
       // Capturer l'erreur de vérification avec Sentry
@@ -732,16 +574,7 @@ export async function DELETE(request, { params }) {
     // ===== ÉTAPE 6: SUPPRESSION DE L'APPLICATION EN BASE DE DONNÉES =====
     let deleteResult;
     try {
-      logger.debug('Executing application deletion query', {
-        requestId,
-        applicationId: cleanedApplicationId,
-        component: 'applications',
-        action: 'query_start',
-        operation: 'delete_application',
-        table: 'catalog.applications',
-      });
-
-      // Supprimer uniquement si is_active = false ET sales_count = 0 (sécurité supplémentaire)
+      // Supprimer uniquement si is_active = false ET sales_count = 0
       deleteResult = await client.query(
         `DELETE FROM catalog.applications 
          WHERE application_id = $1 
@@ -752,13 +585,9 @@ export async function DELETE(request, { params }) {
       );
 
       if (deleteResult.rowCount === 0) {
-        // Cela ne devrait pas arriver après nos vérifications, mais sécurité supplémentaire
         logger.error('Application deletion failed - no rows affected', {
           requestId,
           applicationId: cleanedApplicationId,
-          component: 'applications',
-          action: 'deletion_no_rows_affected',
-          operation: 'delete_application',
         });
 
         // Capturer l'échec inattendu avec Sentry
@@ -800,27 +629,14 @@ export async function DELETE(request, { params }) {
           { status: 400, headers },
         );
       }
-
-      logger.debug('Application deletion query executed successfully', {
-        requestId,
-        applicationId: cleanedApplicationId,
-        applicationName: deleteResult.rows[0].application_name,
-        component: 'applications',
-        action: 'query_success',
-        operation: 'delete_application',
-      });
     } catch (deleteError) {
       const errorCategory = categorizeError(deleteError);
 
       logger.error('Application Deletion Error', {
         category: errorCategory,
         message: deleteError.message,
-        operation: 'DELETE FROM catalog.applications',
-        table: 'catalog.applications',
         requestId,
         applicationId: cleanedApplicationId,
-        component: 'applications',
-        action: 'query_failed',
       });
 
       // Capturer l'erreur de suppression avec Sentry
@@ -876,30 +692,12 @@ export async function DELETE(request, { params }) {
     let failedImagesCount = 0;
 
     if (Array.isArray(cloudinaryImageIds) && cloudinaryImageIds.length > 0) {
-      logger.debug('Deleting images from Cloudinary', {
-        requestId,
-        applicationId: cleanedApplicationId,
-        imageCount: cloudinaryImageIds.length,
-        component: 'applications',
-        action: 'cloudinary_delete_start',
-        operation: 'delete_application',
-      });
-
       // Supprimer toutes les images en parallèle
       const deletePromises = cloudinaryImageIds.map(async (imageId) => {
         try {
           await cloudinary.uploader.destroy(imageId);
           deletedImagesCount++;
           cloudinaryOperations++;
-
-          logger.debug('Image deleted from Cloudinary', {
-            requestId,
-            applicationId: cleanedApplicationId,
-            imageId,
-            component: 'applications',
-            action: 'cloudinary_delete_success',
-            operation: 'delete_application',
-          });
         } catch (cloudError) {
           failedImagesCount++;
 
@@ -908,9 +706,6 @@ export async function DELETE(request, { params }) {
             applicationId: cleanedApplicationId,
             imageId,
             error: cloudError.message,
-            component: 'applications',
-            action: 'cloudinary_delete_failed',
-            operation: 'delete_application',
           });
 
           // Capturer l'erreur Cloudinary avec Sentry (non critique car l'application est déjà supprimée)
@@ -935,21 +730,9 @@ export async function DELETE(request, { params }) {
 
       // Attendre toutes les suppressions
       await Promise.allSettled(deletePromises);
-
-      logger.debug('Cloudinary images deletion completed', {
-        requestId,
-        applicationId: cleanedApplicationId,
-        totalImages: cloudinaryImageIds.length,
-        deletedImages: deletedImagesCount,
-        failedImages: failedImagesCount,
-        component: 'applications',
-        action: 'cloudinary_delete_completed',
-        operation: 'delete_application',
-      });
     }
 
     // ===== ÉTAPE 8: INVALIDATION DU CACHE APRÈS SUCCÈS =====
-    // Invalider le cache des applications après suppression réussie
     invalidateApplicationsCache(requestId, cleanedApplicationId);
 
     // ===== ÉTAPE 9: SUCCÈS - LOG ET NETTOYAGE =====
@@ -962,17 +745,8 @@ export async function DELETE(request, { params }) {
       deletedImages: deletedImagesCount,
       failedImages: failedImagesCount,
       response_time_ms: responseTime,
-      database_operations: 3, // connection + check + delete
-      cloudinary_operations: cloudinaryOperations,
-      cache_invalidated: true,
-      business_rules_validated: businessRulesValidated,
       success: true,
       requestId,
-      component: 'applications',
-      action: 'deletion_success',
-      entity: 'application',
-      rateLimitingApplied: true,
-      operation: 'delete_application',
     });
 
     // Capturer le succès de la suppression avec Sentry
@@ -1047,16 +821,9 @@ export async function DELETE(request, { params }) {
     logger.error('Global Delete Application Error', {
       category: errorCategory,
       response_time_ms: responseTime,
-      reached_global_handler: true,
-      error_name: error.name,
       error_message: error.message,
-      stack_available: !!error.stack,
       requestId,
       applicationId: id,
-      component: 'applications',
-      action: 'global_error_handler',
-      entity: 'application',
-      operation: 'delete_application',
     });
 
     // Capturer l'erreur globale avec Sentry

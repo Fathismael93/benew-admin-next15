@@ -22,24 +22,19 @@ import {
   applicationIdSchema,
   cleanUUID,
 } from '@/utils/schemas/applicationSchema';
-// AJOUT POUR L'INVALIDATION DU CACHE
 import { dashboardCache, getDashboardCacheKey } from '@/utils/cache';
 import { sanitizeApplicationUpdateInputsStrict } from '@utils/sanitizers/sanitizeApplicationUpdateInputs';
 
-// ----- CONFIGURATION DU RATE LIMITING POUR LA MODIFICATION D'APPLICATIONS -----
-
 // Créer le middleware de rate limiting spécifique pour la modification d'applications
 const editApplicationRateLimit = applyRateLimit('CONTENT_API', {
-  // Configuration personnalisée pour la modification d'applications
   windowMs: 2 * 60 * 1000, // 2 minutes
-  max: 15, // 15 modifications par 2 minutes (plus restrictif que templates car plus sensible)
+  max: 15, // 15 modifications par 2 minutes
   message:
     "Trop de tentatives de modification d'applications. Veuillez réessayer dans quelques minutes.",
-  skipSuccessfulRequests: false, // Compter toutes les modifications réussies
-  skipFailedRequests: false, // Compter aussi les échecs
-  prefix: 'edit_application', // Préfixe spécifique pour la modification d'applications
+  skipSuccessfulRequests: false,
+  skipFailedRequests: false,
+  prefix: 'edit_application',
 
-  // Fonction personnalisée pour générer la clé (basée sur IP + ID de l'application)
   keyGenerator: (req) => {
     const ip = extractRealIp(req);
     const url = req.url || req.nextUrl?.pathname || '';
@@ -51,7 +46,7 @@ const editApplicationRateLimit = applyRateLimit('CONTENT_API', {
   },
 });
 
-// ----- FONCTION D'INVALIDATION DU CACHE -----
+// Fonction d'invalidation du cache
 const invalidateApplicationsCache = (requestId, applicationId) => {
   try {
     const cacheKey = getDashboardCacheKey('applications_list', {
@@ -60,16 +55,6 @@ const invalidateApplicationsCache = (requestId, applicationId) => {
     });
 
     const cacheInvalidated = dashboardCache.applications.delete(cacheKey);
-
-    logger.debug('Applications cache invalidation', {
-      requestId,
-      applicationId,
-      component: 'applications',
-      action: 'cache_invalidation',
-      operation: 'edit_application',
-      cacheKey,
-      invalidated: cacheInvalidated,
-    });
 
     // Capturer l'invalidation du cache avec Sentry
     captureMessage('Applications cache invalidated after modification', {
@@ -93,9 +78,6 @@ const invalidateApplicationsCache = (requestId, applicationId) => {
     logger.warn('Failed to invalidate applications cache', {
       requestId,
       applicationId,
-      component: 'applications',
-      action: 'cache_invalidation_failed',
-      operation: 'edit_application',
       error: cacheError.message,
     });
 
@@ -118,8 +100,6 @@ const invalidateApplicationsCache = (requestId, applicationId) => {
   }
 };
 
-// ----- API ROUTE PRINCIPALE AVEC RATE LIMITING ET MONITORING SENTRY -----
-
 export async function PUT(request, { params }) {
   let client;
   const startTime = Date.now();
@@ -127,13 +107,8 @@ export async function PUT(request, { params }) {
   const { id } = params;
 
   logger.info('Edit Application API called', {
-    timestamp: new Date().toISOString(),
     requestId,
     applicationId: id,
-    component: 'applications',
-    action: 'api_start',
-    method: 'PUT',
-    operation: 'edit_application',
   });
 
   // Capturer le début du processus de modification d'application
@@ -156,24 +131,8 @@ export async function PUT(request, { params }) {
 
   try {
     // ===== ÉTAPE 1: VALIDATION DE L'ID DE L'APPLICATION =====
-    logger.debug('Validating application ID', {
-      requestId,
-      applicationId: id,
-      component: 'applications',
-      action: 'id_validation_start',
-      operation: 'edit_application',
-    });
-
     try {
       await applicationIdSchema.validate({ id }, { abortEarly: false });
-
-      logger.debug('Application ID validation passed', {
-        requestId,
-        applicationId: id,
-        component: 'applications',
-        action: 'id_validation_success',
-        operation: 'edit_application',
-      });
     } catch (idValidationError) {
       const errorCategory = categorizeError(idValidationError);
 
@@ -184,9 +143,6 @@ export async function PUT(request, { params }) {
           (err) => err.message,
         ) || [idValidationError.message],
         requestId,
-        component: 'applications',
-        action: 'id_validation_failed',
-        operation: 'edit_application',
       });
 
       // Capturer l'erreur de validation d'ID avec Sentry
@@ -225,9 +181,6 @@ export async function PUT(request, { params }) {
     if (!cleanedApplicationId) {
       logger.warn('Application ID cleaning failed', {
         requestId,
-        component: 'applications',
-        action: 'id_cleaning_failed',
-        operation: 'edit_application',
         providedId: id,
       });
 
@@ -238,23 +191,12 @@ export async function PUT(request, { params }) {
     }
 
     // ===== ÉTAPE 2: APPLIQUER LE RATE LIMITING =====
-    logger.debug('Applying rate limiting for edit application API', {
-      requestId,
-      applicationId: cleanedApplicationId,
-      component: 'applications',
-      action: 'rate_limit_start',
-      operation: 'edit_application',
-    });
-
     const rateLimitResponse = await editApplicationRateLimit(request);
 
     if (rateLimitResponse) {
       logger.warn('Edit application API rate limit exceeded', {
         requestId,
         applicationId: cleanedApplicationId,
-        component: 'applications',
-        action: 'rate_limit_exceeded',
-        operation: 'edit_application',
         ip: anonymizeIp(extractRealIp(request)),
       });
 
@@ -280,55 +222,20 @@ export async function PUT(request, { params }) {
       return rateLimitResponse;
     }
 
-    logger.debug('Rate limiting passed successfully', {
-      requestId,
-      applicationId: cleanedApplicationId,
-      component: 'applications',
-      action: 'rate_limit_passed',
-      operation: 'edit_application',
-    });
-
     // ===== ÉTAPE 3: VÉRIFICATION AUTHENTIFICATION =====
-    logger.debug('Verifying user authentication', {
-      requestId,
-      applicationId: cleanedApplicationId,
-      component: 'applications',
-      action: 'auth_verification_start',
-      operation: 'edit_application',
-    });
-
     await isAuthenticatedUser(request, NextResponse);
-
-    logger.debug('User authentication verified successfully', {
-      requestId,
-      applicationId: cleanedApplicationId,
-      component: 'applications',
-      action: 'auth_verification_success',
-      operation: 'edit_application',
-    });
 
     // ===== ÉTAPE 4: CONNEXION BASE DE DONNÉES =====
     try {
       client = await getClient();
-      logger.debug('Database connection successful', {
-        requestId,
-        applicationId: cleanedApplicationId,
-        component: 'applications',
-        action: 'db_connection_success',
-        operation: 'edit_application',
-      });
     } catch (dbConnectionError) {
       const errorCategory = categorizeError(dbConnectionError);
 
       logger.error('Database Connection Error during application edit', {
         category: errorCategory,
         message: dbConnectionError.message,
-        timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
         requestId,
         applicationId: cleanedApplicationId,
-        component: 'applications',
-        action: 'db_connection_failed',
-        operation: 'edit_application',
       });
 
       // Capturer l'erreur de connexion DB avec Sentry
@@ -358,13 +265,6 @@ export async function PUT(request, { params }) {
     let body;
     try {
       body = await request.json();
-      logger.debug('Request body parsed successfully', {
-        requestId,
-        applicationId: cleanedApplicationId,
-        component: 'applications',
-        action: 'body_parse_success',
-        operation: 'edit_application',
-      });
     } catch (parseError) {
       const errorCategory = categorizeError(parseError);
 
@@ -373,13 +273,6 @@ export async function PUT(request, { params }) {
         message: parseError.message,
         requestId,
         applicationId: cleanedApplicationId,
-        component: 'applications',
-        action: 'json_parse_error',
-        operation: 'edit_application',
-        headers: {
-          'content-type': request.headers.get('content-type'),
-          'user-agent': request.headers.get('user-agent')?.substring(0, 100),
-        },
       });
 
       captureException(parseError, {
@@ -417,33 +310,10 @@ export async function PUT(request, { params }) {
       imageUrls,
       otherVersions,
       isActive,
-      oldImageUrls, // Pour supprimer les anciennes images
+      oldImageUrls,
     } = body;
 
-    logger.debug('Application data extracted from request', {
-      requestId,
-      applicationId: cleanedApplicationId,
-      component: 'applications',
-      action: 'data_extraction',
-      operation: 'edit_application',
-      hasName: !!name,
-      hasLink: !!link,
-      hasAdmin: !!admin,
-      hasCategory: !!category,
-      hasLevel: level !== undefined,
-      hasIsActive: isActive !== undefined,
-      imageCount: Array.isArray(imageUrls) ? imageUrls.length : 0,
-    });
-
     // ===== ÉTAPE 6: SANITIZATION DES INPUTS (SAUF isActive et level) =====
-    logger.debug('Sanitizing application inputs', {
-      requestId,
-      applicationId: cleanedApplicationId,
-      component: 'applications',
-      action: 'input_sanitization',
-      operation: 'edit_application',
-    });
-
     // Préparer les données pour la sanitization (exclure isActive et level)
     const dataToSanitize = {
       name,
@@ -497,14 +367,6 @@ export async function PUT(request, { params }) {
       oldImageUrls, // Non sanitizé car utilisé pour la logique interne
     };
 
-    logger.debug('Input sanitization completed', {
-      requestId,
-      applicationId: cleanedApplicationId,
-      component: 'applications',
-      action: 'input_sanitization_completed',
-      operation: 'edit_application',
-    });
-
     // ===== ÉTAPE 7: VALIDATION AVEC YUP =====
     try {
       // Filtrer les champs undefined pour la validation
@@ -528,14 +390,6 @@ export async function PUT(request, { params }) {
       await applicationUpdateSchema.validate(dataToValidate, {
         abortEarly: false,
       });
-
-      logger.debug('Application validation with Yup passed', {
-        requestId,
-        applicationId: cleanedApplicationId,
-        component: 'applications',
-        action: 'yup_validation_success',
-        operation: 'edit_application',
-      });
     } catch (validationError) {
       const errorCategory = categorizeError(validationError);
 
@@ -545,9 +399,6 @@ export async function PUT(request, { params }) {
         total_errors: validationError.inner?.length || 0,
         requestId,
         applicationId: cleanedApplicationId,
-        component: 'applications',
-        action: 'yup_validation_failed',
-        operation: 'edit_application',
       });
 
       // Capturer l'erreur de validation avec Sentry
@@ -597,36 +448,16 @@ export async function PUT(request, { params }) {
       );
 
       if (imagesToDelete.length > 0) {
-        logger.debug('Deleting old images from Cloudinary', {
-          requestId,
-          applicationId: cleanedApplicationId,
-          imagesToDelete: imagesToDelete.length,
-          component: 'applications',
-          action: 'cloudinary_delete_start',
-          operation: 'edit_application',
-        });
-
         // Supprimer les images en parallèle
         const deletePromises = imagesToDelete.map(async (imageId) => {
           try {
             await cloudinary.uploader.destroy(imageId);
-            logger.debug('Image deleted from Cloudinary', {
-              requestId,
-              applicationId: cleanedApplicationId,
-              imageId,
-              component: 'applications',
-              action: 'cloudinary_delete_success',
-              operation: 'edit_application',
-            });
           } catch (deleteError) {
             logger.error('Error deleting image from Cloudinary', {
               requestId,
               applicationId: cleanedApplicationId,
               imageId,
               error: deleteError.message,
-              component: 'applications',
-              action: 'cloudinary_delete_failed',
-              operation: 'edit_application',
             });
 
             // Capturer l'erreur Cloudinary avec Sentry (non critique)
@@ -742,25 +573,12 @@ export async function PUT(request, { params }) {
         RETURNING *
       `;
 
-      logger.debug('Executing application update query', {
-        requestId,
-        applicationId: cleanedApplicationId,
-        component: 'applications',
-        action: 'query_start',
-        operation: 'edit_application',
-        table: 'catalog.applications',
-        fieldsToUpdate: updateFields.length,
-      });
-
       result = await client.query(queryText, updateValues);
 
       if (result.rows.length === 0) {
         logger.warn('Application not found for update', {
           requestId,
           applicationId: cleanedApplicationId,
-          component: 'applications',
-          action: 'application_not_found',
-          operation: 'edit_application',
         });
 
         // Capturer l'application non trouvée avec Sentry
@@ -786,27 +604,14 @@ export async function PUT(request, { params }) {
           { status: 404 },
         );
       }
-
-      logger.debug('Application update query executed successfully', {
-        requestId,
-        applicationId: cleanedApplicationId,
-        component: 'applications',
-        action: 'query_success',
-        operation: 'edit_application',
-        updatedFields: updateFields.length,
-      });
     } catch (updateError) {
       const errorCategory = categorizeError(updateError);
 
       logger.error('Application Update Error', {
         category: errorCategory,
         message: updateError.message,
-        operation: 'UPDATE catalog.applications',
-        table: 'catalog.applications',
         requestId,
         applicationId: cleanedApplicationId,
-        component: 'applications',
-        action: 'query_failed',
       });
 
       // Capturer l'erreur de mise à jour avec Sentry
@@ -870,17 +675,8 @@ export async function PUT(request, { params }) {
       applicationId: cleanedApplicationId,
       applicationName: sanitizedApplication.application_name,
       response_time_ms: responseTime,
-      database_operations: 2, // connection + update
-      cache_invalidated: true,
       success: true,
       requestId,
-      component: 'applications',
-      action: 'update_success',
-      entity: 'application',
-      rateLimitingApplied: true,
-      operation: 'edit_application',
-      sanitizationApplied: true,
-      yupValidationApplied: true,
     });
 
     // Capturer le succès de la mise à jour avec Sentry
@@ -935,16 +731,9 @@ export async function PUT(request, { params }) {
     logger.error('Global Edit Application Error', {
       category: errorCategory,
       response_time_ms: responseTime,
-      reached_global_handler: true,
-      error_name: error.name,
       error_message: error.message,
-      stack_available: !!error.stack,
       requestId,
       applicationId: id,
-      component: 'applications',
-      action: 'global_error_handler',
-      entity: 'application',
-      operation: 'edit_application',
     });
 
     // Capturer l'erreur globale avec Sentry
