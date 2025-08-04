@@ -17,30 +17,25 @@ import isAuthenticatedUser from '@backend/authMiddleware';
 import { applyRateLimit } from '@backend/rateLimiter';
 import { sanitizePlatformInputsStrict } from '@/utils/sanitizers/sanitizePlatformInputs';
 import { platformAddingSchema } from '@/utils/schemas/platformSchema';
-// AJOUT POUR L'INVALIDATION DU CACHE
 import { dashboardCache, getDashboardCacheKey } from '@/utils/cache';
-
-// ----- CONFIGURATION DU RATE LIMITING POUR L'AJOUT DE PLATEFORMES -----
 
 // Créer le middleware de rate limiting spécifique pour l'ajout de plateformes
 const addPlatformRateLimit = applyRateLimit('CONTENT_API', {
-  // Configuration personnalisée pour l'ajout de plateformes (plus restrictif car données sensibles)
-  windowMs: 10 * 60 * 1000, // 10 minutes (plus restrictif pour paiement)
-  max: 5, // 5 ajouts par 10 minutes (très restrictif car données bancaires)
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: 5, // 5 ajouts par 10 minutes
   message:
     "Trop de tentatives d'ajout de plateformes de paiement. Veuillez réessayer dans quelques minutes.",
-  skipSuccessfulRequests: false, // Compter tous les ajouts réussis
-  skipFailedRequests: false, // Compter aussi les échecs
-  prefix: 'add_platform', // Préfixe spécifique pour l'ajout de plateformes
+  skipSuccessfulRequests: false,
+  skipFailedRequests: false,
+  prefix: 'add_platform',
 
-  // Fonction personnalisée pour générer la clé (basée sur IP)
   keyGenerator: (req) => {
     const ip = extractRealIp(req);
     return `add_platform:ip:${ip}`;
   },
 });
 
-// ----- FONCTION D'INVALIDATION DU CACHE -----
+// Fonction d'invalidation du cache
 const invalidatePlatformsCache = (requestId) => {
   try {
     const cacheKey = getDashboardCacheKey('platforms_list', {
@@ -50,16 +45,6 @@ const invalidatePlatformsCache = (requestId) => {
 
     const cacheInvalidated = dashboardCache.platforms.delete(cacheKey);
 
-    logger.debug('Platforms cache invalidation', {
-      requestId,
-      component: 'platforms',
-      action: 'cache_invalidation',
-      operation: 'add_platform',
-      cacheKey,
-      invalidated: cacheInvalidated,
-    });
-
-    // Capturer l'invalidation du cache avec Sentry
     captureMessage('Platforms cache invalidated after addition', {
       level: 'info',
       tags: {
@@ -79,9 +64,6 @@ const invalidatePlatformsCache = (requestId) => {
   } catch (cacheError) {
     logger.warn('Failed to invalidate platforms cache', {
       requestId,
-      component: 'platforms',
-      action: 'cache_invalidation_failed',
-      operation: 'add_platform',
       error: cacheError.message,
     });
 
@@ -103,82 +85,48 @@ const invalidatePlatformsCache = (requestId) => {
   }
 };
 
-// ----- FONCTION POUR CRÉER LES HEADERS DE RÉPONSE SPÉCIFIQUES AUX PLATEFORMES -----
+// Fonction pour créer les headers de réponse
 const createResponseHeaders = (
   requestId,
   responseTime,
   rateLimitInfo = null,
 ) => {
   const headers = {
-    // ===== HEADERS COMMUNS (sécurité de base) =====
     'Access-Control-Allow-Origin':
       process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers':
       'Content-Type, Authorization, X-Requested-With',
-
-    // Anti-cache strict pour les mutations sensibles
     'Cache-Control':
       'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
     Pragma: 'no-cache',
     Expires: '0',
-
-    // Sécurité de base
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'X-XSS-Protection': '1; mode=block',
     'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
-
-    // Isolation moderne
     'Cross-Origin-Opener-Policy': 'same-origin',
     'Cross-Origin-Embedder-Policy': 'credentialless',
     'Cross-Origin-Resource-Policy': 'same-site',
-
-    // Sécurité pour mutations de données
     'Referrer-Policy': 'strict-origin-when-cross-origin',
-
-    // CSP pour manipulation de données
     'Content-Security-Policy': "default-src 'none'; connect-src 'self'",
-
-    // ===== HEADERS SPÉCIFIQUES AUX PLATEFORMES DE PAIEMENT =====
-    // Rate limiting ultra-strict pour données financières (5/10min)
-    'X-RateLimit-Window': '600', // 10 minutes en secondes
+    'X-RateLimit-Window': '600',
     'X-RateLimit-Limit': '5',
-
-    // Validation spécifique aux plateformes
-    'X-Resource-Validation': 'platform-data',
-    'X-Uniqueness-Validation': 'platform-name-required',
-    'X-Financial-Data-Protection': 'enabled',
-    'X-Payment-Platform-Security': 'enhanced',
-
-    // Cache et base de données
     'X-Cache-Invalidation': 'platforms',
-    'X-Database-Operations': '3', // connection + uniqueness check + insert
-
-    // Headers de traçabilité spécifiques
+    'X-Database-Operations': '3',
     'X-Request-ID': requestId,
     'X-Response-Time': `${responseTime}ms`,
     'X-API-Version': '1.0',
     'X-Transaction-Type': 'mutation',
     'X-Entity-Type': 'platform',
     'X-Operation-Type': 'create',
-    'X-Operation-Criticality': 'high',
-
-    // Headers de validation et sécurité
     'X-Sanitization-Applied': 'true',
     'X-Yup-Validation-Applied': 'true',
     'X-Uniqueness-Check-Applied': 'true',
-
-    // Headers de performance et traçabilité
     Vary: 'Authorization, Content-Type',
     'X-Permitted-Cross-Domain-Policies': 'none',
-
-    // Headers spécifiques aux données financières
-    'X-Sensitive-Data-Handling': 'financial',
-    'X-Data-Classification': 'restricted',
   };
 
-  // Ajouter les infos de rate limiting si disponibles
   if (rateLimitInfo) {
     headers['X-RateLimit-Remaining'] =
       rateLimitInfo.remaining?.toString() || '0';
@@ -188,23 +136,15 @@ const createResponseHeaders = (
   return headers;
 };
 
-// ----- API ROUTE PRINCIPALE AVEC RATE LIMITING -----
-
 export async function POST(request) {
   let client;
   const startTime = Date.now();
   const requestId = generateRequestId();
 
   logger.info('Add Platform API called', {
-    timestamp: new Date().toISOString(),
     requestId,
-    component: 'platforms',
-    action: 'api_start',
-    method: 'POST',
-    operation: 'add_platform',
   });
 
-  // Capturer le début du processus d'ajout de plateforme
   captureMessage('Add platform process started', {
     level: 'info',
     tags: {
@@ -223,26 +163,14 @@ export async function POST(request) {
 
   try {
     // ===== ÉTAPE 1: APPLIQUER LE RATE LIMITING =====
-    logger.debug('Applying rate limiting for add platform API', {
-      requestId,
-      component: 'platforms',
-      action: 'rate_limit_start',
-      operation: 'add_platform',
-    });
-
     const rateLimitResponse = await addPlatformRateLimit(request);
 
-    // Si le rate limiter retourne une réponse, cela signifie que la limite est dépassée
     if (rateLimitResponse) {
       logger.warn('Add platform API rate limit exceeded', {
         requestId,
-        component: 'platforms',
-        action: 'rate_limit_exceeded',
-        operation: 'add_platform',
         ip: anonymizeIp(extractRealIp(request)),
       });
 
-      // Capturer l'événement de rate limiting avec Sentry
       captureMessage('Add platform API rate limit exceeded', {
         level: 'warning',
         tags: {
@@ -260,13 +188,11 @@ export async function POST(request) {
         },
       });
 
-      // Ajouter les headers de sécurité même en cas de rate limit
       const responseTime = Date.now() - startTime;
       const headers = createResponseHeaders(requestId, responseTime, {
         remaining: 0,
       });
 
-      // Modifier la réponse pour inclure nos headers
       const rateLimitBody = await rateLimitResponse.json();
       return NextResponse.json(rateLimitBody, {
         status: 429,
@@ -274,53 +200,21 @@ export async function POST(request) {
       });
     }
 
-    logger.debug('Rate limiting passed successfully', {
-      requestId,
-      component: 'platforms',
-      action: 'rate_limit_passed',
-      operation: 'add_platform',
-    });
-
     // ===== ÉTAPE 2: VÉRIFICATION AUTHENTIFICATION =====
-    logger.debug('Verifying user authentication', {
-      requestId,
-      component: 'platforms',
-      action: 'auth_verification_start',
-      operation: 'add_platform',
-    });
-
     await isAuthenticatedUser(request, NextResponse);
-
-    logger.debug('User authentication verified successfully', {
-      requestId,
-      component: 'platforms',
-      action: 'auth_verification_success',
-      operation: 'add_platform',
-    });
 
     // ===== ÉTAPE 3: CONNEXION BASE DE DONNÉES =====
     try {
       client = await getClient();
-      logger.debug('Database connection successful', {
-        requestId,
-        component: 'platforms',
-        action: 'db_connection_success',
-        operation: 'add_platform',
-      });
     } catch (dbConnectionError) {
       const errorCategory = categorizeError(dbConnectionError);
 
       logger.error('Database Connection Error during platform addition', {
         category: errorCategory,
         message: dbConnectionError.message,
-        timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
         requestId,
-        component: 'platforms',
-        action: 'db_connection_failed',
-        operation: 'add_platform',
       });
 
-      // Capturer l'erreur de connexion DB avec Sentry
       captureDatabaseError(dbConnectionError, {
         tags: {
           component: 'platforms',
@@ -349,12 +243,6 @@ export async function POST(request) {
     let body;
     try {
       body = await request.json();
-      logger.debug('Request body parsed successfully', {
-        requestId,
-        component: 'platforms',
-        action: 'body_parse_success',
-        operation: 'add_platform',
-      });
     } catch (parseError) {
       const errorCategory = categorizeError(parseError);
 
@@ -362,16 +250,8 @@ export async function POST(request) {
         category: errorCategory,
         message: parseError.message,
         requestId,
-        component: 'platforms',
-        action: 'json_parse_error',
-        operation: 'add_platform',
-        headers: {
-          'content-type': request.headers.get('content-type'),
-          'user-agent': request.headers.get('user-agent')?.substring(0, 100),
-        },
       });
 
-      // Capturer l'erreur de parsing avec Sentry
       captureException(parseError, {
         level: 'error',
         tags: {
@@ -400,44 +280,19 @@ export async function POST(request) {
 
     const { platformName, platformNumber } = body;
 
-    logger.debug('Platform data extracted from request', {
-      requestId,
-      component: 'platforms',
-      action: 'data_extraction',
-      operation: 'add_platform',
-      hasPlatformName: !!platformName,
-      hasPlatformNumber: !!platformNumber,
-    });
-
     // ===== ÉTAPE 5: SANITIZATION DES INPUTS =====
-    logger.debug('Sanitizing platform inputs', {
-      requestId,
-      component: 'platforms',
-      action: 'input_sanitization',
-      operation: 'add_platform',
-    });
-
     const sanitizedInputs = sanitizePlatformInputsStrict({
       platformName,
       platformNumber,
     });
 
-    // Utiliser les données sanitizées pour la suite du processus
     const {
       platformName: sanitizedPlatformName,
       platformNumber: sanitizedPlatformNumber,
     } = sanitizedInputs;
 
-    logger.debug('Input sanitization completed', {
-      requestId,
-      component: 'platforms',
-      action: 'input_sanitization_completed',
-      operation: 'add_platform',
-    });
-
     // ===== ÉTAPE 6: VALIDATION AVEC YUP =====
     try {
-      // Valider les données sanitizées avec le schema Yup
       await platformAddingSchema.validate(
         {
           platformName: sanitizedPlatformName,
@@ -445,13 +300,6 @@ export async function POST(request) {
         },
         { abortEarly: false },
       );
-
-      logger.debug('Platform validation with Yup passed', {
-        requestId,
-        component: 'platforms',
-        action: 'yup_validation_success',
-        operation: 'add_platform',
-      });
     } catch (validationError) {
       const errorCategory = categorizeError(validationError);
 
@@ -460,12 +308,8 @@ export async function POST(request) {
         failed_fields: validationError.inner?.map((err) => err.path) || [],
         total_errors: validationError.inner?.length || 0,
         requestId,
-        component: 'platforms',
-        action: 'yup_validation_failed',
-        operation: 'add_platform',
       });
 
-      // Capturer l'erreur de validation avec Sentry
       captureMessage('Platform validation failed with Yup schema', {
         level: 'warning',
         tags: {
@@ -506,9 +350,6 @@ export async function POST(request) {
         'Platform validation failed - missing required fields after sanitization',
         {
           requestId,
-          component: 'platforms',
-          action: 'validation_failed',
-          operation: 'add_platform',
           missingFields: {
             platformName: !sanitizedPlatformName,
             platformNumber: !sanitizedPlatformNumber,
@@ -516,7 +357,6 @@ export async function POST(request) {
         },
       );
 
-      // Capturer l'erreur de validation avec Sentry
       captureMessage(
         'Platform validation failed - missing required fields after sanitization',
         {
@@ -549,13 +389,6 @@ export async function POST(request) {
       );
     }
 
-    logger.debug('Platform validation passed', {
-      requestId,
-      component: 'platforms',
-      action: 'validation_success',
-      operation: 'add_platform',
-    });
-
     // ===== ÉTAPE 8: VÉRIFICATION DE L'UNICITÉ =====
     let existingPlatform;
     try {
@@ -564,14 +397,6 @@ export async function POST(request) {
         FROM admin.platforms 
         WHERE LOWER(platform_name) = LOWER($1)
       `;
-
-      logger.debug('Checking platform uniqueness', {
-        requestId,
-        component: 'platforms',
-        action: 'uniqueness_check_start',
-        operation: 'add_platform',
-        table: 'admin.platforms',
-      });
 
       existingPlatform = await client.query(uniqueCheckQuery, [
         sanitizedPlatformName,
@@ -586,14 +411,10 @@ export async function POST(request) {
 
         logger.warn('Platform uniqueness violation detected', {
           requestId,
-          component: 'platforms',
-          action: 'uniqueness_violation',
-          operation: 'add_platform',
           duplicateField,
           existingPlatformId: existingPlatform.rows[0].platform_id,
         });
 
-        // Capturer la violation d'unicité avec Sentry
         captureMessage('Platform uniqueness violation detected', {
           level: 'warning',
           tags: {
@@ -628,27 +449,15 @@ export async function POST(request) {
           { status: 409, headers },
         );
       }
-
-      logger.debug('Platform uniqueness check passed', {
-        requestId,
-        component: 'platforms',
-        action: 'uniqueness_check_success',
-        operation: 'add_platform',
-      });
     } catch (uniqueCheckError) {
       const errorCategory = categorizeError(uniqueCheckError);
 
       logger.error('Platform Uniqueness Check Error', {
         category: errorCategory,
         message: uniqueCheckError.message,
-        operation: 'SELECT FROM platforms',
-        table: 'admin.platforms',
         requestId,
-        component: 'platforms',
-        action: 'uniqueness_check_failed',
       });
 
-      // Capturer l'erreur de vérification d'unicité avec Sentry
       captureDatabaseError(uniqueCheckError, {
         tags: {
           component: 'platforms',
@@ -690,37 +499,16 @@ export async function POST(request) {
 
       const values = [sanitizedPlatformName, sanitizedPlatformNumber];
 
-      logger.debug('Executing platform insertion query', {
-        requestId,
-        component: 'platforms',
-        action: 'query_start',
-        operation: 'add_platform',
-        table: 'admin.platforms',
-      });
-
       result = await client.query(queryText, values);
-
-      logger.debug('Platform insertion query executed successfully', {
-        requestId,
-        component: 'platforms',
-        action: 'query_success',
-        operation: 'add_platform',
-        newPlatformId: result.rows[0]?.platform_id,
-      });
     } catch (insertError) {
       const errorCategory = categorizeError(insertError);
 
       logger.error('Platform Insertion Error', {
         category: errorCategory,
         message: insertError.message,
-        operation: 'INSERT INTO platforms',
-        table: 'admin.platforms',
         requestId,
-        component: 'platforms',
-        action: 'query_failed',
       });
 
-      // Capturer l'erreur d'insertion avec Sentry
       captureDatabaseError(insertError, {
         tags: {
           component: 'platforms',
@@ -753,7 +541,6 @@ export async function POST(request) {
     // ===== ÉTAPE 10: INVALIDATION DU CACHE APRÈS SUCCÈS =====
     const newPlatformData = result.rows[0];
 
-    // Invalider le cache des plateformes après ajout réussi
     invalidatePlatformsCache(requestId);
 
     // ===== ÉTAPE 11: SUCCÈS - LOG ET NETTOYAGE =====
@@ -763,21 +550,10 @@ export async function POST(request) {
       newPlatformId: newPlatformData.platform_id,
       platformName: sanitizedPlatformName,
       response_time_ms: responseTime,
-      database_operations: 3, // connection + uniqueness check + insert
-      cache_invalidated: true,
       success: true,
       requestId,
-      component: 'platforms',
-      action: 'addition_success',
-      entity: 'platform',
-      rateLimitingApplied: true,
-      operation: 'add_platform',
-      sanitizationApplied: true,
-      yupValidationApplied: true,
-      uniquenessCheckApplied: true,
     });
 
-    // Capturer le succès de l'ajout avec Sentry
     captureMessage('Platform addition completed successfully', {
       level: 'info',
       tags: {
@@ -804,7 +580,6 @@ export async function POST(request) {
 
     if (client) await client.cleanup();
 
-    // Créer les headers de succès
     const headers = createResponseHeaders(requestId, responseTime);
 
     return NextResponse.json(
@@ -834,18 +609,10 @@ export async function POST(request) {
     logger.error('Global Add Platform Error', {
       category: errorCategory,
       response_time_ms: responseTime,
-      reached_global_handler: true,
-      error_name: error.name,
       error_message: error.message,
-      stack_available: !!error.stack,
       requestId,
-      component: 'platforms',
-      action: 'global_error_handler',
-      entity: 'platform',
-      operation: 'add_platform',
     });
 
-    // Capturer l'erreur globale avec Sentry
     captureException(error, {
       level: 'error',
       tags: {
@@ -870,7 +637,6 @@ export async function POST(request) {
 
     if (client) await client.cleanup();
 
-    // Créer les headers même en cas d'erreur globale
     const headers = createResponseHeaders(requestId, responseTime);
 
     return NextResponse.json(

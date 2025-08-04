@@ -1,5 +1,6 @@
-// app/api/dashboard/platforms/[id]/delete/route.js
+/* eslint-disable no-unused-vars */
 import { NextResponse } from 'next/server';
+import cloudinary from '@backend/cloudinary';
 import { getClient } from '@backend/dbConnect';
 import {
   captureException,
@@ -15,217 +16,128 @@ import {
 import logger from '@/utils/logger';
 import isAuthenticatedUser from '@backend/authMiddleware';
 import { applyRateLimit } from '@backend/rateLimiter';
-import { platformIdSchema } from '@/utils/schemas/platformSchema';
-// AJOUT POUR L'INVALIDATION DU CACHE
+import { articleIdSchema } from '@/utils/schemas/articleSchema';
 import { dashboardCache, getDashboardCacheKey } from '@/utils/cache';
 
 export const dynamic = 'force-dynamic';
 
-// ----- CONFIGURATION DU RATE LIMITING POUR LA SUPPRESSION DE PLATEFORMES -----
-
-// Créer le middleware de rate limiting spécifique pour la suppression de plateformes
-const deletePlatformRateLimit = applyRateLimit('CONTENT_API', {
-  // Configuration personnalisée pour la suppression de plateformes (très restrictif car données bancaires critiques)
-  windowMs: 15 * 60 * 1000, // 15 minutes (encore plus strict pour deletion)
-  max: 3, // 3 suppressions par 15 minutes (ultra restrictif pour sécurité financière maximale)
+// Créer le middleware de rate limiting spécifique pour la suppression d'articles
+const deleteArticleRateLimit = applyRateLimit('CONTENT_API', {
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 8, // 8 suppressions par 5 minutes
   message:
-    'Trop de tentatives de suppression de plateformes de paiement. Veuillez réessayer dans quelques minutes.',
-  skipSuccessfulRequests: false, // Compter toutes les suppressions réussies
-  skipFailedRequests: false, // Compter aussi les échecs
-  prefix: 'delete_platform', // Préfixe spécifique pour la suppression de plateformes
+    "Trop de tentatives de suppression d'articles. Veuillez réessayer dans quelques minutes.",
+  skipSuccessfulRequests: false,
+  skipFailedRequests: false,
+  prefix: 'delete_article',
 
-  // Fonction personnalisée pour générer la clé (basée sur IP + ID de la plateforme)
   keyGenerator: (req) => {
     const ip = extractRealIp(req);
     const url = req.url || req.nextUrl?.pathname || '';
-    const platformIdMatch = url.match(/platforms\/([^/]+)\/delete/);
-    const platformId = platformIdMatch ? platformIdMatch[1] : 'unknown';
-    return `delete_platform:ip:${ip}:platform:${platformId}`;
+    const articleIdMatch = url.match(/blog\/([^/]+)\/delete/);
+    const articleId = articleIdMatch ? articleIdMatch[1] : 'unknown';
+    return `delete_article:ip:${ip}:article:${articleId}`;
   },
 });
 
-// ----- FONCTION D'INVALIDATION DU CACHE -----
-const invalidatePlatformsCache = (requestId, platformId) => {
+// Fonction d'invalidation du cache
+const invalidateArticlesCache = (requestId, articleId) => {
   try {
-    const cacheKey = getDashboardCacheKey('platforms_list', {
-      endpoint: 'dashboard_platforms',
+    const listCacheKey = getDashboardCacheKey('articles_list', {
+      endpoint: 'dashboard_articles',
       version: '1.0',
     });
 
-    const cacheInvalidated = dashboardCache.platforms.delete(cacheKey);
+    const listCacheInvalidated =
+      dashboardCache.blogArticles.delete(listCacheKey);
 
-    logger.debug('Platforms cache invalidation', {
-      requestId,
-      platformId,
-      component: 'platforms',
-      action: 'cache_invalidation',
-      operation: 'delete_platform',
-      cacheKey,
-      invalidated: cacheInvalidated,
-    });
-
-    // Capturer l'invalidation du cache avec Sentry
-    captureMessage('Platforms cache invalidated after deletion', {
+    captureMessage('Articles cache invalidated after deletion', {
       level: 'info',
       tags: {
-        component: 'platforms',
+        component: 'articles',
         action: 'cache_invalidation',
-        entity: 'platform',
+        entity: 'blog_article',
         operation: 'delete',
       },
       extra: {
         requestId,
-        platformId,
-        cacheKey,
-        invalidated: cacheInvalidated,
+        articleId,
+        listCacheKey,
+        listInvalidated: listCacheInvalidated,
       },
     });
 
-    return cacheInvalidated;
+    return {
+      listInvalidated: listCacheInvalidated,
+    };
   } catch (cacheError) {
-    logger.warn('Failed to invalidate platforms cache', {
+    logger.warn('Failed to invalidate articles cache', {
       requestId,
-      platformId,
-      component: 'platforms',
-      action: 'cache_invalidation_failed',
-      operation: 'delete_platform',
+      articleId,
       error: cacheError.message,
     });
 
     captureException(cacheError, {
       level: 'warning',
       tags: {
-        component: 'platforms',
+        component: 'articles',
         action: 'cache_invalidation_failed',
         error_category: 'cache',
-        entity: 'platform',
+        entity: 'blog_article',
         operation: 'delete',
       },
       extra: {
         requestId,
-        platformId,
+        articleId,
       },
     });
 
-    return false;
+    return { listInvalidated: false };
   }
 };
 
-// ----- FONCTION UTILITAIRE POUR NETTOYER L'UUID -----
-const cleanUUID = (uuid) => {
-  if (!uuid || typeof uuid !== 'string') {
-    return null;
-  }
-
-  // Nettoyer et normaliser l'UUID
-  const cleaned = uuid.toLowerCase().trim();
-
-  // Vérifier le format UUID
-  const uuidRegex =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-  return uuidRegex.test(cleaned) ? cleaned : null;
-};
-
-// ----- FONCTION POUR CRÉER LES HEADERS DE RÉPONSE SPÉCIFIQUES À LA SUPPRESSION DE PLATEFORMES -----
-const createResponseHeaders = (
-  requestId,
-  responseTime,
-  platformId,
-  rateLimitInfo = null,
-) => {
-  const headers = {
-    // CORS ultra-restrictif pour suppression de plateformes (criticité maximale)
+// Fonction pour générer les headers de sécurité
+const getSecurityHeaders = (requestId, responseTime, articleId) => {
+  return {
     'Access-Control-Allow-Origin':
       process.env.NEXT_PUBLIC_SITE_URL || 'same-origin',
     'Access-Control-Allow-Methods': 'DELETE, OPTIONS',
     'Access-Control-Allow-Headers':
       'Content-Type, Authorization, X-Requested-With',
-
-    // Anti-cache absolu pour opérations critiques de suppression
     'Cache-Control':
       'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
     Pragma: 'no-cache',
     Expires: '0',
-
-    // Sécurité maximale pour suppressions de données financières
-    'Referrer-Policy': 'strict-origin-when-cross-origin',
-    'Cross-Origin-Resource-Policy': 'same-site',
-    'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
-
-    // Isolation absolue pour opérations de suppression critiques
-    'Cross-Origin-Opener-Policy': 'same-origin',
-    'Cross-Origin-Embedder-Policy': 'credentialless',
-
-    // CSP ultra-restrictive pour suppressions de données bancaires
-    'Content-Security-Policy': "default-src 'none'; connect-src 'self'",
-
-    // Headers de sécurité renforcés pour suppressions
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'X-XSS-Protection': '1; mode=block',
-
-    // Headers de traçabilité
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Cross-Origin-Resource-Policy': 'same-site',
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cross-Origin-Embedder-Policy': 'credentialless',
+    'Content-Security-Policy':
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self'",
+    'X-API-Version': '1.0',
+    'X-Transaction-Type': 'mutation',
+    'X-Entity-Type': 'blog-article',
+    'X-Operation-Type': 'delete',
+    'X-Cache-Invalidation': 'articles',
+    'X-Rate-Limiting-Applied': 'true',
+    'X-Irreversible-Operation': 'true',
+    'X-Data-Loss-Warning': 'permanent',
+    'X-RateLimit-Window': '300',
+    'X-RateLimit-Limit': '8',
+    'X-Permitted-Cross-Domain-Policies': 'none',
+    'X-Robots-Tag': 'noindex, nofollow',
+    Vary: 'Authorization, Content-Type',
     'X-Request-ID': requestId,
     'X-Response-Time': `${responseTime}ms`,
-    'X-API-Version': '1.0',
-
-    // Headers spécifiques à la suppression de plateformes
-    'X-Transaction-Type': 'mutation',
-    'X-Operation-Type': 'delete',
-    'X-Entity-Type': 'platform',
-    'X-Resource-ID': platformId,
-    'X-Resource-Validation': 'platform-id-required',
-    'X-Cache-Invalidation': 'platforms',
-    'X-Data-Sensitivity': 'high',
-
-    // Rate limiting ultra-strict pour suppressions (15 minutes / 3 max)
-    'X-RateLimit-Window': '900', // 15 minutes en secondes
-    'X-RateLimit-Limit': '3',
-
-    // Headers de validation spécifiques aux suppressions critiques
-    'X-UUID-Validation': 'cleaned-and-verified',
-    'X-Business-Rule-Validation': 'inactive-only',
-    'X-Financial-Safety-Check': 'no-active-transactions',
-    'X-Dependency-Check': 'no-linked-orders',
-
-    // Headers de criticité maximale pour suppressions
-    'X-Operation-Criticality': 'critical',
-    'X-Database-Operations': '4', // connection + check + dependencies + delete
-    'X-Validation-Steps': 'business-rules,financial-safety,dependencies',
-
-    // Headers de sécurité pour données bancaires critiques
-    'X-Financial-Data': 'true',
-    'X-PCI-Compliance': 'required',
-    'X-Data-Masking': 'platform-number',
-
-    // Headers spécifiques aux suppressions définitives
-    'X-Irreversible-Operation': 'true',
-    'X-Data-Loss-Warning': 'permanent-financial-data',
-    'X-Audit-Level': 'maximum',
-    'X-Admin-Approval': 'recommended',
-    'X-Financial-Impact': 'potential',
-
-    // Headers anti-cache supplémentaires pour criticité
-    Vary: 'Authorization, Content-Type',
-    'X-Permitted-Cross-Domain-Policies': 'none',
-
-    // Headers de monitoring pour opérations critiques
-    'X-Security-Level': 'maximum',
-    'X-Monitoring-Level': 'enhanced',
+    'X-Content-Category': 'blog-content',
+    'X-Database-Operations': '3',
+    'X-Resource-ID': articleId,
   };
-
-  // Ajouter les infos de rate limiting si disponibles
-  if (rateLimitInfo) {
-    headers['X-RateLimit-Remaining'] =
-      rateLimitInfo.remaining?.toString() || '0';
-    headers['X-RateLimit-Reset'] = rateLimitInfo.resetTime?.toString() || '0';
-  }
-
-  return headers;
 };
-
-// ----- API ROUTE PRINCIPALE AVEC RATE LIMITING -----
 
 export async function DELETE(request, { params }) {
   let client;
@@ -233,82 +145,56 @@ export async function DELETE(request, { params }) {
   const requestId = generateRequestId();
   const { id } = params;
 
-  logger.info('Delete Platform API called', {
-    timestamp: new Date().toISOString(),
+  logger.info('Delete Article API called', {
     requestId,
-    platformId: id,
-    component: 'platforms',
-    action: 'api_start',
-    method: 'DELETE',
-    operation: 'delete_platform',
+    articleId: id,
   });
 
-  // Capturer le début du processus de suppression de plateforme
-  captureMessage('Delete platform process started', {
+  captureMessage('Delete article process started', {
     level: 'info',
     tags: {
-      component: 'platforms',
+      component: 'articles',
       action: 'process_start',
-      api_endpoint: '/api/dashboard/platforms/[id]/delete',
-      entity: 'platform',
+      api_endpoint: '/api/dashboard/blog/[id]/delete',
+      entity: 'blog_article',
       operation: 'delete',
     },
     extra: {
       requestId,
-      platformId: id,
+      articleId: id,
       timestamp: new Date().toISOString(),
       method: 'DELETE',
     },
   });
 
   try {
-    // ===== ÉTAPE 1: VALIDATION DE L'ID DE LA PLATEFORME =====
-    logger.debug('Validating platform ID', {
-      requestId,
-      platformId: id,
-      component: 'platforms',
-      action: 'id_validation_start',
-      operation: 'delete_platform',
-    });
-
+    // ===== ÉTAPE 1: VALIDATION DE L'ID DE L'ARTICLE =====
     try {
-      await platformIdSchema.validate({ id }, { abortEarly: false });
-
-      logger.debug('Platform ID validation passed', {
-        requestId,
-        platformId: id,
-        component: 'platforms',
-        action: 'id_validation_success',
-        operation: 'delete_platform',
-      });
+      await articleIdSchema.validate({ id }, { abortEarly: false });
     } catch (idValidationError) {
       const errorCategory = categorizeError(idValidationError);
 
-      logger.error('Platform ID Validation Error', {
+      logger.error('Article ID Validation Error', {
         category: errorCategory,
-        platformId: id,
+        articleId: id,
         validation_errors: idValidationError.inner?.map(
           (err) => err.message,
         ) || [idValidationError.message],
         requestId,
-        component: 'platforms',
-        action: 'id_validation_failed',
-        operation: 'delete_platform',
       });
 
-      // Capturer l'erreur de validation d'ID avec Sentry
-      captureMessage('Platform ID validation failed', {
+      captureMessage('Article ID validation failed', {
         level: 'warning',
         tags: {
-          component: 'platforms',
+          component: 'articles',
           action: 'id_validation_failed',
           error_category: 'validation',
-          entity: 'platform',
+          entity: 'blog_article',
           operation: 'delete',
         },
         extra: {
           requestId,
-          platformId: id,
+          articleId: id,
           validationErrors: idValidationError.inner?.map(
             (err) => err.message,
           ) || [idValidationError.message],
@@ -316,167 +202,91 @@ export async function DELETE(request, { params }) {
       });
 
       const responseTime = Date.now() - startTime;
-      const headers = createResponseHeaders(requestId, responseTime, id);
+      const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
 
       return NextResponse.json(
         {
           success: false,
-          error: 'Invalid platform ID format',
-          message: 'This platform does not exist',
+          error: 'Invalid article ID format',
+          message: 'This article does not exist',
           details: idValidationError.inner?.map((err) => err.message) || [
             idValidationError.message,
           ],
+          requestId,
         },
-        { status: 400, headers },
-      );
-    }
-
-    // Nettoyer l'UUID pour garantir le format correct
-    const cleanedPlatformId = cleanUUID(id);
-    if (!cleanedPlatformId) {
-      logger.warn('Platform ID cleaning failed', {
-        requestId,
-        component: 'platforms',
-        action: 'id_cleaning_failed',
-        operation: 'delete_platform',
-        providedId: id,
-      });
-
-      const responseTime = Date.now() - startTime;
-      const headers = createResponseHeaders(requestId, responseTime, id);
-
-      return NextResponse.json(
         {
-          success: false,
-          error: 'Invalid platform ID format',
-          message: 'This platform does not exist',
+          status: 400,
+          headers: securityHeaders,
         },
-        { status: 400, headers },
       );
     }
 
     // ===== ÉTAPE 2: APPLIQUER LE RATE LIMITING =====
-    logger.debug('Applying rate limiting for delete platform API', {
-      requestId,
-      platformId: cleanedPlatformId,
-      component: 'platforms',
-      action: 'rate_limit_start',
-      operation: 'delete_platform',
-    });
+    const rateLimitResponse = await deleteArticleRateLimit(request);
 
-    const rateLimitResponse = await deletePlatformRateLimit(request);
-
-    // Si le rate limiter retourne une réponse, cela signifie que la limite est dépassée
     if (rateLimitResponse) {
-      logger.warn('Delete platform API rate limit exceeded', {
+      logger.warn('Delete article API rate limit exceeded', {
         requestId,
-        platformId: cleanedPlatformId,
-        component: 'platforms',
-        action: 'rate_limit_exceeded',
-        operation: 'delete_platform',
+        articleId: id,
         ip: anonymizeIp(extractRealIp(request)),
       });
 
-      // Capturer l'événement de rate limiting avec Sentry
-      captureMessage('Delete platform API rate limit exceeded', {
+      captureMessage('Delete article API rate limit exceeded', {
         level: 'warning',
         tags: {
-          component: 'platforms',
+          component: 'articles',
           action: 'rate_limit_exceeded',
           error_category: 'rate_limiting',
-          entity: 'platform',
+          entity: 'blog_article',
           operation: 'delete',
         },
         extra: {
           requestId,
-          platformId: cleanedPlatformId,
+          articleId: id,
           ip: anonymizeIp(extractRealIp(request)),
           userAgent:
             request.headers.get('user-agent')?.substring(0, 100) || 'unknown',
         },
       });
 
-      // Ajouter les headers de sécurité même en cas de rate limit
       const responseTime = Date.now() - startTime;
-      const headers = createResponseHeaders(
-        requestId,
-        responseTime,
-        cleanedPlatformId,
-        {
-          remaining: 0,
-        },
-      );
+      const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
 
-      // Modifier la réponse pour inclure nos headers
-      const rateLimitBody = await rateLimitResponse.json();
-      return NextResponse.json(rateLimitBody, {
+      return new NextResponse(rateLimitResponse.body, {
         status: 429,
-        headers: headers,
+        headers: {
+          ...Object.fromEntries(rateLimitResponse.headers.entries()),
+          ...securityHeaders,
+        },
       });
     }
 
-    logger.debug('Rate limiting passed successfully', {
-      requestId,
-      platformId: cleanedPlatformId,
-      component: 'platforms',
-      action: 'rate_limit_passed',
-      operation: 'delete_platform',
-    });
-
     // ===== ÉTAPE 3: VÉRIFICATION AUTHENTIFICATION =====
-    logger.debug('Verifying user authentication', {
-      requestId,
-      platformId: cleanedPlatformId,
-      component: 'platforms',
-      action: 'auth_verification_start',
-      operation: 'delete_platform',
-    });
-
     await isAuthenticatedUser(request, NextResponse);
-
-    logger.debug('User authentication verified successfully', {
-      requestId,
-      platformId: cleanedPlatformId,
-      component: 'platforms',
-      action: 'auth_verification_success',
-      operation: 'delete_platform',
-    });
 
     // ===== ÉTAPE 4: CONNEXION BASE DE DONNÉES =====
     try {
       client = await getClient();
-      logger.debug('Database connection successful', {
-        requestId,
-        platformId: cleanedPlatformId,
-        component: 'platforms',
-        action: 'db_connection_success',
-        operation: 'delete_platform',
-      });
     } catch (dbConnectionError) {
       const errorCategory = categorizeError(dbConnectionError);
 
-      logger.error('Database Connection Error during platform deletion', {
+      logger.error('Database Connection Error during article deletion', {
         category: errorCategory,
         message: dbConnectionError.message,
-        timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
         requestId,
-        platformId: cleanedPlatformId,
-        component: 'platforms',
-        action: 'db_connection_failed',
-        operation: 'delete_platform',
+        articleId: id,
       });
 
-      // Capturer l'erreur de connexion DB avec Sentry
       captureDatabaseError(dbConnectionError, {
         tags: {
-          component: 'platforms',
+          component: 'articles',
           action: 'db_connection_failed',
           operation: 'connection',
-          entity: 'platform',
+          entity: 'blog_article',
         },
         extra: {
           requestId,
-          platformId: cleanedPlatformId,
+          articleId: id,
           timeout: process.env.CONNECTION_TIMEOUT || 'not_set',
           ip: anonymizeIp(extractRealIp(request)),
           rateLimitingApplied: true,
@@ -484,61 +294,58 @@ export async function DELETE(request, { params }) {
       });
 
       const responseTime = Date.now() - startTime;
-      const headers = createResponseHeaders(
-        requestId,
-        responseTime,
-        cleanedPlatformId,
-      );
+      const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
 
       return NextResponse.json(
         {
           success: false,
           error: 'Database connection failed',
+          requestId,
         },
-        { status: 503, headers },
+        {
+          status: 503,
+          headers: securityHeaders,
+        },
       );
     }
 
-    // ===== ÉTAPE 5: VÉRIFICATION DE L'EXISTENCE ET DE L'ÉTAT DE LA PLATEFORME =====
-    let platformToDelete;
-    try {
-      logger.debug('Checking platform existence and status', {
-        requestId,
-        platformId: cleanedPlatformId,
-        component: 'platforms',
-        action: 'platform_check_start',
-        operation: 'delete_platform',
-      });
+    // ===== ÉTAPE 5: PARSING DU BODY POUR L'IMAGE ID =====
+    let body;
+    let imageID = null;
 
+    try {
+      body = await request.json();
+      imageID = body.imageID;
+    } catch (parseError) {
+      // Le body n'est pas obligatoire pour la suppression, continuer sans imageID
+    }
+
+    // ===== ÉTAPE 6: VÉRIFICATION DE L'EXISTENCE ET DE L'ÉTAT DE L'ARTICLE =====
+    let articleToDelete;
+    try {
       const checkResult = await client.query(
-        `SELECT platform_id, platform_name, platform_number, is_active, created_at, updated_at 
-         FROM admin.platforms 
-         WHERE platform_id = $1`,
-        [cleanedPlatformId],
+        'SELECT article_id, article_title, article_image, is_active FROM admin.articles WHERE article_id = $1',
+        [id],
       );
 
       if (checkResult.rows.length === 0) {
-        logger.warn('Platform not found for deletion', {
+        logger.warn('Article not found for deletion', {
           requestId,
-          platformId: cleanedPlatformId,
-          component: 'platforms',
-          action: 'platform_not_found',
-          operation: 'delete_platform',
+          articleId: id,
         });
 
-        // Capturer la plateforme non trouvée avec Sentry
-        captureMessage('Platform not found for deletion', {
+        captureMessage('Article not found for deletion', {
           level: 'warning',
           tags: {
-            component: 'platforms',
-            action: 'platform_not_found',
+            component: 'articles',
+            action: 'article_not_found',
             error_category: 'not_found',
-            entity: 'platform',
+            entity: 'blog_article',
             operation: 'delete',
           },
           extra: {
             requestId,
-            platformId: cleanedPlatformId,
+            articleId: id,
             ip: anonymizeIp(extractRealIp(request)),
           },
         });
@@ -546,112 +353,90 @@ export async function DELETE(request, { params }) {
         if (client) await client.cleanup();
 
         const responseTime = Date.now() - startTime;
-        const headers = createResponseHeaders(
-          requestId,
-          responseTime,
-          cleanedPlatformId,
-        );
+        const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
 
         return NextResponse.json(
           {
             success: false,
-            message: 'This platform does not exist',
+            message: 'This article does not exist',
+            requestId,
           },
-          { status: 404, headers },
+          {
+            status: 404,
+            headers: securityHeaders,
+          },
         );
       }
 
-      platformToDelete = checkResult.rows[0];
+      articleToDelete = checkResult.rows[0];
 
-      // Vérifier que la plateforme est inactive (condition obligatoire pour la suppression)
-      if (platformToDelete.is_active === true) {
-        logger.warn('Attempted to delete active platform', {
+      // Vérifier que l'article est inactif (condition obligatoire pour la suppression)
+      if (articleToDelete.is_active === true) {
+        logger.warn('Attempted to delete active article', {
           requestId,
-          platformId: cleanedPlatformId,
-          platformName: platformToDelete.platform_name,
-          isActive: platformToDelete.is_active,
-          component: 'platforms',
-          action: 'active_platform_deletion_blocked',
-          operation: 'delete_platform',
-          containsSensitiveData: true,
+          articleId: id,
+          articleTitle: articleToDelete.article_title,
+          isActive: articleToDelete.is_active,
         });
 
-        // Capturer la tentative de suppression d'une plateforme active avec Sentry
-        captureMessage('Attempted to delete active platform', {
+        captureMessage('Attempted to delete active article', {
           level: 'warning',
           tags: {
-            component: 'platforms',
-            action: 'active_platform_deletion_blocked',
+            component: 'articles',
+            action: 'active_article_deletion_blocked',
             error_category: 'business_rule_violation',
-            entity: 'platform',
+            entity: 'blog_article',
             operation: 'delete',
           },
           extra: {
             requestId,
-            platformId: cleanedPlatformId,
-            platformName: platformToDelete.platform_name,
-            isActive: platformToDelete.is_active,
+            articleId: id,
+            articleTitle: articleToDelete.article_title,
+            isActive: articleToDelete.is_active,
             ip: anonymizeIp(extractRealIp(request)),
-            containsSensitiveData: true,
           },
         });
 
         if (client) await client.cleanup();
 
         const responseTime = Date.now() - startTime;
-        const headers = createResponseHeaders(
-          requestId,
-          responseTime,
-          cleanedPlatformId,
-        );
+        const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
 
         return NextResponse.json(
           {
             success: false,
             message:
-              'Cannot delete active platform. Please deactivate the platform first.',
-            error: 'Platform is currently active',
+              'Cannot delete active article. Please deactivate the article first.',
+            error: 'Article is currently active',
           },
-          { status: 400, headers },
+          {
+            status: 400,
+            headers: securityHeaders,
+          },
         );
       }
-
-      logger.debug('Platform validation passed - inactive platform found', {
-        requestId,
-        platformId: cleanedPlatformId,
-        platformName: platformToDelete.platform_name,
-        isActive: platformToDelete.is_active,
-        component: 'platforms',
-        action: 'platform_check_success',
-        operation: 'delete_platform',
-        containsSensitiveData: true,
-      });
     } catch (checkError) {
       const errorCategory = categorizeError(checkError);
 
-      logger.error('Platform Check Error', {
+      logger.error('Article Check Error', {
         category: errorCategory,
         message: checkError.message,
         requestId,
-        platformId: cleanedPlatformId,
-        component: 'platforms',
-        action: 'platform_check_failed',
-        operation: 'delete_platform',
+        articleId: id,
       });
 
-      // Capturer l'erreur de vérification avec Sentry
       captureDatabaseError(checkError, {
         tags: {
-          component: 'platforms',
-          action: 'platform_check_failed',
+          component: 'articles',
+          action: 'article_check_failed',
           operation: 'SELECT',
-          entity: 'platform',
+          entity: 'blog_article',
         },
         extra: {
           requestId,
-          platformId: cleanedPlatformId,
-          table: 'admin.platforms',
-          queryType: 'platform_existence_check',
+          articleId: id,
+          table: 'admin.articles',
+          queryType: 'article_existence_check',
           postgresCode: checkError.code,
           ip: anonymizeIp(extractRealIp(request)),
         },
@@ -660,202 +445,52 @@ export async function DELETE(request, { params }) {
       if (client) await client.cleanup();
 
       const responseTime = Date.now() - startTime;
-      const headers = createResponseHeaders(
-        requestId,
-        responseTime,
-        cleanedPlatformId,
-      );
+      const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
 
       return NextResponse.json(
         {
           success: false,
-          error: 'Failed to verify platform status',
+          error: 'Failed to verify article status',
           message: 'Something went wrong! Please try again',
+          requestId,
         },
-        { status: 500, headers },
+        {
+          status: 500,
+          headers: securityHeaders,
+        },
       );
     }
 
-    // ===== ÉTAPE 6: VÉRIFICATION DES DÉPENDANCES (transactions actives, etc.) =====
-    try {
-      logger.debug('Checking platform dependencies before deletion', {
-        requestId,
-        platformId: cleanedPlatformId,
-        component: 'platforms',
-        action: 'dependencies_check_start',
-        operation: 'delete_platform',
-      });
-
-      // Vérifier s'il y a des commandes ou transactions liées à cette plateforme
-      // (Adaptez cette requête selon votre schéma de base de données)
-      const dependenciesCheck = await client.query(
-        `SELECT COUNT(*) as transaction_count 
-         FROM admin.orders 
-         WHERE order_platform_id = $1 
-         AND order_payment_status IN ('pending', 'processing', 'completed')`,
-        [cleanedPlatformId],
-      );
-
-      const transactionCount =
-        parseInt(dependenciesCheck.rows[0].transaction_count) || 0;
-
-      if (transactionCount > 0) {
-        logger.warn('Platform has active transactions - deletion blocked', {
-          requestId,
-          platformId: cleanedPlatformId,
-          platformName: platformToDelete.platform_name,
-          transactionCount,
-          component: 'platforms',
-          action: 'dependencies_found',
-          operation: 'delete_platform',
-        });
-
-        // Capturer la tentative de suppression d'une plateforme avec dépendances
-        captureMessage('Platform deletion blocked due to active transactions', {
-          level: 'warning',
-          tags: {
-            component: 'platforms',
-            action: 'dependencies_found',
-            error_category: 'business_rule_violation',
-            entity: 'platform',
-            operation: 'delete',
-          },
-          extra: {
-            requestId,
-            platformId: cleanedPlatformId,
-            platformName: platformToDelete.platform_name,
-            transactionCount,
-            ip: anonymizeIp(extractRealIp(request)),
-          },
-        });
-
-        if (client) await client.cleanup();
-
-        const responseTime = Date.now() - startTime;
-        const headers = createResponseHeaders(
-          requestId,
-          responseTime,
-          cleanedPlatformId,
-        );
-
-        return NextResponse.json(
-          {
-            success: false,
-            message: `Cannot delete platform. It has ${transactionCount} associated transaction(s). Please resolve all transactions first.`,
-            error: 'Platform has active dependencies',
-            details: {
-              transactionCount,
-            },
-          },
-          { status: 400, headers },
-        );
-      }
-
-      logger.debug(
-        'Platform dependencies check passed - no active transactions',
-        {
-          requestId,
-          platformId: cleanedPlatformId,
-          transactionCount,
-          component: 'platforms',
-          action: 'dependencies_check_success',
-          operation: 'delete_platform',
-        },
-      );
-    } catch (dependenciesError) {
-      const errorCategory = categorizeError(dependenciesError);
-
-      logger.error('Platform Dependencies Check Error', {
-        category: errorCategory,
-        message: dependenciesError.message,
-        requestId,
-        platformId: cleanedPlatformId,
-        component: 'platforms',
-        action: 'dependencies_check_failed',
-        operation: 'delete_platform',
-      });
-
-      // Capturer l'erreur de vérification des dépendances avec Sentry
-      captureDatabaseError(dependenciesError, {
-        tags: {
-          component: 'platforms',
-          action: 'dependencies_check_failed',
-          operation: 'SELECT',
-          entity: 'platform',
-        },
-        extra: {
-          requestId,
-          platformId: cleanedPlatformId,
-          table: 'admin.orders',
-          queryType: 'dependencies_check',
-          postgresCode: dependenciesError.code,
-          ip: anonymizeIp(extractRealIp(request)),
-        },
-      });
-
-      if (client) await client.cleanup();
-
-      const responseTime = Date.now() - startTime;
-      const headers = createResponseHeaders(
-        requestId,
-        responseTime,
-        cleanedPlatformId,
-      );
-
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Failed to verify platform dependencies',
-          message: 'Something went wrong! Please try again',
-        },
-        { status: 500, headers },
-      );
-    }
-
-    // ===== ÉTAPE 7: SUPPRESSION DE LA PLATEFORME EN BASE DE DONNÉES =====
+    // ===== ÉTAPE 7: SUPPRESSION DE L'ARTICLE EN BASE DE DONNÉES =====
     let deleteResult;
     try {
-      logger.debug('Executing platform deletion query', {
-        requestId,
-        platformId: cleanedPlatformId,
-        component: 'platforms',
-        action: 'query_start',
-        operation: 'delete_platform',
-        table: 'admin.platforms',
-      });
-
       // Supprimer uniquement si is_active = false (sécurité supplémentaire)
       deleteResult = await client.query(
-        `DELETE FROM admin.platforms 
-        WHERE platform_id = $1
+        `DELETE FROM admin.articles 
+        WHERE article_id = $1
         AND is_active = false
-        RETURNING platform_name, platform_number, created_at`,
-        [cleanedPlatformId],
+        RETURNING article_title, article_image`,
+        [id],
       );
 
       if (deleteResult.rowCount === 0) {
-        // Cela ne devrait pas arriver après nos vérifications, mais sécurité supplémentaire
-        logger.error('Platform deletion failed - no rows affected', {
+        logger.error('Article deletion failed - no rows affected', {
           requestId,
-          platformId: cleanedPlatformId,
-          component: 'platforms',
-          action: 'deletion_no_rows_affected',
-          operation: 'delete_platform',
+          articleId: id,
         });
 
-        // Capturer l'échec inattendu avec Sentry
-        captureMessage('Platform deletion failed - no rows affected', {
+        captureMessage('Article deletion failed - no rows affected', {
           level: 'error',
           tags: {
-            component: 'platforms',
+            component: 'articles',
             action: 'deletion_no_rows_affected',
             error_category: 'database_inconsistency',
-            entity: 'platform',
+            entity: 'blog_article',
             operation: 'delete',
           },
           extra: {
             requestId,
-            platformId: cleanedPlatformId,
+            articleId: id,
             ip: anonymizeIp(extractRealIp(request)),
           },
         });
@@ -863,59 +498,44 @@ export async function DELETE(request, { params }) {
         if (client) await client.cleanup();
 
         const responseTime = Date.now() - startTime;
-        const headers = createResponseHeaders(
-          requestId,
-          responseTime,
-          cleanedPlatformId,
-        );
+        const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
 
         return NextResponse.json(
           {
             success: false,
             message:
-              'Platform could not be deleted. It may be active or already deleted.',
+              'Article could not be deleted. It may be active or already deleted.',
             error: 'Deletion condition not met',
+            requestId,
           },
-          { status: 400, headers },
+          {
+            status: 400,
+            headers: securityHeaders,
+          },
         );
       }
-
-      logger.debug('Platform deletion query executed successfully', {
-        requestId,
-        platformId: cleanedPlatformId,
-        platformName: deleteResult.rows[0].platform_name,
-        component: 'platforms',
-        action: 'query_success',
-        operation: 'delete_platform',
-        containsSensitiveData: true,
-      });
     } catch (deleteError) {
       const errorCategory = categorizeError(deleteError);
 
-      logger.error('Platform Deletion Error', {
+      logger.error('Article Deletion Error', {
         category: errorCategory,
         message: deleteError.message,
-        operation: 'DELETE FROM admin.platforms',
-        table: 'admin.platforms',
         requestId,
-        platformId: cleanedPlatformId,
-        component: 'platforms',
-        action: 'query_failed',
+        articleId: id,
       });
 
-      // Capturer l'erreur de suppression avec Sentry
       captureDatabaseError(deleteError, {
         tags: {
-          component: 'platforms',
+          component: 'articles',
           action: 'deletion_failed',
           operation: 'DELETE',
-          entity: 'platform',
+          entity: 'blog_article',
         },
         extra: {
           requestId,
-          platformId: cleanedPlatformId,
-          table: 'admin.platforms',
-          queryType: 'platform_deletion',
+          articleId: id,
+          table: 'admin.articles',
+          queryType: 'article_deletion',
           postgresCode: deleteError.code,
           postgresDetail: deleteError.detail ? '[Filtered]' : undefined,
           ip: anonymizeIp(extractRealIp(request)),
@@ -926,100 +546,115 @@ export async function DELETE(request, { params }) {
       if (client) await client.cleanup();
 
       const responseTime = Date.now() - startTime;
-      const headers = createResponseHeaders(
-        requestId,
-        responseTime,
-        cleanedPlatformId,
-      );
+      const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
 
       return NextResponse.json(
         {
           success: false,
-          error: 'Failed to delete platform from database',
+          error: 'Failed to delete article from database',
           message: 'Something went wrong! Please try again',
+          requestId,
         },
-        { status: 500, headers },
+        {
+          status: 500,
+          headers: securityHeaders,
+        },
       );
     }
 
-    // ===== ÉTAPE 8: INVALIDATION DU CACHE APRÈS SUCCÈS =====
-    const deletedPlatform = deleteResult.rows[0];
+    // ===== ÉTAPE 8: SUPPRESSION DE L'IMAGE CLOUDINARY =====
+    const deletedArticle = deleteResult.rows[0];
+    const cloudinaryImageId =
+      imageID || articleToDelete.article_image || deletedArticle.article_image;
 
-    // Invalider le cache des plateformes après suppression réussie
-    invalidatePlatformsCache(requestId, cleanedPlatformId);
+    if (cloudinaryImageId) {
+      try {
+        await cloudinary.uploader.destroy(cloudinaryImageId);
+      } catch (cloudError) {
+        logger.error('Error deleting image from Cloudinary', {
+          requestId,
+          articleId: id,
+          imageId: cloudinaryImageId,
+          error: cloudError.message,
+        });
 
-    // ===== ÉTAPE 9: SUCCÈS - LOG ET NETTOYAGE =====
+        captureException(cloudError, {
+          level: 'warning',
+          tags: {
+            component: 'articles',
+            action: 'cloudinary_delete_failed',
+            error_category: 'media_upload',
+            entity: 'blog_article',
+            operation: 'delete',
+          },
+          extra: {
+            requestId,
+            articleId: id,
+            imageId: cloudinaryImageId,
+            articleAlreadyDeleted: true,
+          },
+        });
+      }
+    }
+
+    // ===== ÉTAPE 9: INVALIDATION DU CACHE APRÈS SUCCÈS =====
+    const cacheInvalidation = invalidateArticlesCache(requestId, id);
+
+    // ===== ÉTAPE 10: SUCCÈS - LOG ET NETTOYAGE =====
     const responseTime = Date.now() - startTime;
 
-    logger.info('Platform deletion successful', {
-      platformId: cleanedPlatformId,
-      platformName: deletedPlatform.platform_name,
+    logger.info('Article deletion successful', {
+      articleId: id,
+      articleTitle: deletedArticle.article_title,
       response_time_ms: responseTime,
-      database_operations: 4, // connection + check + dependencies check + delete
-      cache_invalidated: true,
       success: true,
       requestId,
-      component: 'platforms',
-      action: 'deletion_success',
-      entity: 'platform',
-      rateLimitingApplied: true,
-      operation: 'delete_platform',
-      containsSensitiveData: true,
     });
 
-    // Capturer le succès de la suppression avec Sentry
-    captureMessage('Platform deletion completed successfully', {
+    captureMessage('Article deletion completed successfully', {
       level: 'info',
       tags: {
-        component: 'platforms',
+        component: 'articles',
         action: 'deletion_success',
         success: 'true',
-        entity: 'platform',
+        entity: 'blog_article',
         operation: 'delete',
       },
       extra: {
         requestId,
-        platformId: cleanedPlatformId,
-        platformName: deletedPlatform.platform_name,
+        articleId: id,
+        articleTitle: deletedArticle.article_title,
+        imageId: cloudinaryImageId,
         responseTimeMs: responseTime,
-        databaseOperations: 4,
-        cacheInvalidated: true,
+        databaseOperations: 3,
+        cloudinaryOperations: cloudinaryImageId ? 1 : 0,
+        cacheInvalidated: cacheInvalidation.listInvalidated,
         ip: anonymizeIp(extractRealIp(request)),
         rateLimitingApplied: true,
-        containsSensitiveData: true,
       },
     });
 
     if (client) await client.cleanup();
 
-    // Créer les headers de succès
-    const headers = createResponseHeaders(
-      requestId,
-      responseTime,
-      cleanedPlatformId,
-    );
+    const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
 
     return NextResponse.json(
       {
         success: true,
-        message: 'Platform deleted successfully',
-        platform: {
-          id: cleanedPlatformId,
-          name: deletedPlatform.platform_name,
-          // Masquer le numéro dans la réponse pour sécurité
-          number_masked: deletedPlatform.platform_number
-            ? `${deletedPlatform.platform_number.slice(0, 3)}***${deletedPlatform.platform_number.slice(-2)}`
-            : '[No Number]',
+        message: 'Article and associated image deleted successfully',
+        article: {
+          id: id,
+          title: deletedArticle.article_title,
         },
         meta: {
           requestId,
           timestamp: new Date().toISOString(),
-          security_note: 'Platform number is masked for security',
+          imageDeleted: !!cloudinaryImageId,
         },
       },
       {
         status: 200,
-        headers: headers,
+        headers: securityHeaders,
       },
     );
   } catch (error) {
@@ -1027,40 +662,32 @@ export async function DELETE(request, { params }) {
     const errorCategory = categorizeError(error);
     const responseTime = Date.now() - startTime;
 
-    logger.error('Global Delete Platform Error', {
+    logger.error('Global Delete Article Error', {
       category: errorCategory,
       response_time_ms: responseTime,
-      reached_global_handler: true,
-      error_name: error.name,
       error_message: error.message,
-      stack_available: !!error.stack,
       requestId,
-      platformId: id,
-      component: 'platforms',
-      action: 'global_error_handler',
-      entity: 'platform',
-      operation: 'delete_platform',
+      articleId: id,
     });
 
-    // Capturer l'erreur globale avec Sentry
     captureException(error, {
       level: 'error',
       tags: {
-        component: 'platforms',
+        component: 'articles',
         action: 'global_error_handler',
         error_category: errorCategory,
         critical: 'true',
-        entity: 'platform',
+        entity: 'blog_article',
         operation: 'delete',
       },
       extra: {
         requestId,
-        platformId: id,
+        articleId: id,
         responseTimeMs: responseTime,
         reachedGlobalHandler: true,
         errorName: error.name,
         stackAvailable: !!error.stack,
-        process: 'platform_deletion',
+        process: 'article_deletion',
         ip: anonymizeIp(extractRealIp(request)),
         rateLimitingApplied: true,
       },
@@ -1068,8 +695,7 @@ export async function DELETE(request, { params }) {
 
     if (client) await client.cleanup();
 
-    // Créer les headers même en cas d'erreur globale
-    const headers = createResponseHeaders(requestId, responseTime, id);
+    const securityHeaders = getSecurityHeaders(requestId, responseTime, id);
 
     return NextResponse.json(
       {
@@ -1080,7 +706,7 @@ export async function DELETE(request, { params }) {
       },
       {
         status: 500,
-        headers: headers,
+        headers: securityHeaders,
       },
     );
   }
